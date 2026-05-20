@@ -51,12 +51,15 @@
 
     <!-- 空状态 -->
     <div v-if="!tracks.length" class="local-empty">暂无数据</div>
+
+    <ScrollToTopFab scrollHostSelector=".vl-container" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { localMusicStore } from '../stores/localMusic'
+import ScrollToTopFab from './ui/ScrollToTopFab.vue'
 
 const ROW_HEIGHT = 38
 const OVERSCAN = 15

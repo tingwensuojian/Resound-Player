@@ -93,7 +93,7 @@
           <h3>请选择左侧内容</h3>
           <p>点击歌单或播客后，这里会联动显示对应详情。</p>
         </div>
-        <ScrollToTopFab scrollHostSelector=".detail-panel" />
+        <ScrollToTopFab scrollHostSelector=".detail-panel" :threshold="100" />
       </section>
     </div>
   </AnimatedAppear>
@@ -196,7 +196,7 @@ defineEmits<{
   border-color: var(--button-surface-active-border) !important;
 }
 .left-content { display: grid; gap: 12px; min-height: 0; width: 100%; align-content: start; justify-items: stretch; grid-auto-rows: min-content; }
-.list-wrap { display: grid; gap: 10px; min-height: 0; overflow: auto; padding: 8px 2px; margin: -8px -2px; scrollbar-width: none; -ms-overflow-style: none; background: transparent !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.list-wrap { display: grid; gap: 10px; min-height: 0; padding: 8px 2px; margin: -8px -2px; scrollbar-width: none; -ms-overflow-style: none; background: transparent !important; border: 0 !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 .playlist-row, .dj-card {
   display: flex;
   gap: 12px;
@@ -230,7 +230,7 @@ defineEmits<{
 .playlist-main strong, .playlist-main span, .dj-main strong, .dj-main span, .dj-main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .playlist-main span, .dj-main span, .dj-main small { color: var(--text-sub); font-size: 13px; }
 .detail-panel { padding: 18px; min-height: 0; max-height: 100%; height: 100%; position: relative; overflow-y: auto; overflow-x: hidden; isolation: isolate; scrollbar-width: none; -ms-overflow-style: none; }
-.detail-body-wrap { min-height: 320px; height: 100%; position: relative; z-index: 1; }
+.detail-body-wrap { min-height: 100%; position: relative; z-index: 1; }
 .detail-empty { min-height: 320px; display: grid; place-items: center; gap: 14px; text-align: center; color: var(--text-sub); }
 .detail-empty h3 { margin: 0; color: var(--text-main); }
 .detail-empty p { margin: 0; max-width: 28ch; line-height: 1.6; }
