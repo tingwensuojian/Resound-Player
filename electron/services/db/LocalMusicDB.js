@@ -58,6 +58,7 @@ const SCHEMA = `
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     coverPath TEXT NOT NULL DEFAULT '',
+    customCoverUrl TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL
   );
@@ -104,6 +105,10 @@ class LocalMusicDB {
     this.#db.run("PRAGMA foreign_keys=ON");
     this.#db.run("PRAGMA journal_mode=WAL");
     this.#execMulti(SCHEMA);
+    // 迁移：为已有数据库添加 customCoverUrl 列
+    try {
+      this.#db.run("ALTER TABLE playlists ADD COLUMN customCoverUrl TEXT NOT NULL DEFAULT ''");
+    } catch { /* 列已存在，忽略 */ }
     await this.#migrateFromJson();
     this.#atomicPersist();
   }
@@ -460,7 +465,8 @@ class LocalMusicDB {
 
   listPlaylists() {
     const rows = this.#queryAll(`
-      SELECT p.*, (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlistId = p.id) as trackCount
+      SELECT p.*,
+        (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlistId = p.id) as trackCount
       FROM playlists p
       ORDER BY p.updatedAt DESC
     `);
@@ -469,7 +475,8 @@ class LocalMusicDB {
 
   getPlaylist(id) {
     const row = this.#queryOne(`
-      SELECT p.*, (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlistId = p.id) as trackCount
+      SELECT p.*,
+        (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlistId = p.id) as trackCount
       FROM playlists p WHERE p.id = ?
     `, [id]);
     return Promise.resolve(row || null);
@@ -487,6 +494,23 @@ class LocalMusicDB {
     return this.#enqueueWrite(() => {
       this.#run("UPDATE playlists SET name = ?, updatedAt = ? WHERE id = ?", [name, now(), id]);
       this.#atomicPersist();
+    });
+  }
+
+  updatePlaylist(id, updates) {
+    return this.#enqueueWrite(() => {
+      const fields = [];
+      const values = [];
+      if (updates.name !== undefined) { fields.push("name = ?"); values.push(updates.name); }
+      if (updates.customCoverUrl !== undefined) { fields.push("customCoverUrl = ?"); values.push(updates.customCoverUrl); }
+      if (updates.description !== undefined) { fields.push("description = ?"); values.push(updates.description); }
+      if (fields.length) {
+        fields.push("updatedAt = ?");
+        values.push(now());
+        values.push(id);
+        this.#run(`UPDATE playlists SET ${fields.join(", ")} WHERE id = ?`, values);
+        this.#atomicPersist();
+      }
     });
   }
 
@@ -551,6 +575,23 @@ class LocalMusicDB {
       FROM tracks
     `);
     return Promise.resolve(row || { totalTracks: 0, totalArtists: 0, totalAlbums: 0, totalDuration: 0, totalSize: 0 });
+  }
+
+  /** 返回所有歌单前 6 首 track 的 path（音频文件路径），用于加载封面 */
+  getAllPlaylistCoverPaths() {
+    const rows = this.#queryAll(`
+      SELECT pt.playlistId, t.path
+      FROM playlist_tracks pt
+      INNER JOIN tracks t ON t.id = pt.trackId
+      ORDER BY pt.playlistId, pt.sortOrder ASC
+    `);
+    // 手动分组取前 6 首（SQLite GROUP_CONCAT 不支持 LIMIT per group）
+    const map = {};
+    for (const r of rows) {
+      if (!map[r.playlistId]) map[r.playlistId] = [];
+      if (map[r.playlistId].length < 6) map[r.playlistId].push(r.path);
+    }
+    return Promise.resolve(map);
   }
 }
 

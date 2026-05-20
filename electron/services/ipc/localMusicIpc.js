@@ -98,14 +98,40 @@ function registerLocalMusicIpc(scanner, db) {
     return fs.readFileSync(filePath).buffer;
   });
   const playlistDb = db;
+
+  /** 迁移辅助：将旧版本地文件路径 customCoverUrl 转换为 data URL */
+  async function resolveCustomCoverUrl(pl) {
+    if (!pl?.customCoverUrl) return pl;
+    if (pl.customCoverUrl.startsWith('data:')) return pl; // 已是 data URL
+    if (!pl.customCoverUrl.startsWith('/')) return pl;    // 不是本地路径
+    try {
+      if (fs.existsSync(pl.customCoverUrl)) {
+        const data = fs.readFileSync(pl.customCoverUrl);
+        const ext = path.extname(pl.customCoverUrl).slice(1) || 'jpeg';
+        const mime = ext === 'jpg' ? 'jpeg' : ext;
+        pl.customCoverUrl = `data:image/${mime};base64,${data.toString('base64')}`;
+        // 同步更新 DB
+        await playlistDb.updatePlaylist(pl.id, { customCoverUrl: pl.customCoverUrl }).catch(() => {});
+      }
+    } catch { /* ignore */ }
+    return pl;
+  }
+
   ipcMain.handle("local:playlist-create", async (_event, name, description) => {
     return playlistDb.createPlaylist(name, description || "");
   });
   ipcMain.handle("local:playlist-list", async () => {
-    return playlistDb.listPlaylists();
+    const playlists = await playlistDb.listPlaylists();
+    for (const pl of playlists) await resolveCustomCoverUrl(pl);
+    return playlists;
   });
   ipcMain.handle("local:playlist-get", async (_event, id) => {
-    return playlistDb.getPlaylist(id);
+    const pl = await playlistDb.getPlaylist(id);
+    await resolveCustomCoverUrl(pl);
+    return pl;
+  });
+  ipcMain.handle("local:playlist-cover-paths", async () => {
+    return playlistDb.getAllPlaylistCoverPaths();
   });
   ipcMain.handle("local:playlist-delete", async (_event, id) => {
     await playlistDb.deletePlaylist(id);
@@ -113,6 +139,10 @@ function registerLocalMusicIpc(scanner, db) {
   });
   ipcMain.handle("local:playlist-rename", async (_event, id, name) => {
     await playlistDb.renamePlaylist(id, name);
+    return { success: true };
+  });
+  ipcMain.handle("local:playlist-update", async (_event, id, updates) => {
+    await playlistDb.updatePlaylist(id, updates);
     return { success: true };
   });
   ipcMain.handle("local:playlist-add-track", async (_event, playlistId, trackId) => {
@@ -131,6 +161,25 @@ function registerLocalMusicIpc(scanner, db) {
   });
   ipcMain.handle("local:get-stats", async () => {
     return playlistDb.getTrackStats();
+  });
+
+  // 生成并保存歌单马赛克封面
+  ipcMain.handle("local:playlist-save-mosaic", async (_event, playlistId, coverDataUrl) => {
+    if (!coverDataUrl) return { success: false };
+    // base64 data URL → buffer
+    const matches = coverDataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+    if (!matches) return { success: false };
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    // 保存到应用 userData 目录下的 mosaic-covers 文件夹（作为缓存，方便以后迁移/恢复）
+    const { app } = await import("electron");
+    const mosaicDir = path.join(app.getPath("userData"), "mosaic-covers");
+    if (!fs.existsSync(mosaicDir)) fs.mkdirSync(mosaicDir, { recursive: true });
+    const filePath = path.join(mosaicDir, `playlist-${playlistId}.${ext}`);
+    fs.writeFileSync(filePath, buffer);
+    // 更新 DB 中的 customCoverUrl（存储 data URL，而非本地路径，确保渲染进程可直接使用）
+    await playlistDb.updatePlaylist(playlistId, { customCoverUrl: coverDataUrl });
+    return { success: true, filePath };
   });
 }
 export {

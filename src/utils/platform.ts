@@ -21,8 +21,11 @@ export interface LocalApi {
   createPlaylist(name: string, description?: string): Promise<{ id: string }>
   listPlaylists(): Promise<any[]>
   getPlaylist(id: string): Promise<any | null>
+  getPlaylistCoverPaths(): Promise<Record<string, string[]>>
+  savePlaylistMosaic(playlistId: string, dataUrl: string): Promise<{ success: boolean; filePath?: string }>
   deletePlaylist(id: string): Promise<{ success: boolean }>
   renamePlaylist(id: string, name: string): Promise<{ success: boolean }>
+  updatePlaylist(id: string, updates: { name?: string; customCoverUrl?: string; description?: string }): Promise<{ success: boolean }>
   addTrackToPlaylist(playlistId: string, trackId: string): Promise<{ success: boolean }>
   removeTrackFromPlaylist(playlistId: string, trackId: string): Promise<{ success: boolean }>
   getPlaylistTracks(playlistId: string): Promise<any[]>

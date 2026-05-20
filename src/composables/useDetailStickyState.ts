@@ -3,8 +3,9 @@ import { onMounted, onBeforeUnmount, nextTick, type ComputedRef, watch } from 'v
 /**
  * 详情页吸顶栏统一状态管理。
  *
- * 所有配置集中于此 composable，各页面无需单独传参：
- * - `scrollHost` 固定为 `.playlist-detail-page`（所有详情页共享同一 class）
+ * 所有配置集中于此 composable：
+ * - `scrollHost` 固定为 `.playlist-detail-page`（详情页内部滚动容器）
+ * - 同时阻止 `.content` 竞争滚动容器（设置 overflow: hidden，卸载时恢复）
  * - `stickyClassTarget` 固定为 `.playlist-detail-header-wrap`
  * - 自动同步 `--cover-bg-url` 到 `.content`（提供 blur 背景）
  * - 自动清理所有副作用（scroll event、CSS 变量、sticky class）
@@ -98,6 +99,12 @@ export function useDetailStickyState(
     requestAnimationFrame(() => {
       scrollHost = getScrollHost();
       if (scrollHost) {
+        // 阻止 .content 竞争滚动容器，确保 .playlist-detail-page 是唯一滚动宿主
+        const contentEl = document.querySelector('.content') as HTMLElement | null;
+        if (contentEl) {
+          contentEl.style.overflow = 'hidden';
+        }
+
         scrollHost.addEventListener('scroll', onScroll, { passive: true });
         getScrollHost()?.style.setProperty('--sticky-progress', '0');
       }
@@ -107,18 +114,22 @@ export function useDetailStickyState(
   onBeforeUnmount(() => {
     scrollHost?.removeEventListener('scroll', onScroll);
     cancelAnimationFrame(rafId);
+    // 恢复 .content 滚动能力
+    const contentEl = document.querySelector('.content') as HTMLElement | null;
+    if (contentEl) {
+      contentEl.style.overflow = '';
+    }
     // 清理 --sticky-progress
     const host = getScrollHost();
     if (host) {
       host.style.removeProperty('--sticky-progress');
     }
     // 清理 blur opacity
-    const contentEl = document.querySelector('.content');
-    contentEl?.style.removeProperty('--blur-opacity');
+    document.querySelector('.content')?.style.removeProperty('--blur-opacity');
     // 清理 is-sticky-header class
     document.querySelector(STICKY_CLASS_TARGET)?.classList.remove('is-sticky-header');
     // 清理 --cover-bg-url（避免残留到下一个详情页）
-    contentEl?.style.removeProperty('--cover-bg-url');
+    document.querySelector('.content')?.style.removeProperty('--cover-bg-url');
   });
 
   return { refresh };

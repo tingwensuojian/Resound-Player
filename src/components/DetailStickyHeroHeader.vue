@@ -280,6 +280,8 @@ onMounted(remeasureHeight);
   display: block;
   width: 100%;
   height: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
   transform-origin: center center;
   will-change: transform;
   border-radius: calc(18px - var(--sticky-progress, 0) * 12px);

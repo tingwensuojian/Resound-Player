@@ -399,6 +399,101 @@ export const localMusicStore = reactive({
     )).then(() => { this._coversLoading = false })
   },
 
+  async lazyLoadPlaylistCovers() {
+    if (!platform.localApi) return
+    for (const pl of this.playlists) {
+      if (!pl.coverPaths || pl.coverUrls) continue
+      const paths: string[] = pl.coverPaths.split('|||').filter(Boolean)
+      if (!paths.length) { pl.coverUrls = []; continue }
+      pl.coverUrls = await Promise.all(paths.map((p: string) =>
+        platform.localApi!.getCover(p).catch(() => '')
+      ))
+    }
+    // 封面加载完毕后生成马赛克封面并存入 DB
+    for (const pl of this.playlists) {
+      if (!pl.coverUrls?.length) continue
+      const validUrls = pl.coverUrls.filter(Boolean)
+      if (!validUrls.length) continue
+      // 已有 customCoverUrl 且是 data URL（mosaic 已生成且存储正确）则跳过
+      if (pl.customCoverUrl?.startsWith('data:image/')) continue
+      this.generatePlaylistMosaic(pl.id, validUrls)
+    }
+  },
+
+  /** 用 canvas 生成马赛克封面图片并保存到 DB */
+  generatePlaylistMosaic(playlistId: string, coverUrls: string[]) {
+    if (!platform.localApi) return
+    const canvas = document.createElement('canvas')
+    const cols = 2
+    const rows = Math.min(Math.ceil(Math.min(coverUrls.length, 6) / cols), 3)
+    const cellSize = 154
+    canvas.width = cellSize * cols
+    canvas.height = cellSize * rows
+    const ctx = canvas.getContext('2d')!
+    // 白色背景
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const imgs: HTMLImageElement[] = []
+    let loaded = 0
+    const maxCovers = Math.min(coverUrls.length, cols * rows)
+
+    for (let i = 0; i < maxCovers; i++) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      imgs.push(img)
+      img.onload = () => {
+        loaded++
+        if (loaded === maxCovers) {
+          // 所有图片加载完成后绘制
+          for (let j = 0; j < maxCovers; j++) {
+            ctx.drawImage(imgs[j], (j % cols) * cellSize, Math.floor(j / cols) * cellSize, cellSize, cellSize)
+          }
+          // 导出并保存
+          canvas.toBlob((blob) => {
+            if (!blob) return
+            const reader = new FileReader()
+            reader.onload = () => {
+              const dataUrl = reader.result as string
+              platform.localApi!.savePlaylistMosaic(playlistId, dataUrl)
+                .then((res: any) => {
+                  if (res?.success) {
+                    // 更新 store 中的 customCoverUrl（使用 dataUrl，而非本地路径）
+                    const pl = this.playlists.find(p => p.id === playlistId)
+                    if (pl) pl.customCoverUrl = dataUrl
+                  }
+                })
+                .catch(() => {})
+            }
+            reader.readAsDataURL(blob)
+          }, 'image/jpeg', 0.8)
+        }
+      }
+      img.onerror = () => {
+        loaded++
+        if (loaded === maxCovers) {
+          canvas.toBlob((blob) => {
+            if (!blob) return
+            const reader = new FileReader()
+            reader.onload = () => {
+              const dataUrl = reader.result as string
+              platform.localApi!.savePlaylistMosaic(playlistId, dataUrl)
+                .then((res: any) => {
+                  if (res?.success) {
+                    const pl = this.playlists.find(p => p.id === playlistId)
+                    if (pl) pl.customCoverUrl = dataUrl
+                  }
+                })
+                .catch(() => {})
+            }
+            reader.readAsDataURL(blob)
+          }, 'image/jpeg', 0.8)
+        }
+      }
+      img.src = coverUrls[i]
+    }
+  },
+
   async addDirectory() {
     if (!platform.localApi || !platform.localApi.selectDirectory) return
     try {
@@ -442,6 +537,13 @@ export const localMusicStore = reactive({
     if (!platform.localApi) return
     try {
       this.playlists = await platform.localApi.listPlaylists()
+      // 批量获取所有歌单的前 6 首封面路径
+      const coverMap = await platform.localApi.getPlaylistCoverPaths()
+      for (const pl of this.playlists) {
+        const paths = (coverMap[pl.id] || []).slice(0, 6)
+        pl.coverPaths = paths.join('|||')
+      }
+      this.lazyLoadPlaylistCovers()
     } catch (e) {
       console.error('[localMusic] load playlists failed:', e)
     }
@@ -483,6 +585,19 @@ export const localMusicStore = reactive({
       }
     } catch (e) {
       console.error('[localMusic] rename playlist failed:', e)
+    }
+  },
+
+  async updatePlaylist(id: string, updates: { name?: string; customCoverUrl?: string; description?: string }) {
+    if (!platform.localApi) return
+    try {
+      await platform.localApi.updatePlaylist(id, updates)
+      await this.loadPlaylists()
+      if (this.activePlaylistDetail?.id === id) {
+        if (updates.name !== undefined) this.activePlaylistDetail.name = updates.name
+      }
+    } catch (e) {
+      console.error('[localMusic] update playlist failed:', e)
     }
   },
 

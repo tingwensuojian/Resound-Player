@@ -101,10 +101,12 @@ Requires `@neteasecloudmusicapienhanced` running on port 38761. Development prox
   - Parallel parsing with `music-metadata`, batches of 20 tracks per IPC yield
 - **Playback**: Local files are read via IPC (`local:read-file`) and converted to blob URLs, avoiding `local://` protocol CORS issues
 - **Song List** (`src/components/VirtualSongList.vue`):
-  - Custom virtual scroll implementation (no external library), fixed row height 38px
+  - Custom virtual scroll implementation (no external library), fixed row height 68px
   - Container height measured via `ResizeObserver`, visible range calculated from `scrollTop`
   - 15-row overscan for smooth scrolling
   - Supports selection mode, context menu, sort-by columns
+  - 3-column layout matching PlaylistDetailPage (idx/play-pause, 52px cover, meta)
+  - Inline PlayPause with index display, play/pause SVG, and 3-bar wave animation
 - **IPC Handlers** (`electron/services/ipc/localMusicIpc.js`): scan, CRUD tracks, playlist management, file I/O (lyric/cover/read)
 
 ## Key Patterns
