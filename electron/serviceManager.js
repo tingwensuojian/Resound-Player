@@ -139,7 +139,7 @@ function spawnNeteaseApi(port) {
 }
 
 function spawnUnblockProxy(port) {
-  const appScript = path.join(__dirname, '..', 'node_modules', '@unblockneteasemusic', 'server', 'app.js');
+  const appScript = resolveUnpackedPath('node_modules/@unblockneteasemusic/server/app.js');
   const child = spawn(process.execPath, [
     appScript,
     '-p', String(port),
@@ -170,7 +170,7 @@ function spawnUnblockProxy(port) {
 }
 
 function spawnUnblockMatch(port, unblockProxyPort) {
-  const appScript = path.join(__dirname, '..', 'server', 'unblock-match-server.mjs');
+  const appScript = resolveUnpackedPath('server/unblock-match-server.mjs');
   const child = spawn(process.execPath, [appScript], {
     cwd: path.join(__dirname, '..'),
     env: {
