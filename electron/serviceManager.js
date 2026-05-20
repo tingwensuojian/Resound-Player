@@ -36,6 +36,45 @@ function isFile(p) {
   try { return fs.statSync(p).isFile(); } catch { return false; }
 }
 
+// ── asar-unpacked path resolver ──
+
+/**
+ * 在打包后的应用中，spawn() 的子进程无法访问 app.asar 内的文件。
+ * 需要优先从 app.asar.unpacked 目录解析路径，开发模式回退到相对路径。
+ */
+function resolveUnpackedPath(relativeFileModules: string): string {
+  // 打包模式：优先检查 app.asar.unpacked
+  if (process.resourcesPath) {
+    const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', relativeFileModules);
+    if (isFile(unpackedPath)) return unpackedPath;
+    // asarUnpack 可能展开为文件系统目录结构而非单文件路径
+    const unpackedDir = path.join(process.resourcesPath, 'app.asar.unpacked');
+    const fullPath = path.join(unpackedDir, relativeFileModules);
+    // recursive check for directory-based asar unpack
+    try {
+      const stat = fs.statSync(fullPath);
+      if (stat.isFile()) return fullPath;
+      // 也可能是目录：尝试解析为脚本入口
+      const nodeModulesPath = path.join(unpackedDir, relativeFileModules.replace(/\/[^/]+$/, ''), 'package.json');
+      if (isFile(nodeModulesPath)) {
+        const dir = path.dirname(nodeModulesPath);
+        const entry = findEntry(dir);
+        if (entry) return entry;
+      }
+    } catch { /* fall through */ }
+  }
+  // 开发模式：使用 __dirname 相对路径
+  const abs = path.join(__dirname, '..', relativeFileModules);
+  if (isFile(abs)) return abs;
+  // 尝试作为 node_modules 包路径解析
+  const pkgDir = path.join(__dirname, '..', 'node_modules', relativeFileModules.replace(/\/[^/]+$/, ''), 'package.json');
+  if (isFile(pkgDir)) {
+    const entry = findEntry(path.dirname(pkgDir));
+    if (entry) return entry;
+  }
+  return abs;
+}
+
 function resolveApiEntrypoint() {
   const root = path.join(__dirname, '..');
   const unpackedPath = path.join(process.resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@neteasecloudmusicapienhanced', 'api');

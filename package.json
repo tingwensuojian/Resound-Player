@@ -93,7 +93,9 @@
     ],
     "asar": true,
     "asarUnpack": [
-      "node_modules/@neteasecloudmusicapienhanced/**/*"
+      "node_modules/@neteasecloudmusicapienhanced/**/*",
+      "node_modules/@unblockneteasemusic/**/*",
+      "server/**/*"
     ],
     "npmRebuild": false,
     "linux": {
