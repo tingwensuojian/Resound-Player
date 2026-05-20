@@ -25,58 +25,54 @@
           </div>
 
           <!-- List -->
-          <div
-            v-if="playerStore.playlist.length"
-            class="song-list play-queue-list"
+          <VirtualTrackList
+            v-if="queueItems.length"
+            ref="trackListRef"
+            scroll-mode="self"
+            :items="queueItems"
+            :row-height="54"
+            :item-key="(t: any) => t.id"
+            container-class="play-queue-list"
           >
-            <div
-              v-for="(track, idx) in playerStore.playlist"
-              :key="track.id"
-              class="song-item"
-              :style="{
-                '--i': idx,
-                '--rhythm-offset': 5,
-              }"
-              :class="{
-                'song-item--playing': idx === playerStore.currentIndex,
-                'an-enter-text': true,
-              }"
-            >
-              <PlayPauseButton
-                :song-id="Number(track.id || 0)"
-                :index-label="idx + 1"
-                @play="playTrack(idx)"
-              />
-              <img
-                v-if="track.al?.picUrl"
-                class="song-cover play-queue-cover"
-                :src="track.al.picUrl"
-                :alt="track.name"
-                loading="lazy"
-              />
-              <div v-else class="play-queue-cover play-queue-cover--placeholder">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-              </div>
-              <div class="play-queue-song-info">
-                <p class="play-queue-song-name">
-                  {{ track.name }}
-                </p>
-                <p class="play-queue-artist">
-                  <span v-if="track.source === 'podcast'" class="play-queue-source-badge">播客</span>
-                  <span v-if="track.podcast?.feeBadge" :class="['play-queue-fee-badge', `play-queue-fee-badge--${track.podcast.feeTone}`]">{{ track.podcast.feeBadge }}</span>
-                  {{ formatArtists(track.ar) }}
-                </p>
-              </div>
-              <button
-                class="play-queue-remove-btn"
-                @click="removeTrack(idx)"
-                aria-label="从播放列表移除"
-                title="移除"
+            <template #default="{ item: track, index: idx }">
+              <div
+                class="song-item"
+                :class="{ 'song-item--playing': idx === playerStore.currentIndex }"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-          </div>
+                <PlayPauseButton
+                  :song-id="Number(track.id || 0)"
+                  :index-label="idx + 1"
+                  @play="playTrack(idx)"
+                />
+                <img
+                  v-if="track.al?.picUrl"
+                  class="song-cover play-queue-cover"
+                  :src="track.al.picUrl"
+                  :alt="track.name"
+                  loading="lazy"
+                />
+                <div v-else class="play-queue-cover play-queue-cover--placeholder">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </div>
+                <div class="play-queue-song-info">
+                  <p class="play-queue-song-name">{{ track.name }}</p>
+                  <p class="play-queue-artist">
+                    <span v-if="track.source === 'podcast'" class="play-queue-source-badge">播客</span>
+                    <span v-if="track.podcast?.feeBadge" :class="['play-queue-fee-badge', `play-queue-fee-badge--${track.podcast.feeTone}`]">{{ track.podcast.feeBadge }}</span>
+                    {{ formatArtists(track.ar) }}
+                  </p>
+                </div>
+                <button
+                  class="play-queue-remove-btn"
+                  @click="removeTrack(idx)"
+                  aria-label="从播放列表移除"
+                  title="移除"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </template>
+          </VirtualTrackList>
 
           <!-- Empty -->
           <div v-else class="play-queue-empty">
@@ -97,11 +93,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue';
 import { ListMusic } from 'lucide-vue-next';
 import { playerStore } from '../stores/player';
 import { uiStore } from '../stores/ui';
 import AnimatedAppear from './AnimatedAppear.vue';
 import PlayPauseButton from './ui/PlayPauseButton.vue';
+import VirtualTrackList from './VirtualTrackList.vue';
+
+const queueItems = computed(() => playerStore.playlist);
+const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 function close() {
   uiStore.showPlayQueue = false;
@@ -208,14 +209,19 @@ function formatArtists(ar?: { name: string }[]): string {
 
 /* ── List ── */
 .play-queue-list {
-  flex: 1;
-  overflow-y: auto;
+  /* 视觉样式保留，overflow 和 flex 由 .vtl-self 接管 */
   padding: var(--space-2);
   margin: var(--space-2) 0 var(--space-1);
   border-top: 1px solid color-mix(in srgb, var(--expanded-line-muted, var(--border)) 60%, transparent);
   border-radius: 0;
   background: transparent;
   gap: 1px;
+}
+
+/* VirtualTrackList self-scroll 模式适配置换面板 */
+.play-queue-list.vtl-self {
+  flex: 1;
+  min-height: 0;
 }
 
 .play-queue-list .song-item {

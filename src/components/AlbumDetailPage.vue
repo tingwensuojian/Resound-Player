@@ -79,38 +79,42 @@
       <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
       <AnimatedAppear v-else-if="album" tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
         <template v-if="activeTab === 'songs'">
-          <AnimatedAppear :key="`${tabContentKey}:songs`" tag="ul" variant="content" rhythm="list" class-name="song-list">
-            <AnimatedAppear
-              v-for="(song, idx) in filteredSongs"
-              :key="song.id"
-              tag="li"
-              variant="text"
-              rhythm="list"
-              :index="idx"
-              class-name="song-item"
-              :class="{ 'song-item--playing': isCurrentTrack(song) }"
-              @dblclick="onSongItemDblClick($event, idx)"
-            >
-              <PlayPauseButton :song-id="Number(song.id || 0)" :index-label="idx + 1" @play="playOne(idx)" />
-              <AnimatedAppear tag="img" variant="media" rhythm="list" :index="idx" class-name="song-cover" :src="song.al?.picUrl || album.picUrl" :alt="song.name" />
-              <AnimatedAppear tag="div" variant="content" rhythm="list" :index="idx" class-name="song-meta">
-                <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-name">{{ song.name }}</AnimatedAppear>
-                <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-artist">
-                  <button
-                    v-for="artist in getSongArtists(song)"
-                    :key="`${song.id}-${artist.id || artist.name}`"
-                    type="button"
-                    class="artist-link"
-                    @click="openArtistDetail(artist)"
-                  >
-                    {{ artist.name || '未知歌手' }}
-                  </button>
-                  <span v-if="!getSongArtists(song).length">未知歌手</span>
-                </AnimatedAppear>
-              </AnimatedAppear>
-              <SongActions :song="song" @play-next="playNext" @add-to-playlist="showAddToPlaylist" @open-comment="openComment" @open-album="openAlbum" @open-artist="openArtistDetail" @open-language="openLanguageDetail" @open-mv-player="(mv) => emit('open-mv-player', mv)" />
-            </AnimatedAppear>
-          </AnimatedAppear>
+          <VirtualTrackList
+            ref="trackListRef"
+            scroll-mode="parent"
+            :scroll-host-selector="scrollHostSelector"
+            :items="filteredSongs"
+            :row-height="68"
+            :item-key="(s: any) => s.id"
+            container-class="song-list"
+          >
+            <template #default="{ item: song, index: idx }">
+              <div
+                class="song-item"
+                :class="{ 'song-item--playing': isCurrentTrack(song) }"
+                @dblclick="onSongItemDblClick($event, idx)"
+              >
+                <PlayPauseButton :song-id="Number(song.id || 0)" :index-label="idx + 1" @play="playOne(idx)" />
+                <img class="song-cover" :src="song.al?.picUrl || album.picUrl" :alt="song.name" loading="lazy" />
+                <div class="song-meta">
+                  <p class="song-name">{{ song.name }}</p>
+                  <p class="song-artist">
+                    <button
+                      v-for="artist in getSongArtists(song)"
+                      :key="`${song.id}-${artist.id || artist.name}`"
+                      type="button"
+                      class="artist-link"
+                      @click="openArtistDetail(artist)"
+                    >
+                      {{ artist.name || '未知歌手' }}
+                    </button>
+                    <span v-if="!getSongArtists(song).length">未知歌手</span>
+                  </p>
+                </div>
+                <SongActions :song="song" @play-next="playNext" @add-to-playlist="showAddToPlaylist" @open-comment="openComment" @open-album="openAlbum" @open-artist="openArtistDetail" @open-language="openLanguageDetail" @open-mv-player="(mv) => emit('open-mv-player', mv)" />
+              </div>
+            </template>
+          </VirtualTrackList>
         </template>
         <template v-else-if="activeTab === 'comments'">
           <div :key="`${tabContentKey}:comments`" class="playlist-comment-section">
@@ -163,6 +167,7 @@ import { userStore } from '../stores/user';
 import { useAuthAction } from '../composables/useAuthAction';
 import * as commentApi from '../api/music';
 import { getAlbumDetail, addTrackToPlaylist, getUserPlaylist } from '../api/music';
+import VirtualTrackList from './VirtualTrackList.vue';
 
 const DESC_COLLAPSE_THRESHOLD = 60;
 
@@ -244,6 +249,12 @@ const { refresh } = useDetailStickyState(
   computed(() => album.value?.picUrl?.trim() || ''),
   !!props.embedded,
 );
+
+const scrollHostSelector = computed(() =>
+  props.embedded ? '.detail-panel' : '.playlist-detail-page',
+);
+
+const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 // 专辑切换时重置滚动位置
 watch(() => album.value?.id, () => {

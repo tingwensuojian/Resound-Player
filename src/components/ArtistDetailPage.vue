@@ -77,38 +77,43 @@
       <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
 
       <template v-else-if="artist">
-        <AnimatedAppear v-show="activeTab === 'songs'" tag="ul" variant="content" rhythm="list" class-name="song-list">
-          <AnimatedAppear
-            v-for="(song, idx) in topSongs"
-            :key="song.id || idx"
-            tag="li"
-            variant="text"
-            rhythm="list"
-            :index="idx"
-            class-name="song-item"
-            :class="{ 'song-item--playing': isCurrentTrack(song) }"
-            @dblclick="onSongItemDblClick($event, idx)"
-          >
-            <PlayPauseButton :song-id="Number(song?.id || 0)" :index-label="idx + 1" @play="playSong(idx)" />
-            <AnimatedAppear tag="img" variant="media" rhythm="list" :index="idx" class-name="song-cover" :src="resolveSongCover(song) || coverUrl" :alt="song.name || '歌曲封面'" />
-            <AnimatedAppear tag="div" variant="content" rhythm="list" :index="idx" class-name="song-meta">
-              <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-name">{{ song.name }}</AnimatedAppear>
-              <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-artist">
-                <button
-                  v-for="artistItem in getSongArtists(song)"
-                  :key="`${song.id}-${artistItem.id || artistItem.name}`"
-                  type="button"
-                  class="artist-link"
-                  @click.stop="openArtistDetail(artistItem)"
-                >
-                  {{ artistItem.name || '未知歌手' }}
-                </button>
-                <span v-if="!getSongArtists(song).length">{{ resolveSongSubtitle(song) }}</span>
-              </AnimatedAppear>
-            </AnimatedAppear>
-            <SongActions :song="song" @play-next="playNext" @add-to-playlist="showAddToPlaylist" @open-comment="openComment" @open-album="(albumId) => emit('open-album-detail', albumId)" @open-artist="openArtistDetail" @open-language="openLanguageDetail" @open-mv-player="(mv) => emit('open-mv-player', mv)" />
-          </AnimatedAppear>
-        </AnimatedAppear>
+        <VirtualTrackList
+          v-if="activeTab === 'songs'"
+          ref="trackListRef"
+          scroll-mode="parent"
+          scroll-host-selector=".playlist-detail-page"
+          :items="topSongs"
+          :row-height="68"
+          :item-key="(s: any) => s.id || s"
+          container-class="song-list"
+        >
+          <template #default="{ item: song, index: idx }">
+            <div
+              class="song-item"
+              :class="{ 'song-item--playing': isCurrentTrack(song) }"
+              @dblclick="onSongItemDblClick($event, idx)"
+            >
+              <PlayPauseButton :song-id="Number(song?.id || 0)" :index-label="idx + 1" @play="playSong(idx)" />
+              <img class="song-cover" :src="resolveSongCover(song) || coverUrl" :alt="song.name || '歌曲封面'" loading="lazy" />
+              <div class="song-meta">
+                <p class="song-name">{{ song.name }}</p>
+                <p class="song-artist">
+                  <button
+                    v-for="artistItem in getSongArtists(song)"
+                    :key="`${song.id}-${artistItem.id || artistItem.name}`"
+                    type="button"
+                    class="artist-link"
+                    @click.stop="openArtistDetail(artistItem)"
+                  >
+                    {{ artistItem.name || '未知歌手' }}
+                  </button>
+                  <span v-if="!getSongArtists(song).length">{{ resolveSongSubtitle(song) }}</span>
+                </p>
+              </div>
+              <SongActions :song="song" @play-next="playNext" @add-to-playlist="showAddToPlaylist" @open-comment="openComment" @open-album="(albumId) => emit('open-album-detail', albumId)" @open-artist="openArtistDetail" @open-language="openLanguageDetail" @open-mv-player="(mv) => emit('open-mv-player', mv)" />
+            </div>
+          </template>
+        </VirtualTrackList>
 
         <AnimatedAppear v-show="activeTab === 'albums'" tag="div" variant="content" rhythm="list" class-name="album-grid">
           <AnimatedAppear v-for="(album, idx) in albums" :key="album.id || idx" tag="button" variant="content" rhythm="list" :index="idx" class-name="entity-card album-card" type="button" @click="emit('open-album-detail', Number(album.id || 0), activeTab)">
@@ -201,6 +206,7 @@ import { resolveArtistImageUrl, normalizeImageUrl } from '../utils/image';
 import { playerStore } from '../stores/player';
 import { userStore } from '../stores/user';
 import { useAuthAction } from '../composables/useAuthAction';
+import VirtualTrackList from './VirtualTrackList.vue';
 
 const DESC_COLLAPSE_THRESHOLD = 60;
 
@@ -395,6 +401,8 @@ async function playSong(index: number) {
 }
 
 const { isCurrentTrack, onSongItemDblClick } = useSongRowConfig(playSong);
+
+const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 /* 操作按钮 */
 const { checkAuth, showToast } = useAuthAction(

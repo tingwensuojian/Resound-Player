@@ -71,35 +71,40 @@
         <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="state">播客详情加载中…</AnimatedAppear>
       </template>
       <template v-else-if="activeTab === 'episodes'">
-        <AnimatedAppear v-if="filteredItems.length" tag="ul" variant="content" rhythm="list" class-name="song-list" :key="`${tabContentKey}:episodes`">
-          <AnimatedAppear
-            v-for="(item, idx) in filteredItems"
-            :key="item.key"
-            tag="li"
-            variant="text"
-            rhythm="list"
-            :index="idx"
-            class-name="song-item podcast-song-item"
-            :class="{ 'song-item--playing': isCurrentTrack(item.raw) }"
-            @dblclick="emit('play-item', { item: item.raw, index: item.originalIndex })"
-          >
-            <PlayPauseButton
-              :song-id="item.trackId"
-              :index-label="item.index"
-              @play="emit('play-item', { item: item.raw, index: item.originalIndex })"
-            />
-            <img class="song-cover" :src="item.coverUrl" :alt="item.name" loading="lazy" />
-            <div class="song-meta">
-              <div class="episode-title-row">
-                <p class="song-name">{{ item.name }}</p>
-                <div v-if="item.badges.length" class="status-badge-group">
-                  <span v-for="badge in item.badges" :key="`${item.key}-${badge.label}`" class="status-badge" :class="`status-badge--${badge.tone}`">{{ badge.label }}</span>
+        <VirtualTrackList
+          v-if="filteredItems.length"
+          ref="trackListRef"
+          scroll-mode="parent"
+          :scroll-host-selector="scrollHostSelector"
+          :items="filteredItems"
+          :row-height="72"
+          :item-key="(item: any) => item.key"
+          container-class="song-list"
+        >
+          <template #default="{ item, index: idx }">
+            <div
+              class="song-item podcast-song-item"
+              :class="{ 'song-item--playing': isCurrentTrack(item.raw) }"
+              @dblclick="emit('play-item', { item: item.raw, index: item.originalIndex })"
+            >
+              <PlayPauseButton
+                :song-id="item.trackId"
+                :index-label="item.index"
+                @play="emit('play-item', { item: item.raw, index: item.originalIndex })"
+              />
+              <img class="song-cover" :src="item.coverUrl" :alt="item.name" loading="lazy" />
+              <div class="song-meta">
+                <div class="episode-title-row">
+                  <p class="song-name">{{ item.name }}</p>
+                  <div v-if="item.badges.length" class="status-badge-group">
+                    <span v-for="badge in item.badges" :key="`${item.key}-${badge.label}`" class="status-badge" :class="`status-badge--${badge.tone}`">{{ badge.label }}</span>
+                  </div>
                 </div>
+                <p v-if="item.description" class="episode-description">{{ item.description }}</p>
               </div>
-              <p v-if="item.description" class="episode-description">{{ item.description }}</p>
             </div>
-          </AnimatedAppear>
-        </AnimatedAppear>
+          </template>
+        </VirtualTrackList>
         <AnimatedAppear v-else tag="div" variant="text" rhythm="body" class-name="state">暂无声音列表数据</AnimatedAppear>
       </template>
       <template v-else-if="activeTab === 'comments'">
@@ -133,6 +138,7 @@ import DetailTabBar from './ui/DetailTabBar.vue';
 import CommentPanel from './CommentPanel.vue';
 import { useEntitySubscribe } from '../composables/useEntitySubscribe';
 import * as commentApi from '../api/music';
+import VirtualTrackList from './VirtualTrackList.vue';
 
 const DESC_COLLAPSE_THRESHOLD = 60;
 
@@ -193,6 +199,12 @@ const { refresh } = useDetailStickyState(
   computed(() => hero.value.coverUrl?.trim() || ''),
   !!props.embedded,
 );
+
+const scrollHostSelector = computed(() =>
+  props.embedded ? '.detail-panel' : '.playlist-detail-page',
+);
+
+const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 // podcast radio ID — extracted from detail source or first item's radio
 const podcastRid = computed(() => {
