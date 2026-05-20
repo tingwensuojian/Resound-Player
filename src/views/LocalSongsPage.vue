@@ -1,26 +1,23 @@
 <template>
   <section class="local-page">
-    <div class="local-page-actions">
+    <div class="local-page-actions ui-safe-group">
       <input
         v-model="localMusicStore.searchKeyword"
         class="search-input local-search"
         type="text"
         placeholder="搜索歌曲、歌手、专辑…"
       />
-      <select v-if="localMusicStore.directories.length" v-model="activeDirFilter" class="dir-filter-select">
-        <option value="">所有目录</option>
-        <option v-for="d in localMusicStore.directories" :key="d" :value="d">{{ getDirLabel(d) }}</option>
-      </select>
-      <button class="button-surface" @click="toggleSortMenu" title="排序">
-        {{ localMusicStore.sortLabel }}
-      </button>
-      <div v-if="showSortMenu" class="sort-menu" @mouseleave="showSortMenu = false">
-        <button v-for="opt in sortOptions" :key="opt.key" class="sort-menu-item"
-          :class="{ active: localMusicStore.sortField === opt.key }"
-          @click="setSort(opt.key)">
-          {{ opt.label }}
-        </button>
-      </div>
+      <DropdownSelect
+        v-if="localMusicStore.directories.length"
+        :model-value="activeDirLabel"
+        :options="['所有目录', ...dirLabels]"
+        @update:model-value="onDirSelect"
+      />
+      <DropdownSelect
+        :model-value="currentSortLabel"
+        :options="['标题', '歌手', '专辑', '时长']"
+        @update:model-value="onSortSelect"
+      />
       <button class="button-surface" @click="handleScan" :disabled="localMusicStore.scanning">
         {{ localMusicStore.scanning ? '扫描中…' : '扫描' }}
       </button>
@@ -106,8 +103,8 @@ import { playerStore } from '../stores/player'
 import { platform } from '../utils/platform'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import VirtualSongList from '../components/VirtualSongList.vue'
+import DropdownSelect from '../components/ui/DropdownSelect.vue'
 
-const showSortMenu = ref(false)
 const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
 
 // ── 多选模式 ──
@@ -166,12 +163,38 @@ async function removeSelected() {
 
 const activeDirFilter = ref('')
 
-const sortOptions = [
-  { key: 'title' as SortField, label: '标题 ↑↓' },
-  { key: 'artist' as SortField, label: '歌手 ↑↓' },
-  { key: 'album' as SortField, label: '专辑 ↑↓' },
-  { key: 'duration' as SortField, label: '时长 ↑↓' },
-]
+const labelToField: Record<string, SortField> = {
+  '标题': 'title',
+  '歌手': 'artist',
+  '专辑': 'album',
+  '时长': 'duration',
+}
+
+const currentSortLabel = computed(() => {
+  const map: Record<SortField, string> = { title: '标题', artist: '歌手', album: '专辑', duration: '时长' }
+  return map[localMusicStore.sortField]
+})
+
+function onSortSelect(label: string) {
+  const field = labelToField[label]
+  if (field) localMusicStore.toggleSort(field)
+}
+
+const dirLabels = computed(() => localMusicStore.directories.map(d => getDirLabel(d)))
+
+const activeDirLabel = computed(() => {
+  if (!activeDirFilter.value) return '所有目录'
+  return getDirLabel(activeDirFilter.value)
+})
+
+function onDirSelect(label: string) {
+  if (label === '所有目录') {
+    activeDirFilter.value = ''
+  } else {
+    const idx = dirLabels.value.indexOf(label)
+    if (idx >= 0) activeDirFilter.value = localMusicStore.directories[idx]
+  }
+}
 
 const list = computed(() => {
   const tracks = localMusicStore.filteredTracks
@@ -307,15 +330,6 @@ function showInFolder(track: LocalTrack) {
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-folders' } }))
 }
 
-function toggleSortMenu() {
-  showSortMenu.value = !showSortMenu.value
-}
-
-function setSort(field: SortField) {
-  localMusicStore.toggleSort(field)
-  showSortMenu.value = false
-}
-
 function sortBy(field: SortField) {
   localMusicStore.toggleSort(field)
 }
@@ -357,33 +371,12 @@ function handlePlayAll() {
   border-radius: var(--radius-sm);
 }
 .local-search { flex: 1; max-width: 320px; height: 38px; }
+.local-search:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent) inset, var(--glass-highlight) !important;
+}
 .local-empty { text-align: center; padding: var(--space-8); color: var(--text-soft); }
 .local-scanning { padding: var(--space-3); background: var(--accent-soft); border-radius: var(--radius-sm); color: var(--accent); font-size: var(--text-label-sm); }
-
-/* 排序菜单 */
-.sort-menu {
-  position: absolute; top: 100%; left: 172px; margin-top: 4px;
-  background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; overflow: hidden;
-  display: flex; flex-direction: column;
-}
-.sort-menu-item {
-  background: none; border: none; padding: var(--space-2) var(--space-4); cursor: pointer;
-  font-size: var(--text-label-sm); text-align: left; white-space: nowrap; color: var(--text-main);
-}
-.sort-menu-item:hover { background: var(--bg-muted); }
-.sort-menu-item.active { color: var(--accent); font-weight: 600; }
-
-.dir-filter-select {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-label-sm);
-  color: var(--text-main);
-  cursor: pointer;
-  max-width: 160px;
-}
 
 /* 选择模式操作栏 */
 .selection-bar {
