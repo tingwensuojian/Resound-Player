@@ -193,12 +193,11 @@ const emit = defineEmits<{
   (e: 'open-artist', artist: { id: number; name: string }): void;
 }>();
 
-const activeRange = ref<'7d' | '1m' | '1y'>('7d');
+const activeRange = ref<'7d' | '1m'>('7d');
 
 const timeRanges = [
   { key: '7d' as const, label: '过去7天' },
   { key: '1m' as const, label: '过去1个月' },
-  { key: '1y' as const, label: '过去1年' },
 ];
 
 // ── Data State ──
@@ -548,11 +547,11 @@ function playMostPlayed() {
   playSong({ id: song.id, name: song.name, artistName: song.artist, artistId: song.artistId, picUrl: song.picUrl || '' }, 0);
 }
 
-function switchRange(key: '7d' | '1m' | '1y') {
+function switchRange(key: '7d' | '1m') {
   activeRange.value = key;
   if (key === '7d') {
     fetchRealtime('week');
-  } else if (key === '1m') {
+  } else {
     fetchRealtime('month');
   }
 }
