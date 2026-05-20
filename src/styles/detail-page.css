@@ -82,6 +82,21 @@
   margin: calc(var(--space-2) - 2px) 0 var(--space-4);
 }
 
+/* =========================================
+ * 详情页 header wrap margin 复位
+ *
+ * .playlist-detail-page 自身已有 margin-left/right: -16px，
+ * DetailStickyHeroHeader 也对 .playlist-detail-header-wrap 施加相同的负 margin。
+ * 两层叠加会导致 header 左移 -32px。
+ * 此规则抵消 header wrap 的负 margin，确保所有使用 .playlist-detail-page
+ * + DetailStickyHeroHeader 的页面头部位置一致。
+ * 仅在独立模式生效，嵌入模式交给 .detail-sticky-header--embedded 控制。
+ * ========================================= */
+.playlist-detail-page:not(.playlist-detail-page--embedded) .playlist-detail-header-wrap {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
 /* 仅在 .playlist-detail-page 下加水平间距（抵消父级负 margin 延伸至屏幕边缘），
    不影响 language-detail-page / comment-page 等无父级负 margin 的页面 */
 .playlist-detail-page .playlist-detail-back {

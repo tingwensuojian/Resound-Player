@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="language-detail-page" :class="{ 'language-detail-page--embedded': embedded }">
+  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page language-detail-page" :class="{ 'language-detail-page--embedded': embedded }">
     <div class="playlist-detail-back">
       <button class="back-btn" @click="$emit('back')">← {{ backLabel }}</button>
     </div>
@@ -26,7 +26,7 @@
       </template>
     </DetailStickyHeroHeader>
 
-    <div class="detail-body">
+    <div class="playlist-detail-body">
       <div v-if="loading && !playlists.length" class="state">加载中…</div>
       <div v-else-if="error" class="state error">{{ error }}</div>
       <template v-else>
@@ -238,7 +238,6 @@ watch(() => props.languageName, (name) => {
 .playlist-detail-back {
   position: relative;
   z-index: 3;
-  padding: 8px 0;
 }
 
 .playlist-grid {

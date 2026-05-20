@@ -837,13 +837,6 @@ function openAlbum(albumId: number) {
   min-height: 400px;
 }
 
-/* 在 PlaylistDetailPage 中，.playlist-detail-page 已通过自身负 margin 延伸至视口边缘，
-   header 无需额外负 margin，避免被 overflow-x:clip 裁切掉左下/右下圆角。
-   仅在独立模式生效，嵌入模式交给 .detail-sticky-header--embedded 控制 */
-.playlist-detail-page:not(.playlist-detail-page--embedded) .playlist-detail-header-wrap {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
 .song-list--virtual .song-item {
   display: grid;
   grid-template-columns: 40px 52px 1fr auto;

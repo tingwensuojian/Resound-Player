@@ -390,8 +390,7 @@ watch(
 @import '../styles/detail-page.css';
 
 .podcast-detail-page {
-  display: grid;
-  gap: var(--space-4);
+  /* 不再覆盖 display:grid，沿用 .playlist-detail-page 的 display:flex 以避免间距不一致 */
 }
 
 .podcast-song-item {
