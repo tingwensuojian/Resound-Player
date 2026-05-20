@@ -14,7 +14,7 @@
           </header>
 
           <!-- 预设选择 -->
-          <HorizontalScrollRail content-layout="flex" content-class="preset-rail" hide-controls-on-mobile="false">
+          <HorizontalScrollRail content-layout="flex" content-class="preset-rail" :hide-controls-on-mobile="false">
             <button
               v-for="p in presets"
               :key="p.name"

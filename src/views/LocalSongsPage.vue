@@ -286,12 +286,12 @@ async function addToPlaylist(track: LocalTrack) {
   showPlaylistPicker.value = true
 }
 
-function confirmPlaylistPicker(playlistId: string) {
+async function confirmPlaylistPicker(playlistId: string) {
   const track = pendingTrackForPlaylist.value
   if (!track) return
   showPlaylistPicker.value = false
   pendingTrackForPlaylist.value = null
-  localMusicStore.addTrackToPlaylist(playlistId, track.id)
+  await localMusicStore.addTrackToPlaylist(playlistId, track.id)
 }
 
 function cancelPlaylistPicker() {

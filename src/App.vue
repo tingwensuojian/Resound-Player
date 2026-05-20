@@ -1080,7 +1080,7 @@ watch(
 /** 处理本地页面间导航事件 */
 function handleLocalNavigate(e: Event) {
   const detail = (e as CustomEvent).detail
-  if (detail?.page && ['local-songs', 'local-artists', 'local-albums', 'local-folders', 'local-playlists'].includes(detail.page)) {
+  if (detail?.page && ['local-songs', 'local-artists', 'local-albums', 'local-folders', 'local-playlists', 'local-playlist-detail'].includes(detail.page)) {
     if (activePage.value === detail.page) return
     navHistory.push({ page: detail.page })
     activePage.value = detail.page

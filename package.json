@@ -59,7 +59,6 @@
     "lucide-vue-next": "^0.507.0",
     "music-metadata": "^11.12.3",
     "ogl": "^1.0.11",
-    "sql.js": "^1.14.1",
     "three": "^0.184.0",
     "threejs-components": "^0.0.19",
     "vue": "^3.5.13"

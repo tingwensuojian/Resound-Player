@@ -490,10 +490,27 @@ export const localMusicStore = reactive({
     if (!platform.localApi) return
     try {
       const detail = await platform.localApi.getPlaylist(id)
-      const tracks = await platform.localApi.getPlaylistTracks(id)
+      const tracks = (await platform.localApi.getPlaylistTracks(id)) || []
+      // 为每个 track 解析封面 URL
+      for (const t of tracks) {
+        if (this._coverCache.has(t.id)) {
+          t.coverUrl = this._coverCache.get(t.id)!
+        } else {
+          t.coverUrl = ''
+          // 异步加载封面（不阻塞渲染）
+          this.getCoverUrl(t.id, t.path).then((url) => {
+            if (url && this.activePlaylistDetail?.tracks) {
+              const found = this.activePlaylistDetail.tracks.find((pt: any) => pt.id === t.id)
+              if (found) found.coverUrl = url
+            }
+          })
+        }
+      }
+      console.log('[localMusic] openPlaylist id=', id, 'tracks count=', tracks.length, JSON.stringify(tracks).slice(0, 200))
       this.activePlaylistDetail = { ...detail, tracks: tracks || [] }
       this.activePlaylistId = id
       this.activeView = 'playlist-detail'
+      window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-playlist-detail' } }))
     } catch (e) {
       console.error('[localMusic] open playlist failed:', e)
     }
@@ -502,6 +519,7 @@ export const localMusicStore = reactive({
   async addTrackToPlaylist(playlistId: string, trackId: string) {
     if (!platform.localApi) return
     try {
+      console.log('[localMusic] addTrackToPlaylist playlistId=', playlistId, 'trackId=', trackId)
       await platform.localApi.addTrackToPlaylist(playlistId, trackId)
       if (this.activePlaylistId === playlistId) {
         await this.openPlaylist(playlistId)
@@ -533,5 +551,8 @@ export const localMusicStore = reactive({
   },
 })
 
-// 初始化：从 localStorage 恢复已保存的扫描目录
+// 初始化：从 localStorage 恢复已保存的扫描目录 & 预加载歌单
 localMusicStore.loadDirectories()
+if (localMusicStore.hasLocalSupport) {
+  localMusicStore.loadPlaylists()
+}

@@ -1,240 +1,556 @@
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import { fileURLToPath } from "url";
 import { app } from "electron";
+import initSqlJs from "sql.js";
 
-const DB_PATH = path.join(app.getPath("userData"), "local-music.json");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const DB_PATH = path.join(app.getPath("userData"), "local-music.sqlite");
+const DB_TMP_PATH = DB_PATH + ".tmp";
+const OLD_JSON_PATH = path.join(app.getPath("userData"), "local-music.json");
 
 function now() {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
 
+const SCHEMA = `
+  PRAGMA journal_mode=WAL;
+  PRAGMA foreign_keys=ON;
+
+  CREATE TABLE IF NOT EXISTS tracks (
+    id TEXT PRIMARY KEY,
+    path TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL DEFAULT '',
+    artist TEXT NOT NULL DEFAULT '',
+    album TEXT NOT NULL DEFAULT '',
+    albumArtist TEXT NOT NULL DEFAULT '',
+    duration REAL NOT NULL DEFAULT 0,
+    bitrate INTEGER NOT NULL DEFAULT 0,
+    sampleRate INTEGER NOT NULL DEFAULT 0,
+    trackNo INTEGER NOT NULL DEFAULT 0,
+    discNo INTEGER NOT NULL DEFAULT 0,
+    genre TEXT NOT NULL DEFAULT '',
+    year INTEGER NOT NULL DEFAULT 0,
+    coverPath TEXT NOT NULL DEFAULT '',
+    fileSize INTEGER NOT NULL DEFAULT 0,
+    mtime REAL NOT NULL DEFAULT 0,
+    hasLyrics INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tracks_path ON tracks(path);
+  CREATE INDEX IF NOT EXISTS idx_tracks_title ON tracks(title COLLATE NOCASE);
+  CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist COLLATE NOCASE);
+  CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album COLLATE NOCASE);
+
+  CREATE TABLE IF NOT EXISTS scan_dirs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT NOT NULL UNIQUE,
+    label TEXT NOT NULL DEFAULT '',
+    lastScan TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS playlists (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    coverPath TEXT NOT NULL DEFAULT '',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS playlist_tracks (
+    playlistId TEXT NOT NULL,
+    trackId TEXT NOT NULL,
+    sortOrder INTEGER NOT NULL DEFAULT 0,
+    addedAt TEXT NOT NULL,
+    PRIMARY KEY (playlistId, trackId),
+    FOREIGN KEY (playlistId) REFERENCES playlists(id) ON DELETE CASCADE,
+    FOREIGN KEY (trackId) REFERENCES tracks(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlistId);
+`;
+
 class LocalMusicDB {
-  data;
-  dirty = false;
+  #db = null;
+  #sqlReady = false;
+  #writeQueue = Promise.resolve();
 
   async init() {
+    const SQL = await initSqlJs({
+      locateFile: (file) => path.join(__dirname, '..', '..', '..', 'node_modules', 'sql.js', 'dist', file),
+    });
+    this.#sqlReady = true;
+
     const dir = path.dirname(DB_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
     if (fs.existsSync(DB_PATH)) {
       try {
-        const raw = fs.readFileSync(DB_PATH, "utf-8");
-        this.data = JSON.parse(raw);
-      } catch {
-        this.data = this.emptyStore();
+        const buffer = fs.readFileSync(DB_PATH);
+        this.#db = new SQL.Database(buffer);
+      } catch (e) {
+        console.error("[LocalMusicDB] failed to load SQLite, creating fresh:", e);
+        this.#db = new SQL.Database();
       }
     } else {
-      this.data = this.emptyStore();
+      this.#db = new SQL.Database();
     }
-    this.persist();
+
+    this.#db.run("PRAGMA foreign_keys=ON");
+    this.#db.run("PRAGMA journal_mode=WAL");
+    this.#execMulti(SCHEMA);
+    await this.#migrateFromJson();
+    this.#atomicPersist();
   }
 
-  emptyStore() {
-    return { tracks: [], scanDirs: [], playlists: [], playlistTracks: [] };
+  close() {
+    if (this.#db) {
+      this.#atomicPersist();
+      this.#db.close();
+      this.#db = null;
+    }
+    return Promise.resolve();
   }
 
-  persist() {
-    if (!this.dirty) return;
-    fs.writeFileSync(DB_PATH, JSON.stringify(this.data, null, 1));
-    this.dirty = false;
+  // ── 内部：SQL 执行 ──
+
+  #exec(sql, params = []) {
+    if (!this.#db) throw new Error("LocalMusicDB not initialized");
+    return this.#db.exec(sql, params);
   }
 
-  serializedWrite(fn) {
+  #run(sql, params = []) {
+    if (!this.#db) throw new Error("LocalMusicDB not initialized");
+    this.#db.run(sql, params);
+  }
+
+  #execMulti(sql) {
+    this.#db.run(sql);
+  }
+
+  /** 从旧 JSON 文件迁移数据到 SQLite（仅首次运行） */
+  #migrateFromJson() {
+    const jsonPath = path.join(app.getPath("userData"), "local-music.json");
+    if (!fs.existsSync(jsonPath)) return;
+    // 检查 SQLite 是否已有数据（防止重复迁移）
+    const count = this.#queryOne("SELECT COUNT(*) as cnt FROM tracks");
+    if (count && count.cnt > 0) return;
+
+    console.log("[LocalMusicDB] migrating from local-music.json...");
+    let data;
     try {
-      const result = fn();
-      this.persist();
-      return Promise.resolve(result);
+      data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
     } catch (e) {
-      return Promise.reject(e);
+      console.warn("[LocalMusicDB] failed to parse old JSON, skipping migration:", e);
+      return;
+    }
+
+    if (!data || !data.tracks || !data.tracks.length) {
+      console.log("[LocalMusicDB] no tracks to migrate");
+      return;
+    }
+
+    // 批量导入 tracks
+    const stmt = this.#db.prepare(`
+      INSERT OR IGNORE INTO tracks (id, path, title, artist, album, albumArtist, duration,
+        bitrate, sampleRate, trackNo, discNo, genre, year, coverPath,
+        fileSize, mtime, hasLyrics, createdAt, updatedAt)
+      VALUES ($id, $path, $title, $artist, $album, $albumArtist, $duration,
+        $bitrate, $sampleRate, $trackNo, $discNo, $genre, $year, $coverPath,
+        $fileSize, $mtime, $hasLyrics, $createdAt, $updatedAt)
+    `);
+    for (const t of data.tracks) {
+      stmt.run({
+        $id: t.id || crypto.randomUUID(),
+        $path: t.path,
+        $title: t.title || "",
+        $artist: t.artist || "",
+        $album: t.album || "",
+        $albumArtist: t.albumArtist || "",
+        $duration: t.duration || 0,
+        $bitrate: t.bitrate || 0,
+        $sampleRate: t.sampleRate || 0,
+        $trackNo: t.trackNo || 0,
+        $discNo: t.discNo || 0,
+        $genre: t.genre || "",
+        $year: t.year || 0,
+        $coverPath: t.coverPath || "",
+        $fileSize: t.fileSize || 0,
+        $mtime: t.mtime || 0,
+        $hasLyrics: t.hasLyrics ? 1 : 0,
+        $createdAt: t.createdAt || now(),
+        $updatedAt: t.updatedAt || now(),
+      });
+    }
+    stmt.free();
+
+    // 迁移 scanDirs
+    if (data.scanDirs && data.scanDirs.length) {
+      const dirStmt = this.#db.prepare(
+        "INSERT OR IGNORE INTO scan_dirs (path, label, lastScan) VALUES ($path, $label, $lastScan)"
+      );
+      for (const d of data.scanDirs) {
+        dirStmt.run({ $path: d.path, $label: d.label || "", $lastScan: d.lastScan || "" });
+      }
+      dirStmt.free();
+    }
+
+    // 迁移歌单
+    if (data.playlists && data.playlists.length) {
+      const plStmt = this.#db.prepare(
+        "INSERT OR IGNORE INTO playlists (id, name, description, coverPath, createdAt, updatedAt) VALUES ($id, $name, $description, $coverPath, $createdAt, $updatedAt)"
+      );
+      for (const p of data.playlists) {
+        plStmt.run({
+          $id: p.id,
+          $name: p.name,
+          $description: p.description || "",
+          $coverPath: p.coverPath || "",
+          $createdAt: p.createdAt || now(),
+          $updatedAt: p.updatedAt || now(),
+        });
+      }
+      plStmt.free();
+    }
+
+    // 迁移歌单歌曲关联
+    if (data.playlistTracks && data.playlistTracks.length) {
+      const ptStmt = this.#db.prepare(
+        "INSERT OR IGNORE INTO playlist_tracks (playlistId, trackId, sortOrder, addedAt) VALUES ($playlistId, $trackId, $sortOrder, $addedAt)"
+      );
+      for (const pt of data.playlistTracks) {
+        ptStmt.run({
+          $playlistId: pt.playlistId,
+          $trackId: pt.trackId,
+          $sortOrder: pt.sortOrder !== undefined ? pt.sortOrder : 0,
+          $addedAt: pt.addedAt || now(),
+        });
+      }
+      ptStmt.free();
+    }
+
+    console.log(`[LocalMusicDB] migration complete: ${data.tracks.length} tracks, ${data.playlists?.length || 0} playlists`);
+  }
+
+  /** 执行 SELECT 返回对象数组（每次独立 prepare/free） */
+  #queryAll(sql, params = []) {
+    const stmt = this.#db.prepare(sql);
+    stmt.bind(params);
+    const rows = [];
+    try {
+      while (stmt.step()) {
+        rows.push(stmt.getAsObject());
+      }
+      return rows;
+    } finally {
+      stmt.free();
     }
   }
+
+  /** 执行 SELECT 返回单行或 null */
+  #queryOne(sql, params = []) {
+    const rows = this.#queryAll(sql, params);
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  /** 将 TrackRecord 行转换为前端对象（hasLyrics: 0/1 → boolean） */
+  #trackRow(row) {
+    if (!row) return null;
+    return {
+      ...row,
+      hasLyrics: Boolean(row.hasLyrics),
+    };
+  }
+
+  // ── 写队列 + 原子持久化 ──
+
+  #enqueueWrite(fn) {
+    this.#writeQueue = this.#writeQueue.then(fn).catch((e) => {
+      console.error("[LocalMusicDB] write failed, recovering chain:", e);
+    });
+    return this.#writeQueue;
+  }
+
+  #atomicPersist() {
+    if (!this.#db) return;
+    try {
+      const data = this.#db.export();
+      fs.writeFileSync(DB_TMP_PATH, Buffer.from(data));
+      fs.renameSync(DB_TMP_PATH, DB_PATH);
+    } catch (e) {
+      console.error("[LocalMusicDB] atomicPersist failed:", e);
+    }
+  }
+
+  // ── 公开 API ──
 
   getAllTracks() {
-    const sorted = [...this.data.tracks].sort((a, b) => a.title.localeCompare(b.title, "zh-CN"));
-    return Promise.resolve(sorted);
+    const rows = this.#queryAll(
+      "SELECT * FROM tracks ORDER BY title COLLATE NOCASE"
+    );
+    return Promise.resolve(rows.map((r) => this.#trackRow(r)));
   }
 
   getTrackByPath(filePath) {
-    const norm = filePath.replace(/\\/g, "/");
-    const found = this.data.tracks.find((t) => t.path.replace(/\\/g, "/") === norm);
-    return Promise.resolve(found || null);
+    const norm = filePath.replace(/\\\\/g, "/");
+    const row = this.#queryOne(
+      "SELECT * FROM tracks WHERE REPLACE(path, '\\\\', '/') = ?",
+      [norm]
+    );
+    return Promise.resolve(this.#trackRow(row));
   }
 
   upsertTracks(tracks) {
     if (!tracks.length) return Promise.resolve();
-    return this.serializedWrite(() => {
-      const pathMap = new Map();
-      this.data.tracks.forEach((t, i) => pathMap.set(t.path.replace(/\\/g, "/").toLowerCase(), i));
+    return this.#enqueueWrite(() => {
+      const stmt = this.#db.prepare(`
+        INSERT INTO tracks (id, path, title, artist, album, albumArtist, duration,
+          bitrate, sampleRate, trackNo, discNo, genre, year, coverPath,
+          fileSize, mtime, hasLyrics, createdAt, updatedAt)
+        VALUES ($id, $path, $title, $artist, $album, $albumArtist, $duration,
+          $bitrate, $sampleRate, $trackNo, $discNo, $genre, $year, $coverPath,
+          $fileSize, $mtime, $hasLyrics, $createdAt, $updatedAt)
+        ON CONFLICT(path) DO UPDATE SET
+          title=excluded.title, artist=excluded.artist, album=excluded.album,
+          albumArtist=excluded.albumArtist, duration=excluded.duration,
+          bitrate=excluded.bitrate, sampleRate=excluded.sampleRate,
+          trackNo=excluded.trackNo, discNo=excluded.discNo, genre=excluded.genre,
+          year=excluded.year, coverPath=excluded.coverPath,
+          fileSize=excluded.fileSize, mtime=excluded.mtime,
+          hasLyrics=excluded.hasLyrics, updatedAt=excluded.updatedAt,
+          id=CASE WHEN id IS NULL THEN excluded.id ELSE id END
+      `);
+
+      const ts = now();
       for (const t of tracks) {
-        const key = t.path.replace(/\\/g, "/").toLowerCase();
-        const idx = pathMap.get(key);
-        if (idx !== undefined) {
-          this.data.tracks[idx] = { ...this.data.tracks[idx], ...t, updatedAt: now() };
-        } else {
-          pathMap.set(key, this.data.tracks.length);
-          this.data.tracks.push({ ...t, id: t.id || crypto.randomUUID(), createdAt: now(), updatedAt: now() });
-        }
+        stmt.run({
+          $id: t.id || crypto.randomUUID(),
+          $path: t.path,
+          $title: t.title || "",
+          $artist: t.artist || "",
+          $album: t.album || "",
+          $albumArtist: t.albumArtist || "",
+          $duration: t.duration || 0,
+          $bitrate: t.bitrate || 0,
+          $sampleRate: t.sampleRate || 0,
+          $trackNo: t.trackNo || 0,
+          $discNo: t.discNo || 0,
+          $genre: t.genre || "",
+          $year: t.year || 0,
+          $coverPath: t.coverPath || "",
+          $fileSize: t.fileSize || 0,
+          $mtime: t.mtime || 0,
+          $hasLyrics: t.hasLyrics ? 1 : 0,
+          $createdAt: ts,
+          $updatedAt: ts,
+        });
       }
+      stmt.free();
+      this.#atomicPersist();
     });
   }
 
   removeTracks(paths) {
     if (!paths.length) return Promise.resolve();
-    return this.serializedWrite(() => {
-      const toRemove = new Set(paths.map((p) => p.replace(/\\/g, "/").toLowerCase()));
-      const removedIds = new Set();
-      this.data.tracks = this.data.tracks.filter((t) => {
-        const key = t.path.replace(/\\/g, "/").toLowerCase();
-        if (toRemove.has(key)) { removedIds.add(t.id); return false; }
-        return true;
-      });
-      this.data.playlistTracks = this.data.playlistTracks.filter((pt) => !removedIds.has(pt.trackId));
+    return this.#enqueueWrite(() => {
+      const placeholders = paths.map(() => "?").join(",");
+      const normalized = paths.map((p) => p.replace(/\\\\/g, "/").toLowerCase());
+
+      // 先获取要删除的 track IDs（用于清理 playlist_tracks）
+      const toRemove = this.#queryAll(
+        `SELECT id FROM tracks WHERE LOWER(REPLACE(path, '\\\\', '/')) IN (${placeholders})`,
+        normalized
+      );
+      const ids = toRemove.map((r) => r.id);
+
+      if (ids.length > 0) {
+        const idPh = ids.map(() => "?").join(",");
+        this.#run(
+          `DELETE FROM playlist_tracks WHERE trackId IN (${idPh})`,
+          ids
+        );
+        this.#run(
+          `DELETE FROM tracks WHERE LOWER(REPLACE(path, '\\\\', '/')) IN (${placeholders})`,
+          normalized
+        );
+      }
+      this.#atomicPersist();
     });
   }
 
   clearAllTracks() {
-    return this.serializedWrite(() => {
-      const count = this.data.tracks.length;
-      this.data.tracks = [];
-      this.data.playlistTracks = [];
-      this.data.scanDirs = [];
+    return this.#enqueueWrite(() => {
+      this.#run("DELETE FROM playlist_tracks");
+      this.#run("DELETE FROM scan_dirs");
+      const count = this.#queryOne("SELECT COUNT(*) as cnt FROM tracks").cnt;
+      this.#run("DELETE FROM tracks");
+      this.#atomicPersist();
       return count;
     });
   }
 
   removeTracksByDirectory(dirPath) {
-    const prefix = dirPath.replace(/\/$/g, "").replace(/\\/g, "/").toLowerCase() + "/";
-    return this.serializedWrite(() => {
-      const removed = [];
-      this.data.tracks = this.data.tracks.filter((t) => {
-        const key = t.path.replace(/\\/g, "/").toLowerCase();
-        if (key.startsWith(prefix)) { removed.push(t.id); return false; }
-        return true;
-      });
-      const removedSet = new Set(removed);
-      this.data.playlistTracks = this.data.playlistTracks.filter((pt) => !removedSet.has(pt.trackId));
-      return removed.length;
+    const prefix = dirPath.replace(/\/$/g, "").replace(/\\\\/g, "/").toLowerCase() + "/";
+    return this.#enqueueWrite(() => {
+      const toRemove = this.#queryAll(
+        `SELECT id FROM tracks WHERE LOWER(REPLACE(path, '\\\\', '/')) LIKE ?`,
+        [prefix + "%"]
+      );
+      const ids = toRemove.map((r) => r.id);
+
+      if (ids.length > 0) {
+        const ph = ids.map(() => "?").join(",");
+        this.#run(`DELETE FROM playlist_tracks WHERE trackId IN (${ph})`, ids);
+        this.#run(
+          `DELETE FROM tracks WHERE LOWER(REPLACE(path, '\\\\', '/')) LIKE ?`,
+          [prefix + "%"]
+        );
+      }
+      this.#atomicPersist();
+      return ids.length;
     });
   }
 
   search(query) {
     if (!query) return this.getAllTracks();
-    const q = query.toLowerCase();
-    const results = this.data.tracks.filter(
-      (t) => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q) || t.album.toLowerCase().includes(q)
+    const q = `%${query.toLowerCase()}%`;
+    const rows = this.#queryAll(
+      `SELECT * FROM tracks WHERE
+        LOWER(title) LIKE ? OR
+        LOWER(artist) LIKE ? OR
+        LOWER(album) LIKE ?
+      ORDER BY title COLLATE NOCASE
+      LIMIT 500`,
+      [q, q, q]
     );
-    results.sort((a, b) => a.title.localeCompare(b.title, "zh-CN"));
-    return Promise.resolve(results.slice(0, 500));
+    return Promise.resolve(rows.map((r) => this.#trackRow(r)));
   }
 
   getTrackCount() {
-    return Promise.resolve(this.data.tracks.length);
+    const row = this.#queryOne("SELECT COUNT(*) as cnt FROM tracks");
+    return Promise.resolve(row ? row.cnt : 0);
   }
 
   getAllMtimes() {
+    const rows = this.#queryAll("SELECT path, mtime FROM tracks");
     const map = new Map();
-    for (const t of this.data.tracks) map.set(t.path, t.mtime);
+    for (const r of rows) map.set(r.path, r.mtime);
     return Promise.resolve(map);
   }
 
-  close() {
-    this.persist();
-    return Promise.resolve();
-  }
+  // ── 歌单 ──
 
   createPlaylist(name, description = "") {
-    return this.serializedWrite(() => {
+    return this.#enqueueWrite(() => {
       const id = crypto.createHash("md5").update(`${name}|${Date.now()}`).digest("hex");
-      this.data.playlists.push({ id, name, description, coverPath: "", createdAt: now(), updatedAt: now() });
+      const ts = now();
+      this.#run(
+        "INSERT INTO playlists (id, name, description, coverPath, createdAt, updatedAt) VALUES (?, ?, ?, '', ?, ?)",
+        [id, name, description, ts, ts]
+      );
+      this.#atomicPersist();
       return { id };
     });
   }
 
   listPlaylists() {
-    const rows = this.data.playlists.map((p) => {
-      const trackCount = this.data.playlistTracks.filter((pt) => pt.playlistId === p.id).length;
-      return { ...p, trackCount };
-    });
-    rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const rows = this.#queryAll(`
+      SELECT p.*, (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlistId = p.id) as trackCount
+      FROM playlists p
+      ORDER BY p.updatedAt DESC
+    `);
     return Promise.resolve(rows);
   }
 
   getPlaylist(id) {
-    const p = this.data.playlists.find((pl) => pl.id === id);
-    if (!p) return Promise.resolve(null);
-    const trackCount = this.data.playlistTracks.filter((pt) => pt.playlistId === id).length;
-    return Promise.resolve({ ...p, trackCount });
+    const row = this.#queryOne(`
+      SELECT p.*, (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlistId = p.id) as trackCount
+      FROM playlists p WHERE p.id = ?
+    `, [id]);
+    return Promise.resolve(row || null);
   }
 
   deletePlaylist(id) {
-    return this.serializedWrite(() => {
-      this.data.playlists = this.data.playlists.filter((p) => p.id !== id);
-      this.data.playlistTracks = this.data.playlistTracks.filter((pt) => pt.playlistId !== id);
+    return this.#enqueueWrite(() => {
+      this.#run("DELETE FROM playlist_tracks WHERE playlistId = ?", [id]);
+      this.#run("DELETE FROM playlists WHERE id = ?", [id]);
+      this.#atomicPersist();
     });
   }
 
   renamePlaylist(id, name) {
-    return this.serializedWrite(() => {
-      const p = this.data.playlists.find((pl) => pl.id === id);
-      if (p) { p.name = name; p.updatedAt = now(); }
+    return this.#enqueueWrite(() => {
+      this.#run("UPDATE playlists SET name = ?, updatedAt = ? WHERE id = ?", [name, now(), id]);
+      this.#atomicPersist();
     });
   }
 
   addTrackToPlaylist(playlistId, trackId) {
-    return this.serializedWrite(() => {
-      const exists = this.data.playlistTracks.some((pt) => pt.playlistId === playlistId && pt.trackId === trackId);
+    return this.#enqueueWrite(() => {
+      const exists = this.#queryOne(
+        "SELECT 1 FROM playlist_tracks WHERE playlistId = ? AND trackId = ?",
+        [playlistId, trackId]
+      );
       if (exists) return;
-      const maxOrder = this.data.playlistTracks
-        .filter((pt) => pt.playlistId === playlistId)
-        .reduce((max, pt) => Math.max(max, pt.sortOrder), -1);
-      this.data.playlistTracks.push({ playlistId, trackId, sortOrder: maxOrder + 1, addedAt: now() });
-      const p = this.data.playlists.find((pl) => pl.id === playlistId);
-      if (p) p.updatedAt = now();
+
+      const maxRow = this.#queryOne(
+        "SELECT COALESCE(MAX(sortOrder), -1) as mx FROM playlist_tracks WHERE playlistId = ?",
+        [playlistId]
+      );
+      this.#run(
+        "INSERT INTO playlist_tracks (playlistId, trackId, sortOrder, addedAt) VALUES (?, ?, ?, ?)",
+        [playlistId, trackId, maxRow.mx + 1, now()]
+      );
+      this.#run("UPDATE playlists SET updatedAt = ? WHERE id = ?", [now(), playlistId]);
+      this.#atomicPersist();
     });
   }
 
   removeTrackFromPlaylist(playlistId, trackId) {
-    return this.serializedWrite(() => {
-      this.data.playlistTracks = this.data.playlistTracks.filter((pt) => !(pt.playlistId === playlistId && pt.trackId === trackId));
-      const p = this.data.playlists.find((pl) => pl.id === playlistId);
-      if (p) p.updatedAt = now();
+    return this.#enqueueWrite(() => {
+      this.#run(
+        "DELETE FROM playlist_tracks WHERE playlistId = ? AND trackId = ?",
+        [playlistId, trackId]
+      );
+      this.#run("UPDATE playlists SET updatedAt = ? WHERE id = ?", [now(), playlistId]);
+      this.#atomicPersist();
     });
   }
 
   getPlaylistTracks(playlistId) {
-    const trackIds = this.data.playlistTracks
-      .filter((pt) => pt.playlistId === playlistId)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((pt) => pt.trackId);
-    const trackMap = new Map();
-    for (const t of this.data.tracks) trackMap.set(t.id, t);
-    const result = trackIds.map((id) => trackMap.get(id)).filter(Boolean);
-    return Promise.resolve(result);
+    const rows = this.#queryAll(`
+      SELECT t.* FROM tracks t
+      INNER JOIN playlist_tracks pt ON pt.trackId = t.id
+      WHERE pt.playlistId = ?
+      ORDER BY pt.sortOrder ASC
+    `, [playlistId]);
+    return Promise.resolve(rows.map((r) => this.#trackRow(r)));
   }
 
   getRecentTracks(limit = 10) {
-    const sorted = [...this.data.tracks].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
-    return Promise.resolve(sorted);
+    const rows = this.#queryAll(
+      "SELECT * FROM tracks ORDER BY createdAt DESC LIMIT ?",
+      [limit]
+    );
+    return Promise.resolve(rows.map((r) => this.#trackRow(r)));
   }
 
   getTrackStats() {
-    const artists = new Set();
-    const albums = new Set();
-    let totalDuration = 0;
-    let totalSize = 0;
-    for (const t of this.data.tracks) {
-      if (t.artist) artists.add(t.artist);
-      if (t.album) albums.add(t.album);
-      totalDuration += t.duration || 0;
-      totalSize += t.fileSize || 0;
-    }
-    return Promise.resolve({
-      totalTracks: this.data.tracks.length,
-      totalArtists: artists.size,
-      totalAlbums: albums.size,
-      totalDuration,
-      totalSize,
-    });
+    const row = this.#queryOne(`
+      SELECT
+        COUNT(*) as totalTracks,
+        COUNT(DISTINCT artist) as totalArtists,
+        COUNT(DISTINCT album) as totalAlbums,
+        COALESCE(SUM(duration), 0) as totalDuration,
+        COALESCE(SUM(fileSize), 0) as totalSize
+      FROM tracks
+    `);
+    return Promise.resolve(row || { totalTracks: 0, totalArtists: 0, totalAlbums: 0, totalDuration: 0, totalSize: 0 });
   }
 }
 

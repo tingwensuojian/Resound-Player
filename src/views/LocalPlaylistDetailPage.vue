@@ -1,5 +1,22 @@
 <template>
   <section class="local-page" v-if="localMusicStore.activePlaylistDetail">
+    <PromptModal
+      :open="showRenameModal"
+      title="重命名歌单"
+      placeholder="请输入新名称"
+      :default-value="localMusicStore.activePlaylistDetail?.name || ''"
+      @confirm="onRenameConfirm"
+      @cancel="showRenameModal = false"
+      @update:open="showRenameModal = $event"
+    />
+    <PromptModal
+      :open="showAddTrackModal"
+      title="从曲库添加"
+      placeholder="搜索歌名、歌手或专辑关键词"
+      @confirm="onAddTrackConfirm"
+      @cancel="showAddTrackModal = false"
+      @update:open="showAddTrackModal = $event"
+    />
     <div class="local-page-hero">
       <h2 class="local-page-title">{{ localMusicStore.activePlaylistDetail.name }}</h2>
       <p class="local-page-count">
@@ -60,9 +77,13 @@ import { computed, ref } from 'vue'
 import { localMusicStore, type LocalTrack } from '../stores/localMusic'
 import { playerStore } from '../stores/player'
 import { platform } from '../utils/platform'
+import PromptModal from '../components/ui/PromptModal.vue'
 
 const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
 const tracks = computed(() => localMusicStore.activePlaylistDetail?.tracks || [])
+
+const showRenameModal = ref(false)
+const showAddTrackModal = ref(false)
 
 function goBack() {
   localMusicStore.activeView = 'playlists'
@@ -70,19 +91,23 @@ function goBack() {
   localMusicStore.activePlaylistId = ''
 }
 
-async function handleRename() {
+function handleRename() {
+  showRenameModal.value = true
+}
+
+async function onRenameConfirm(name: string) {
   const pl = localMusicStore.activePlaylistDetail
   if (!pl) return
-  const name = prompt('请输入新名称：', pl.name)
-  if (!name?.trim()) return
   await localMusicStore.renamePlaylist(pl.id, name.trim())
 }
 
-async function handleAddTrack() {
+function handleAddTrack() {
+  showAddTrackModal.value = true
+}
+
+async function onAddTrackConfirm(kw: string) {
   const pl = localMusicStore.activePlaylistDetail
   if (!pl) return
-  const kw = prompt('搜索曲库中的歌曲（输入歌名、歌手或专辑关键词）：')
-  if (!kw?.trim()) return
 
   if (!platform.localApi) return
 

@@ -94,7 +94,7 @@ Both are layered in `.renderer-stack` with `v-show` to keep both mounted.
 Requires `@neteasecloudmusicapienhanced` running on port 38761. Development proxy via `VITE_API_PROXY_TARGET`. Unblock music sources run on ports 38762 (unblock server) and 38763 (match server).
 
 ### Local Music (Desktop Only)
-- **Storage**: JSON file (`local-music.json`) in Electron's `userData` directory — no native/WASM dependencies
+- **Storage**: SQLite file (`local-music.sqlite`) via `sql.js` WASM engine — zero native dependencies
 - **Scanner** (`electron/services/scanner/NodeMusicScanner.js`):
   - Recursively collects supported audio files (mp3/flac/wav/ogg/m4a/aac/wma/ape/dsf/opus/aiff/alac)
   - Reports progress during file collection phase (important for 10k+ file directories)

@@ -369,15 +369,15 @@ const {
   toggleCurrentLike,
 } = useCurrentTrackLike();
 
-/* 加载歌词 */
+/* 播放时显示当前歌词行 */
+const { lyricLines, currentLyricIndex, effectiveTime, startTick, isLoading, loadLyrics } = useLyrics();
+
+/* 加载歌词 — watch 必须在 loadLyrics 之后声明，避免 TDZ */
 watch(() => playerStore.currentTrack?.id, async (id) => {
   if (!id) return;
   await loadLyrics(playerStore.currentTrack);
 }, { immediate: true });
 
-
-/* 播放时显示当前歌词行 */
-const { lyricLines, currentLyricIndex, effectiveTime, startTick, isLoading, loadLyrics } = useLyrics();
 startTick();
 
 const currentLyricText = computed(() => {
