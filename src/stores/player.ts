@@ -7,6 +7,7 @@ import { hydrateCache, getCache, setCache } from './unblock-cache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { platform } from '../utils/platform';
 import { eqSettings } from './eqSettings';
+import { setupMediaSession } from '../composables/useMediaSession';
 
 type Artist = { name: string };
 type Album = { name?: string; picUrl?: string };
@@ -164,6 +165,9 @@ export const playerStore = reactive({
   init() {
     hydrateCache();
     this.audio.volume = this.volume;
+
+    // 注册 macOS Now Playing / Media Session API（系统栏封面、歌名、控制）
+    setupMediaSession();
 
     this.audio.ontimeupdate = () => {
       this.currentTime = this.audio.currentTime || 0;
