@@ -41,9 +41,12 @@ Control Center / 菜单栏 / Touch Bar / 锁屏
 src/composables/useMediaSession.ts
   ├── setupMediaSession()          ← 入口函数，在 playerStore.init() 中调用一次
   │   ├── 注册 action handlers     ← play / pause / previoustrack / nexttrack / seekto
-  │   ├── watch(currentTrack)      ← 更新 MediaMetadata
-  │   └── watch(isPlaying)         ← 更新 playbackState
-  └── resolveArtwork()             ← 辅助函数，构造 artwork 数组
+  │   ├── watch(currentTrack)      ← 异步合成 badge 后更新 MediaMetadata
+  │   ├── watch(isPlaying)         ← 更新 playbackState
+  │   └── watch(duration)          ← 更新 positionState
+  ├── resolveArtwork()             ← 异步构造带 badge 的 artwork 数组（含缓存）
+  ├── compositeBadge()             ← canvas 合成：封面 + 右下角品牌 Logo
+  └── BADGE_LOGO_SVG              ← 源版 Logo SVG（docs/logo-guide.md 派生）
 ```
 
 ---
@@ -79,7 +82,7 @@ watch(() => playerStore.currentTrack, (track) => {
 | `title` | `playerStore.currentTrack.name` | "晴天" |
 | `artist` | `ar[]` 数组 join 为逗号分隔字符串 | "周杰伦" |
 | `album` | `al?.name` | "叶惠美" |
-| `artwork` | `al?.picUrl` + 尺寸参数 `640x640` | `[{ src: '...?param=640y640', sizes: '640x640' }]` |
+| `artwork` | canvas 合成：封面图 + 品牌 Logo badge | `[{ src: 'data:image/jpeg;base64,...', sizes: '640x640' }]` |
 
 ### 3.3 Action handlers
 
@@ -117,20 +120,39 @@ watch(() => playerStore.duration, (dur) => {
 
 `setPositionState` 使系统控件可以显示播放进度条和剩余时间。
 
-### 3.6 Artwork 分辨率
+### 3.6 Artwork — 封面右下角品牌 Logo badge
+
+封面 artwork 不再直接使用原始封面 URL，而是通过 canvas **将品牌 Logo 合成到封面右下角**，使 macOS 系统栏中显示带来源标识的封面。
 
 ```typescript
-function resolveArtwork(picUrl?: string): MediaImage[] {
-  if (!picUrl) return []
-  const large = picUrl.includes('?') ? `${picUrl}&param=640y640` : picUrl
-  return [
-    { src: large, sizes: '640x640', type: 'image/jpeg' },
-    { src: picUrl, sizes: '256x256', type: 'image/jpeg' },
-  ]
-}
+/** badge 尺寸占封面总尺寸的比例 */
+const BADGE_SCALE = 0.49
+/** badge 与封面边缘的间距（0 = 完全贴合右下角） */
+const BADGE_PADDING_SCALE = 0
 ```
 
-优先请求 640x640 大图，fallback 原图。macOS 系统栏使用小尺寸时自动选择 `256x256`。
+**合成流程**（`compositeBadge`）：
+
+1. 加载封面图片，绘制到 canvas（居中填满正方形）
+2. 加载品牌 Logo SVG（源版，含深色圆角矩形背景），直接贴合绘制在 canvas 右下角
+3. 导出为 JPEG data URL，用作 `MediaMetadata` 的 `artwork`
+
+**Logo 来源**：`docs/logo-guide.md` 的源版 SVG（绿色渐变耳机 + `#121317` 深色圆角背景），通过内联 data URL 加载，无需额外网络请求。
+
+**缓存策略**：同一封面 URL 的合成结果缓存在模块级变量 `_lastCompositeUrl` / `_lastCompositeResult` 中，避免重复 canvas 渲染。
+
+**设计参数**：
+
+| 参数 | 值 | 说明 |
+|---|---|---|
+| `BADGE_SCALE` | 0.49 | badge 尺寸占封面宽度的 49% |
+| `BADGE_PADDING_SCALE` | 0 | 无间距，完全贴合右下角 |
+| `logoMargin` | 0 | Logo 填满整个 badge 区域 |
+| 导出格式 | `image/jpeg`, quality 0.85 | 平衡画质与体积 |
+
+**回退策略**：
+- 封面图片加载失败 → 使用原始封面 URL（不带 badge）
+- Logo SVG 加载失败 → 使用纯封面 canvas 图（不带 badge）
 
 ---
 
@@ -258,3 +280,4 @@ try {
 | `src/composables/useMediaSession.ts` | Media Session 实现（新增） |
 | `src/stores/player.ts` | 播放器 Store，`init()` 中调用 |
 | `docs/MacOS Now Playing 实现说明.md` | 本文档 |
+| `docs/logo-guide.md` | 品牌 Logo SVG 源文件 |
