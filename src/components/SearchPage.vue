@@ -36,7 +36,7 @@
             rhythm="actions"
             :index="1"
             class-name="search-btn"
-            :disabled="disabled || loading || (!keywords.trim() && !uiStore.defaultSearchKeyword.trim())"
+            :disabled="disabled || loading || (!keywords.trim() && !uiStore.state.defaultSearchKeyword.trim())"
             @click="onSearch"
           >
             {{ loading ? '搜索中' : '搜索' }}
@@ -444,7 +444,8 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { getPlaylistDetail, getSongDetailBatch, searchMusic, searchMusicDefault, searchMusicHotDetail } from '../api/music';
 import { playerStore } from '../stores/player';
-import { uiStore } from '../stores/ui';
+import { useUiStore } from '../stores/ui';
+const uiStore = useUiStore();
 import { normalizeImageUrl, resolveArtistImageUrl } from '../utils/image';
 import { getSongArtists, isCurrentTrack as isCurrentTrackUtil } from '../utils/trackHelpers';
 import AnimatedAppear from './AnimatedAppear.vue';
@@ -535,7 +536,7 @@ const searchTypeOptions = [
   { label: '用户', value: 1002 },
 ];
 const searchTypeLabelMap: Record<number, string> = Object.fromEntries(searchTypeOptions.map((opt) => [opt.value, opt.label]));
-const activeSearchType = ref(uiStore.searchType || 1);
+const activeSearchType = ref(uiStore.state.searchType || 1);
 const isSongLikeType = computed(() => [1, 1006, 1009].includes(activeSearchType.value));
 const resultBadge = computed(() => searchTypeLabelMap[activeSearchType.value] || '结果');
 const results = computed(() => {
@@ -585,7 +586,7 @@ const emit = defineEmits<{
 }>();
 
 const SEARCH_HISTORY_KEY = 'music_search_history';
-const keywords = ref(uiStore.searchKeyword || '');
+const keywords = ref(uiStore.state.searchKeyword || '');
 const loading = ref(false);
 const songs = ref<any[]>([]);
 const searchResult = ref<any>(null);
@@ -593,7 +594,7 @@ const searchHistory = ref<SearchHistoryRecord[]>([]);
 const isEmpty = computed(() => searchHistory.value.length === 0);
 const hasSearched = ref(false);
 const showHotBoard = computed(() => !hasSearched.value && !loading.value);
-const searchInputPlaceholder = computed(() => uiStore.defaultSearchHint || '输入关键词回车搜索');
+const searchInputPlaceholder = computed(() => uiStore.state.defaultSearchHint || '输入关键词回车搜索');
 const HOT_REFRESH_INTERVAL = 5 * 60 * 1000;
 let hotRefreshTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -601,7 +602,7 @@ let inputDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
 function onInput(e: Event) {
   keywords.value = (e.target as HTMLInputElement).value;
-  uiStore.searchKeyword = keywords.value;
+  uiStore.state.searchKeyword = keywords.value;
   if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
   if (keywords.value.trim()) {
     inputDebounceTimer = setTimeout(() => {
@@ -753,7 +754,7 @@ function handleClearAll() {
 function resetSearchState() {
   searchRequestSeq += 1;
   keywords.value = '';
-  uiStore.searchKeyword = '';
+  uiStore.state.searchKeyword = '';
   hasSearched.value = false;
   loading.value = false;
   songs.value = [];
@@ -899,12 +900,12 @@ function stopHotAutoRefresh() {
 let searchRequestSeq = 0;
 
 async function onSearch() {
-  const kw = keywords.value.trim() || uiStore.defaultSearchKeyword.trim();
+  const kw = keywords.value.trim() || uiStore.state.defaultSearchKeyword.trim();
   if (!kw) return;
   const requestSeq = ++searchRequestSeq;
   keywords.value = kw;
-  uiStore.searchKeyword = kw;
-  uiStore.searchType = activeSearchType.value;
+  uiStore.state.searchKeyword = kw;
+  uiStore.state.searchType = activeSearchType.value;
   hasSearched.value = true;
   loading.value = true;
   try {
@@ -920,7 +921,7 @@ async function onSearch() {
 
 function useKeyword(kw: string) {
   keywords.value = kw;
-  uiStore.searchKeyword = kw;
+  uiStore.state.searchKeyword = kw;
   void onSearch();
 }
 
@@ -930,7 +931,7 @@ function useHistory(kw: string) {
 
 function selectSearchType(type: number) {
   activeSearchType.value = type;
-  uiStore.searchType = type;
+  uiStore.state.searchType = type;
   if (hasSearched.value && keywords.value.trim()) {
     void onSearch();
   }
@@ -990,14 +991,14 @@ async function playSongFrom(list: any[], index: number) {
 }
 
 watch(
-  () => uiStore.searchType,
+  () => uiStore.state.searchType,
   (next) => {
     activeSearchType.value = next || 1;
   },
 );
 
 watch(
-  () => uiStore.searchKeyword,
+  () => uiStore.state.searchKeyword,
   (next) => {
     const normalized = String(next || '');
     if (normalized === keywords.value) return;

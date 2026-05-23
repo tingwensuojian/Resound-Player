@@ -223,7 +223,8 @@ const PodcastSubscribedPage = defineAsyncComponent(() => import('./components/Po
 import { waitForApiReady } from './api/client';
 import { getDjCategoryRecommend, getDjDetail, getDjProgram, getDjRecommend, getDjRecommendType, getDjSublist, getRecentDj, getSongDetail, getVoiceListDetail, getVoiceListItems, getVoiceListSearch } from './api/music';
 import { playerStore } from './stores/player';
-import { uiStore } from './stores/ui';
+import { useUiStore } from './stores/ui';
+const uiStore = useUiStore();
 import { apiCache } from './stores/apiCache';
 import { userStore } from './stores/user';
 import { recordLocalHistoryEntry } from './utils/localHistory';
@@ -372,7 +373,7 @@ function navigateToEntry(entry: { page: string; params?: Record<string, any> }) 
   if (params?.settingsTab) settingsInitialTab.value = params.settingsTab;
   if (params?.category) playlistInitialCategory.value = params.category;
   if (params?.dailyInjectedPlaylist) dailyInjectedPlaylist.value = params.dailyInjectedPlaylist;
-  if (params?.keyword) uiStore.searchKeyword = params.keyword;
+  if (params?.keyword) uiStore.state.searchKeyword = params.keyword;
   if (params?.mvReturnPage) activeMvReturnPage.value = params.mvReturnPage;
   if (params?.returnPage) {
     if (page === 'playlist-detail') activePlaylistReturnPage.value = params.returnPage;
@@ -884,8 +885,8 @@ async function openPodcastCategory(categoryId: number) {
 
 function openSearchPage(keyword: string) {
   navHistory.push({ page: 'search', params: { keyword } });
-  uiStore.searchKeyword = keyword;
-  uiStore.searchType = 1;
+  uiStore.state.searchKeyword = keyword;
+  uiStore.state.searchType = 1;
   activePage.value = 'search';
 }
 
@@ -1038,7 +1039,7 @@ function goBackFromMvPlay() {
   navHistory.replace({ page: target });
   activePage.value = target;
   // 关闭 MV 页后根据设置恢复音乐播放
-  if (uiStore.resumeAfterMv && wasPlayingBeforeMvPage && playerStore.currentTrack) {
+  if (uiStore.state.resumeAfterMv && wasPlayingBeforeMvPage && playerStore.currentTrack) {
     playerStore.togglePlay();
   }
 }
@@ -1070,7 +1071,7 @@ watch(
 );
 
 watch(
-  () => uiStore.searchType,
+  () => uiStore.state.searchType,
   () => {
     if (activePage.value === 'search') {
       // 搜索类型变更后保持在搜索页，实际检索由搜索页读取全局状态

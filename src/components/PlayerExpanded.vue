@@ -141,7 +141,7 @@
                     <button class="volume-icon-btn" type="button" :aria-label="playerStore.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()"><VolumeX v-if="playerStore.muted || playerStore.volume === 0" :size="18" /><Volume v-else-if="playerStore.volume < 0.33" :size="18" /><Volume1 v-else-if="playerStore.volume < 0.66" :size="18" /><Volume2 v-else :size="18" /></button>
                     <input type="range" min="0" max="100" :value="Math.round((playerStore.muted ? 0 : playerStore.volume) * 100)" @input="onVolume" />
                   </div>
-                  <button v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.showIntelligenceIndicator" class="ctrl intel-icon" type="button" aria-label="心动模式"><Sparkles :size="14" /></button>
+                  <button v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="ctrl intel-icon" type="button" aria-label="心动模式"><Sparkles :size="14" /></button>
                   <button class="ctrl favorite-ctrl" type="button" :class="{ saved: isCurrentLiked, loading: likeLoading }" :aria-pressed="isCurrentLiked" :aria-label="isCurrentLiked ? '取消收藏' : '收藏'" :disabled="likeLoading || !canToggleCurrentLike" @click="toggleCurrentLike"><Heart :size="16" /></button>
                   <button class="ctrl volume-ctrl-comment" :class="{ active: showComments }" :disabled="!canComment" @click="showComments = !showComments" aria-label="评论区">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -256,7 +256,7 @@
           </div>
           <div class="cc-right">
             <button class="con-btn" :class="{ active: showEqPanel }" title="均衡器" @click="showEqPanel = !showEqPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg></button>
-            <button v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.showIntelligenceIndicator" class="con-btn intel-icon" type="button" aria-label="心动模式"><Sparkles :size="10" /></button>
+            <button v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="con-btn intel-icon" type="button" aria-label="心动模式"><Sparkles :size="10" /></button>
             <button v-if="isPersonalFmCurrentTrack" class="con-btn con-fm-label" type="button" aria-label="当前为私人 FM" disabled>FM</button>
             <button v-else class="con-btn" @click="uiStore.togglePlayQueue()" data-tooltip="查看播放列表" aria-label="查看播放列表"><AlignJustify :size="14" /></button>
             <div class="con-volume">
@@ -294,7 +294,8 @@ import { AlignJustify, ChevronDown, Copy, Heart, Minus, Plus, Repeat, Repeat1, S
 import { computed, nextTick, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { toggleDjSubscribe, toggleSongLike, trashPersonalFm, deleteDjComment } from '../api/music';
 import { playerStore } from '../stores/player';
-import { uiStore } from '../stores/ui';
+import { useUiStore } from '../stores/ui';
+const uiStore = useUiStore();
 import { userStore } from '../stores/user';
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
@@ -334,7 +335,7 @@ function openAlbum(albumId: number | undefined | null) {
 }
 const coverStyle = computed(() => { const url = playerStore.currentTrack?.al?.picUrl; return url ? { backgroundImage: `url(${url})` } : {}; });
 const { showFinal: coverLoaded } = useProgressiveCover(() => playerStore.currentTrack?.al?.picUrl || '', { targetSize: 'large' });
-const { uiRevealed, onActivity, onLeave, freeze, unfreeze } = useAutoHideUI(() => uiStore.autoHidePlayerUI, { idleTimeout: 3000 });
+const { uiRevealed, onActivity, onLeave, freeze, unfreeze } = useAutoHideUI(() => uiStore.state.autoHidePlayerUI, { idleTimeout: 3000 });
 function openUser(userId: number) { if (userId > 0) emit('open-user', userId); }
 function openPodcastDetail() {
   const rid = currentPodcastRid.value;

@@ -22,7 +22,7 @@
         <div class="title-row">
           <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="title">{{ playerStore.currentTrack?.name || '未在播放' }}</AnimatedAppear>
         </div>
-        <AnimatedAppear tag="div" variant="text" rhythm="body" :index="1" class-name="artist"><template v-if="playerStore.isPlaying && currentLyricText && lyricsSettings.state.showBarLyric"><span class="lyric-text" :title="currentLyricText">{{ currentLyricText }}</span></template><template v-else>{{ artistText }}<span v-if="uiStore.unblockEnabled && playerStore.currentTrack" class="source-badge">{{ sourceLabel }}</span></template></AnimatedAppear>
+        <AnimatedAppear tag="div" variant="text" rhythm="body" :index="1" class-name="artist"><template v-if="playerStore.isPlaying && currentLyricText && lyricsSettings.state.showBarLyric"><span class="lyric-text" :title="currentLyricText">{{ currentLyricText }}</span></template><template v-else>{{ artistText }}<span v-if="uiStore.state.unblockEnabled && playerStore.currentTrack" class="source-badge">{{ sourceLabel }}</span></template></AnimatedAppear>
       </div>
     </AnimatedAppear>
 
@@ -66,7 +66,7 @@
         </button>
         <input type="range" min="0" max="100" :value="Math.round((playerStore.muted ? 0 : playerStore.volume) * 100)" @input="onVolume" />
       </AnimatedAppear>
-      <AnimatedAppear v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.showIntelligenceIndicator" tag="button" variant="control" rhythm="actions" class-name="icon intel-icon" aria-label="心动模式"><Sparkles :size="10" /></AnimatedAppear>
+      <AnimatedAppear v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" tag="button" variant="control" rhythm="actions" class-name="icon intel-icon" aria-label="心动模式"><Sparkles :size="10" /></AnimatedAppear>
       <div class="quality-wrap" ref="qualityWrapRef">
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="icon quality-icon" :class="{ active: showQualityPopup }" data-tooltip="音质选择" aria-label="音质选择" @click.stop="toggleQualityPopup">
           <span class="quality-btn-label">{{ qualityLabel || playerStore.defaultQuality }}</span>
@@ -165,7 +165,7 @@
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="6" class-name="icon icon-fm" data-tooltip="当前为私人 FM" aria-label="当前为私人 FM" disabled>FM</AnimatedAppear>
       </template>
       <template v-else>
-        <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="6" class-name="icon" :class="{ active: uiStore.showPlayQueue }" data-tooltip="播放列表" aria-label="播放列表" @click="uiStore.togglePlayQueue()"><ListMusic :size="14" /></AnimatedAppear>
+        <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="6" class-name="icon" :class="{ active: uiStore.state.showPlayQueue }" data-tooltip="播放列表" aria-label="播放列表" @click="uiStore.togglePlayQueue()"><ListMusic :size="14" /></AnimatedAppear>
       </template>
     </AnimatedAppear>
   </AnimatedAppear>
@@ -192,7 +192,8 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-vue-next';
-import { uiStore } from '../stores/ui';
+import { useUiStore } from '../stores/ui';
+const uiStore = useUiStore();
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
 import { playerStore } from '../stores/player';

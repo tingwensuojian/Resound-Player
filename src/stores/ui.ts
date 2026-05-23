@@ -1,3 +1,4 @@
+import { defineStore } from 'pinia';
 import { reactive } from 'vue';
 import { searchMusicDefault } from '../api/music';
 import { setUnblockProxyEnabled } from '../api/client';
@@ -15,6 +16,25 @@ const ACCENT_COLOR_KEY = 'tm_accent_custom_color';
 const RESUME_AFTER_MV_KEY = 'tm_resume_after_mv';
 const SHOW_INTEL_KEY = 'tm_show_intel_indicator';
 const AUTO_HIDE_UI_KEY = 'tm_auto_hide_player_ui';
+
+export type UiState = {
+  themeMode: ThemeMode;
+  resolvedTheme: ResolvedTheme;
+  accentMode: AccentMode;
+  accentCustomColor: string;
+  unblockEnabled: boolean;
+  unblockSources: string[];
+  resumeAfterMv: boolean;
+  showIntelligenceIndicator: boolean;
+  autoHidePlayerUI: boolean;
+  showPlayQueue: boolean;
+  searchKeyword: string;
+  searchType: number;
+  defaultSearchHint: string;
+  defaultSearchKeyword: string;
+  defaultSearchLoading: boolean;
+};
+
 let mediaQuery: MediaQueryList | null = null;
 let mediaListener: ((e: MediaQueryListEvent) => void) | null = null;
 
@@ -71,46 +91,48 @@ function applyAccentToDom(mode: AccentMode, customColor?: string) {
   }
 }
 
-export const uiStore = reactive({
-  themeMode: '跟随系统' as ThemeMode,
-  resolvedTheme: 'light' as ResolvedTheme,
-  accentMode: '绿色' as AccentMode,
-  accentCustomColor: '#22c55e',
-  unblockEnabled: true,
-  unblockSources: ['bodian', 'kugou', 'migu', 'qq', 'bilibili'],
-  resumeAfterMv: true,
-  showIntelligenceIndicator: true,
-  autoHidePlayerUI: true,
-  showPlayQueue: false,
-  searchKeyword: '',
-  searchType: 1,
-  defaultSearchHint: '',
-  defaultSearchKeyword: '',
-  defaultSearchLoading: false,
-  init() {
+export const useUiStore = defineStore('ui', () => {
+  const state = reactive<UiState>({
+    themeMode: '跟随系统',
+    resolvedTheme: 'light',
+    accentMode: '绿色',
+    accentCustomColor: '#22c55e',
+    unblockEnabled: true,
+    unblockSources: ['bodian', 'kugou', 'migu', 'qq', 'bilibili'],
+    resumeAfterMv: true,
+    showIntelligenceIndicator: true,
+    autoHidePlayerUI: true,
+    showPlayQueue: false,
+    searchKeyword: '',
+    searchType: 1,
+    defaultSearchHint: '',
+    defaultSearchKeyword: '',
+    defaultSearchLoading: false,
+  });
+
+  function init() {
     const saved = (localStorage.getItem(STORAGE_KEY) as ThemeMode | null) || '跟随系统';
-    const savedGlass = localStorage.getItem(GLASS_KEY);
     const savedAccent = (localStorage.getItem(ACCENT_KEY) as AccentMode | null) || '绿色';
     const savedAccentColor = localStorage.getItem(ACCENT_COLOR_KEY) || '#22c55e';
 
-    this.themeMode = saved;
-    this.accentMode = savedAccent;
-    this.accentCustomColor = normalizeHexColor(savedAccentColor);
+    state.themeMode = saved;
+    state.accentMode = savedAccent;
+    state.accentCustomColor = normalizeHexColor(savedAccentColor);
     const savedUnblock = localStorage.getItem(UNBLOCK_KEY);
     const savedUnblockSources = localStorage.getItem(UNBLOCK_SRC_KEY);
-    this.unblockEnabled = savedUnblock === null ? true : savedUnblock === '1';
-    setUnblockProxyEnabled(this.unblockEnabled);
-    try { this.unblockSources = savedUnblockSources ? JSON.parse(savedUnblockSources) : ['bodian', 'kugou', 'migu', 'qq', 'bilibili']; } catch { this.unblockSources = ['bodian', 'kugou', 'migu', 'qq', 'bilibili']; }
+    state.unblockEnabled = savedUnblock === null ? true : savedUnblock === '1';
+    setUnblockProxyEnabled(state.unblockEnabled);
+    try { state.unblockSources = savedUnblockSources ? JSON.parse(savedUnblockSources) : ['bodian', 'kugou', 'migu', 'qq', 'bilibili']; } catch { state.unblockSources = ['bodian', 'kugou', 'migu', 'qq', 'bilibili']; }
     const savedResume = localStorage.getItem(RESUME_AFTER_MV_KEY);
-    this.resumeAfterMv = savedResume === null ? true : savedResume === '1';
+    state.resumeAfterMv = savedResume === null ? true : savedResume === '1';
     const savedIntel = localStorage.getItem(SHOW_INTEL_KEY);
-    this.showIntelligenceIndicator = savedIntel === null ? true : savedIntel === '1';
+    state.showIntelligenceIndicator = savedIntel === null ? true : savedIntel === '1';
     const savedAutoHide = localStorage.getItem(AUTO_HIDE_UI_KEY);
-    this.autoHidePlayerUI = savedAutoHide === null ? true : savedAutoHide === '1';
+    state.autoHidePlayerUI = savedAutoHide === null ? true : savedAutoHide === '1';
 
-    this.resolvedTheme = resolveTheme(this.themeMode);
-    applyThemeToDom(this.resolvedTheme);
-    applyAccentToDom(this.accentMode, this.accentCustomColor);
+    state.resolvedTheme = resolveTheme(state.themeMode);
+    applyThemeToDom(state.resolvedTheme);
+    applyAccentToDom(state.accentMode, state.accentCustomColor);
 
     if (!mediaQuery) {
       mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -118,82 +140,105 @@ export const uiStore = reactive({
 
     if (!mediaListener) {
       mediaListener = () => {
-        if (this.themeMode === '跟随系统') {
-          this.resolvedTheme = getSystemTheme();
-          applyThemeToDom(this.resolvedTheme);
+        if (state.themeMode === '跟随系统') {
+          state.resolvedTheme = getSystemTheme();
+          applyThemeToDom(state.resolvedTheme);
         }
       };
       mediaQuery.addEventListener('change', mediaListener);
     }
-  },
-  setThemeMode(mode: ThemeMode) {
-    this.themeMode = mode;
+  }
+
+  function setThemeMode(mode: ThemeMode) {
+    state.themeMode = mode;
     localStorage.setItem(STORAGE_KEY, mode);
-    this.resolvedTheme = resolveTheme(mode);
-    applyThemeToDom(this.resolvedTheme);
-  },
-  setAccentMode(mode: AccentMode) {
-    this.accentMode = mode;
+    state.resolvedTheme = resolveTheme(mode);
+    applyThemeToDom(state.resolvedTheme);
+  }
+
+  function setAccentMode(mode: AccentMode) {
+    state.accentMode = mode;
     localStorage.setItem(ACCENT_KEY, mode);
-    applyAccentToDom(mode, this.accentCustomColor);
-  },
-  setAccentCustomColor(color: string) {
+    applyAccentToDom(mode, state.accentCustomColor);
+  }
+
+  function setAccentCustomColor(color: string) {
     const next = normalizeHexColor(color);
-    this.accentCustomColor = next;
+    state.accentCustomColor = next;
     localStorage.setItem(ACCENT_COLOR_KEY, next);
-    if (this.accentMode === '自定义') {
+    if (state.accentMode === '自定义') {
       applyAccentToDom('自定义', next);
     }
-  },
-  setUnblockEnabled(enabled: boolean) {
-    this.unblockEnabled = enabled;
+  }
+
+  function setUnblockEnabled(enabled: boolean) {
+    state.unblockEnabled = enabled;
     localStorage.setItem(UNBLOCK_KEY, enabled ? '1' : '0');
     setUnblockProxyEnabled(enabled);
-  },
-  setUnblockSources(sources: string[]) {
-    this.unblockSources = sources;
-    localStorage.setItem(UNBLOCK_SRC_KEY, JSON.stringify(sources));
-  },
-  setResumeAfterMv(enabled: boolean) {
-    this.resumeAfterMv = enabled;
-    localStorage.setItem(RESUME_AFTER_MV_KEY, enabled ? '1' : '0');
-  },
-  setShowIntelligenceIndicator(enabled: boolean) {
-    this.showIntelligenceIndicator = enabled;
-    localStorage.setItem(SHOW_INTEL_KEY, enabled ? '1' : '0');
-  },
-  setAutoHidePlayerUI(enabled: boolean) {
-    this.autoHidePlayerUI = enabled;
-    localStorage.setItem(AUTO_HIDE_UI_KEY, enabled ? '1' : '0');
-  },
-  togglePlayQueue() {
-    this.showPlayQueue = !this.showPlayQueue;
-  },
-  async loadDefaultSearchKeyword(force = false) {
-    if (this.defaultSearchLoading) return;
-    if (!force && this.defaultSearchKeyword && this.defaultSearchHint) return;
+  }
 
-    this.defaultSearchLoading = true;
+  function setUnblockSources(sources: string[]) {
+    state.unblockSources = sources;
+    localStorage.setItem(UNBLOCK_SRC_KEY, JSON.stringify(sources));
+  }
+
+  function setResumeAfterMv(enabled: boolean) {
+    state.resumeAfterMv = enabled;
+    localStorage.setItem(RESUME_AFTER_MV_KEY, enabled ? '1' : '0');
+  }
+
+  function setShowIntelligenceIndicator(enabled: boolean) {
+    state.showIntelligenceIndicator = enabled;
+    localStorage.setItem(SHOW_INTEL_KEY, enabled ? '1' : '0');
+  }
+
+  function setAutoHidePlayerUI(enabled: boolean) {
+    state.autoHidePlayerUI = enabled;
+    localStorage.setItem(AUTO_HIDE_UI_KEY, enabled ? '1' : '0');
+  }
+
+  function togglePlayQueue() {
+    state.showPlayQueue = !state.showPlayQueue;
+  }
+
+  async function loadDefaultSearchKeyword(force = false) {
+    if (state.defaultSearchLoading) return;
+    if (!force && state.defaultSearchKeyword && state.defaultSearchHint) return;
+
+    state.defaultSearchLoading = true;
     try {
       const res = await searchMusicDefault();
       const data = res?.data?.data || res?.data || {};
-      this.defaultSearchHint = String(data.showKeyword || data.styleKeyword?.keyWord || data.realkeyword || '').trim();
-      this.defaultSearchKeyword = String(data.realkeyword || data.showKeyword || data.styleKeyword?.keyWord || '').trim();
+      state.defaultSearchHint = String(data.showKeyword || data.styleKeyword?.keyWord || data.realkeyword || '').trim();
+      state.defaultSearchKeyword = String(data.realkeyword || data.showKeyword || data.styleKeyword?.keyWord || '').trim();
     } catch {
-      if (!this.defaultSearchHint) {
-        this.defaultSearchHint = '';
-      }
-      if (!this.defaultSearchKeyword) {
-        this.defaultSearchKeyword = '';
-      }
+      if (!state.defaultSearchHint) state.defaultSearchHint = '';
+      if (!state.defaultSearchKeyword) state.defaultSearchKeyword = '';
     } finally {
-      this.defaultSearchLoading = false;
+      state.defaultSearchLoading = false;
     }
-  },
-  dispose() {
+  }
+
+  function dispose() {
     if (mediaQuery && mediaListener) {
       mediaQuery.removeEventListener('change', mediaListener);
       mediaListener = null;
     }
-  },
+  }
+
+  return {
+    state,
+    init,
+    setThemeMode,
+    setAccentMode,
+    setAccentCustomColor,
+    setUnblockEnabled,
+    setUnblockSources,
+    setResumeAfterMv,
+    setShowIntelligenceIndicator,
+    setAutoHidePlayerUI,
+    togglePlayQueue,
+    loadDefaultSearchKeyword,
+    dispose,
+  };
 });

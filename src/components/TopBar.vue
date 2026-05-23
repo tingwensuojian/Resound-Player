@@ -148,7 +148,8 @@ import { Sparkles, Search } from 'lucide-vue-next';
 import AnimatedAppear from './AnimatedAppear.vue';
 import { platform } from '../utils/platform';
 
-import { uiStore } from '../stores/ui';
+import { useUiStore } from '../stores/ui';
+const uiStore = useUiStore();
 import { userStore } from '../stores/user';
 import { playerStore } from '../stores/player';
 import { useAuthAction } from '../composables/useAuthAction';
@@ -253,13 +254,13 @@ watch(() => playerStore.currentPlaylistId, () => {
 });
 
 const searchKeyword = computed({
-  get: () => uiStore.searchKeyword,
+  get: () => uiStore.state.searchKeyword,
   set: (value: string) => {
-    uiStore.searchKeyword = value;
+    uiStore.state.searchKeyword = value;
     if (value.trim()) showRecentPanel.value = true;
   },
 });
-const searchPlaceholder = computed(() => uiStore.defaultSearchHint || '搜索歌曲/歌手，热搜：周杰伦、林俊杰、告五人');
+const searchPlaceholder = computed(() => uiStore.state.defaultSearchHint || '搜索歌曲/歌手，热搜：周杰伦、林俊杰、告五人');
 const userAvatarUrl = computed(() => userStore.profile?.avatarUrl || '');
 const userAvatarAlt = computed(() => `${userStore.profile?.nickname || '用户'}头像`);
 const userInitials = computed(() => {
@@ -290,15 +291,15 @@ const vipLabel = computed(() => {
   return parts.join(' + ') || '';
 });
 const accentModes = ['绿色', '蓝色', '紫色', '橙色', '自定义'] as const;
-const currentThemeLabel = computed(() => uiStore.themeMode);
-const currentAccentLabel = computed(() => uiStore.accentMode);
+const currentThemeLabel = computed(() => uiStore.state.themeMode);
+const currentAccentLabel = computed(() => uiStore.state.accentMode);
 function getNextThemeMode() {
-  if (uiStore.themeMode === '浅色') return '深色' as const;
-  if (uiStore.themeMode === '深色') return '跟随系统' as const;
+  if (uiStore.state.themeMode === '浅色') return '深色' as const;
+  if (uiStore.state.themeMode === '深色') return '跟随系统' as const;
   return '浅色' as const;
 }
 function getNextAccentMode() {
-  const currentIndex = accentModes.indexOf(uiStore.accentMode);
+  const currentIndex = accentModes.indexOf(uiStore.state.accentMode);
   const safeIndex = currentIndex >= 0 ? currentIndex : 0;
   return accentModes[(safeIndex + 1) % accentModes.length];
 }
@@ -323,10 +324,10 @@ function rememberSearch(keyword: string) {
 }
 
 function onSubmitSearch() {
-  const keyword = uiStore.searchKeyword.trim() || uiStore.defaultSearchKeyword.trim();
+  const keyword = uiStore.state.searchKeyword.trim() || uiStore.state.defaultSearchKeyword.trim();
   if (!keyword) return;
   rememberSearch(keyword);
-  uiStore.searchKeyword = keyword;
+  uiStore.state.searchKeyword = keyword;
   isExpanded.value = true;
   isClicked.value = true;
   showRecentPanel.value = false;
@@ -334,7 +335,7 @@ function onSubmitSearch() {
 }
 
 function useRecentSearch(keyword: string) {
-  uiStore.searchKeyword = keyword;
+  uiStore.state.searchKeyword = keyword;
   isExpanded.value = true;
   isClicked.value = true;
   showRecentPanel.value = false;
@@ -342,7 +343,7 @@ function useRecentSearch(keyword: string) {
 }
 
 function clearSearch() {
-  uiStore.searchKeyword = '';
+  uiStore.state.searchKeyword = '';
   isExpanded.value = true;
   isClicked.value = true;
   showRecentPanel.value = recentSearches.value.length > 0;
@@ -366,7 +367,7 @@ function onSearchClick() {
   requestAnimationFrame(() => {
     searchInputRef.value?.focus();
   });
-  emit('search-submit', uiStore.searchKeyword || '');
+  emit('search-submit', uiStore.state.searchKeyword || '');
 }
 
 function collapseSearch() {
@@ -405,7 +406,7 @@ function closeRecentPanel() {
 function onInputEscape() {
   closeRecentPanel();
   closeUserMenu();
-  if (!uiStore.searchKeyword.trim()) {
+  if (!uiStore.state.searchKeyword.trim()) {
     collapseSearch();
   }
 }
@@ -452,13 +453,13 @@ async function refreshLoginState() {
 function toggleThemeMode() {
   const nextMode = getNextThemeMode();
   uiStore.setThemeMode(nextMode);
-  menuFeedback.value = `已切换到${uiStore.themeMode}`;
+  menuFeedback.value = `已切换到${uiStore.state.themeMode}`;
 }
 
 function toggleAccentMode() {
   const nextAccent = getNextAccentMode();
   uiStore.setAccentMode(nextAccent);
-  menuFeedback.value = `已切换到${uiStore.accentMode}主题`;
+  menuFeedback.value = `已切换到${uiStore.state.accentMode}主题`;
 }
 
 async function copyUserId() {
@@ -507,7 +508,7 @@ function onDocClick(e: MouseEvent) {
 
   if (root && !root.contains(target)) {
     closeRecentPanel();
-    if (!uiStore.searchKeyword.trim()) {
+    if (!uiStore.state.searchKeyword.trim()) {
       collapseSearch();
     } else {
       isClicked.value = false;

@@ -2,7 +2,7 @@
   <Teleport to="body">
     <Transition name="play-queue-fade">
       <div
-        v-if="uiStore.showPlayQueue"
+        v-if="uiStore.state.showPlayQueue"
         class="play-queue-backdrop"
         @click.self="close"
         @wheel.passive
@@ -11,7 +11,7 @@
     </Transition>
 
     <Transition name="play-queue-slide">
-      <div v-if="uiStore.showPlayQueue" class="play-queue-panel">
+      <div v-if="uiStore.state.showPlayQueue" class="play-queue-panel">
         <AnimatedAppear tag="div" variant="content" rhythm="overlay" class-name="play-queue-inner">
           <!-- Header -->
           <div class="play-queue-header">
@@ -96,7 +96,8 @@
 import { computed, ref } from 'vue';
 import { ListMusic } from 'lucide-vue-next';
 import { playerStore } from '../stores/player';
-import { uiStore } from '../stores/ui';
+import { useUiStore } from '../stores/ui';
+const uiStore = useUiStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 import PlayPauseButton from './ui/PlayPauseButton.vue';
 import VirtualTrackList from './VirtualTrackList.vue';
@@ -105,7 +106,7 @@ const queueItems = computed(() => playerStore.playlist);
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 function close() {
-  uiStore.showPlayQueue = false;
+  uiStore.state.showPlayQueue = false;
 }
 
 function clearAll() {

@@ -573,7 +573,7 @@
         <template v-else-if="widget.id === 'settings-theme'">
           <AnimatedAppear tag="h3" variant="title" rhythm="head">主题模式</AnimatedAppear>
           <AnimatedAppear tag="p" variant="text" rhythm="body" class-name="custom-desc">快速切换浅色/深色/跟随系统</AnimatedAppear>
-          <AnimatedAppear tag="select" variant="control" rhythm="body" class="theme-select" :value="uiStore.themeMode" @change="onThemeChange">
+          <AnimatedAppear tag="select" variant="control" rhythm="body" class="theme-select" :value="uiStore.state.themeMode" @change="onThemeChange">
             <option value="浅色">浅色</option>
             <option value="深色">深色</option>
             <option value="跟随系统">跟随系统</option>
@@ -597,7 +597,8 @@ import { apiCache, CACHE_TTL } from '../stores/apiCache';
 import { getArtistDetail, getPersonalFm, getPlaylistDetail, getRecommendPlaylists, getRecommendSongs, getNewestAlbums, getTopAlbums, getTopArtists, getTopSongs, searchMusic, getAllMvs, getDjRecommend, setPersonalFmMode } from '../api/music';
 import { getUserCreatedPlaylist } from '../api/auth';
 import { playerStore } from '../stores/player';
-import { uiStore } from '../stores/ui';
+import { useUiStore } from '../stores/ui';
+const uiStore = useUiStore();
 import { userStore } from '../stores/user';
 import AnimatedAppear from './AnimatedAppear.vue';
 import GradientCard from './ui/GradientCard.vue';
@@ -1686,7 +1687,7 @@ watch(
 );
 
 watch(
-  () => uiStore.themeMode,
+  () => uiStore.state.themeMode,
   (mode) => {
     playerStore.syncThemeState(mode);
     playerStore.persist();

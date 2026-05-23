@@ -10,6 +10,7 @@ const eqSettings = useEqSettingsStore();
 import { setupMediaSession } from '../composables/useMediaSession';
 import { createAudioEngine } from '../player/audioEngine';
 import { resolvePlayUrl } from '../player/playbackResolver';
+import { useUiStore } from './ui';
 
 type Artist = { name: string };
 type Album = { name?: string; picUrl?: string };
@@ -574,15 +575,14 @@ export const playerStore = reactive({
       }
 
       // URL 决议：fee 探测 → 音质选择 → 缓存 → unblock → 降级检测 → 代理回退
-      const uiImport = import("../stores/ui");
-      const { uiStore } = await uiImport;
+      const uiStore = useUiStore();
       const result = await resolvePlayUrl({
         trackId: track.id,
         defaultQuality: this.defaultQuality,
         isVip: userStore.isVip,
         loginCookie: userStore.loginCookie,
-        unblockEnabled: uiStore.unblockEnabled,
-        unblockSources: uiStore.unblockSources,
+        unblockEnabled: uiStore.state.unblockEnabled,
+        unblockSources: uiStore.state.unblockSources,
         apiBaseUrl: platform.apiBaseUrl,
         unblockProxyUrl: platform.unblockProxyUrl,
         getCache,

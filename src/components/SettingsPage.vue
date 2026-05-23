@@ -470,7 +470,8 @@ const emit = defineEmits<{
 import DropdownSelect from './ui/DropdownSelect.vue';
 import FancySwitch from './ui/FancySwitch.vue';
 import { playerStore } from '../stores/player';
-import { uiStore } from '../stores/ui';
+import { useUiStore } from '../stores/ui';
+const uiStore = useUiStore();
 import { userStore } from '../stores/user';
 import { getSourceMeta } from '../config/musicSources';
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
@@ -708,12 +709,12 @@ const currentGroups = computed(() => {
 });
 
 const switchState = reactive<Record<string, boolean>>({
-  unblock: uiStore.unblockEnabled,
+  unblock: uiStore.state.unblockEnabled,
   autoplay: playerStore.autoplayNext,
   barLyric: lyricsSettings.state.showBarLyric,
-  resumeAfterMv: uiStore.resumeAfterMv,
-  showIntelligenceIndicator: uiStore.showIntelligenceIndicator,
-  autoHidePlayerUI: uiStore.autoHidePlayerUI,
+  resumeAfterMv: uiStore.state.resumeAfterMv,
+  showIntelligenceIndicator: uiStore.state.showIntelligenceIndicator,
+  autoHidePlayerUI: uiStore.state.autoHidePlayerUI,
   paidContentSkip: playerStore.paidContentSkip,
   trayLyricEnabled: false, // 实际值从主进程加载
   desktopLyricEnabled: false, // 实际值从主进程加载
@@ -724,18 +725,18 @@ const selectState = reactive<Record<string, string>>({
   quality: playerStore.defaultQuality,
   playMode: playerStore.playMode === 'single' ? '单曲循环' : playerStore.playMode === 'shuffle' ? '随机播放' : '列表循环',
   playbackRate: `${playerStore.defaultPlaybackRate.toFixed(2).replace(/\.00$/, '.0')}x`,
-  theme: uiStore.themeMode,
-  accent: uiStore.accentMode,
+  theme: uiStore.state.themeMode,
+  accent: uiStore.state.accentMode,
   desktopLyricMode: '滚动列表', // 实际值从主进程加载
   desktopLyricFontSize: '中', // 实际值从主进程加载
 });
 
-const accentCustomColor = ref(uiStore.accentCustomColor);
+const accentCustomColor = ref(uiStore.state.accentCustomColor);
 const desktopLyricHighlightColor = ref('#ff6b81');
 const desktopLyricTextColor = ref('#ffffff');
 
 watch(
-  () => uiStore.themeMode,
+  () => uiStore.state.themeMode,
   (value) => {
     selectState.theme = value;
   },
@@ -743,7 +744,7 @@ watch(
 );
 
 watch(
-  () => uiStore.accentMode,
+  () => uiStore.state.accentMode,
   (value) => {
     selectState.accent = value;
   },
@@ -751,7 +752,7 @@ watch(
 );
 
 watch(
-  () => uiStore.accentCustomColor,
+  () => uiStore.state.accentCustomColor,
   (value) => {
     accentCustomColor.value = value;
   },
@@ -778,7 +779,7 @@ const inputState = reactive<Record<string, string>>({
 
 const sourceOrder = computed({
   get: () =>
-    uiStore.unblockSources.map((key) => {
+    uiStore.state.unblockSources.map((key) => {
       const meta = getSourceMeta(key);
       return { key, label: meta?.label || key, color: meta?.color || '#888' };
     }),
