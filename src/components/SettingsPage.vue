@@ -667,7 +667,7 @@ watch(
 );
 
 watch(
-  () => userStore.loginMode,
+  () => userStore.state.loginMode,
   (mode) => {
     if (mode === 'none' && activeTab.value === 'account') {
       activeTab.value = 'appearance';
@@ -684,9 +684,9 @@ const currentGroups = computed(() => {
       items: g.items.filter((item) => {
         if (item.key === 'accentCustomColor') return selectState.accent === '自定义';
         if (item.key === 'unblockSources') return switchState.unblock;
-        if (item.key === 'logout') return userStore.isLogin;
-        if (item.key === 'cookieEditor') return userStore.isLogin;
-        if (!userStore.isLogin && activeTab.value === 'account') {
+        if (item.key === 'logout') return userStore.state.isLogin;
+        if (item.key === 'cookieEditor') return userStore.state.isLogin;
+        if (!userStore.state.isLogin && activeTab.value === 'account') {
           return false;
         }
         // 本地音乐功能仅桌面端可用
@@ -775,7 +775,7 @@ const rangeState = reactive<Record<string, number>>({
 });
 
 const inputState = reactive<Record<string, string>>({
-  cookieEditor: userStore.loginCookie || '',
+  cookieEditor: userStore.state.loginCookie || '',
 });
 
 // --- Source order ---
@@ -950,7 +950,7 @@ watch(
 );
 
 watch(
-  () => userStore.loginCookie,
+  () => userStore.state.loginCookie,
   (value) => {
     inputState.cookieEditor = value || '';
   },

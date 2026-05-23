@@ -60,7 +60,7 @@ const props = defineProps<{
   liked?: boolean;
 }>();
 
-const isSaved = ref(Boolean(props.liked ?? (props.songId ? userStore.likedSongIds.includes(props.songId) : false)));
+const isSaved = ref(Boolean(props.liked ?? (props.songId ? userStore.state.likedSongIds.includes(props.songId) : false)));
 const isLoading = ref(false);
 const burstSeed = ref(0);
 
@@ -68,7 +68,7 @@ function syncIsSaved() {
   if (props.liked !== undefined) {
     isSaved.value = props.liked;
   } else if (props.songId) {
-    isSaved.value = userStore.likedSongIds.includes(props.songId);
+    isSaved.value = userStore.state.likedSongIds.includes(props.songId);
   } else {
     isSaved.value = false;
   }
@@ -77,10 +77,10 @@ function syncIsSaved() {
 watch([() => props.liked, () => props.songId], syncIsSaved, { immediate: true });
 
 watch(
-  () => userStore.likedSongIds,
+  () => userStore.state.likedSongIds,
   () => {
     if (props.liked === undefined && props.songId) {
-      isSaved.value = userStore.likedSongIds.includes(props.songId);
+      isSaved.value = userStore.state.likedSongIds.includes(props.songId);
     }
   },
 );
@@ -115,11 +115,11 @@ async function toggleSaved() {
   if (typeof props.songId !== 'number') return;
 
   // 鉴权检查
-  if (!userStore.isLogin) {
+  if (!userStore.state.isLogin) {
     loginModalStore.showLoginModal('like');
     return;
   }
-  if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+  if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
     loginModalStore.showGlobalToast('搜索用户方式登录不支持收藏功能，请使用扫码或 Cookie 登录', 'warning', 5000);
     return;
   }
@@ -131,8 +131,8 @@ async function toggleSaved() {
     const response = await toggleSongLike({
       id: props.songId,
       like: nextState,
-      uid: userStore.profile?.userId,
-      cookie: userStore.loginCookie || undefined,
+      uid: userStore.state.profile?.userId,
+      cookie: userStore.state.loginCookie || undefined,
     });
     const code = response?.data?.code ?? response?.data?.data?.code;
     if (typeof code === 'number' && code !== 200) {
@@ -141,9 +141,9 @@ async function toggleSaved() {
 
     isSaved.value = nextState;
     if (typeof props.songId === 'number') {
-      const exists = userStore.likedSongIds.includes(props.songId);
-      if (nextState && !exists) userStore.likedSongIds = [...userStore.likedSongIds, props.songId];
-      if (!nextState && exists) userStore.likedSongIds = userStore.likedSongIds.filter((id) => id !== props.songId);
+      const exists = userStore.state.likedSongIds.includes(props.songId);
+      if (nextState && !exists) userStore.state.likedSongIds = [...userStore.state.likedSongIds, props.songId];
+      if (!nextState && exists) userStore.state.likedSongIds = userStore.state.likedSongIds.filter((id) => id !== props.songId);
     }
     burstSeed.value += 1;
   } catch (error) {

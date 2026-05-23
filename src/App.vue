@@ -172,7 +172,7 @@
       <ScrollToTopFab v-if="showBackToTop" :fixed="true" :scroll-host-selector="backToTopScrollHost" />
     </div>
 
-    <PlayerBar v-show="!playerStore.expanded" />
+    <PlayerBar v-show="!playerStore.state.expanded" />
     <PlayQueuePanel />
     <PlayerExpanded @open-artist="openArtistFromPlayer" @open-album="(albumId) => { playerStore.closeExpanded(); openAlbumDetail(albumId, activePage.value); }" @open-user="openUserFromComment" @open-podcast-detail="(item) => { playerStore.closeExpanded(); openPodcastDetail(item); }" />
     <LoginModal />
@@ -850,7 +850,7 @@ async function loadPodcastCenter() {
     tasks.push(getDjRecommend());
     tasks.push(getDjCategoryRecommend());
 
-    const isFullLogin = userStore.loginMode === 'cookie' || userStore.loginMode === 'qr';
+    const isFullLogin = userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr';
     const [recentRes, sublistRes, recommendRes, categoryRes] = await Promise.all(tasks);
 
     podcastRecentItems.value = normalizeRecentPlayDjItems(extractVoiceListItems(recentRes));
@@ -1041,7 +1041,7 @@ function goBackFromMvPlay() {
   navHistory.replace({ page: target });
   activePage.value = target;
   // 关闭 MV 页后根据设置恢复音乐播放
-  if (uiStore.state.resumeAfterMv && wasPlayingBeforeMvPage && playerStore.currentTrack) {
+  if (uiStore.state.resumeAfterMv && wasPlayingBeforeMvPage && playerStore.state.currentTrack) {
     playerStore.togglePlay();
   }
 }
@@ -1054,9 +1054,9 @@ function openMvFromSearch(item: any) {
   activeMvReturnPage.value = activePage.value;
   activePage.value = 'mv-play';
   // 打开 MV 页时暂停音乐播放
-  wasPlayingBeforeMvPage = playerStore.isPlaying;
-  if (playerStore.isPlaying) {
-    playerStore.audio.pause();
+  wasPlayingBeforeMvPage = playerStore.state.isPlaying;
+  if (playerStore.state.isPlaying) {
+    playerStore.state.audio.pause();
   }
 }
 
@@ -1122,7 +1122,7 @@ onMounted(async () => {
 
   if (apiReady.value) {
     // API 已就绪，确认登录状态（首次成功则跳过，失败则重试）
-    if (!userStore.loginVerified) {
+    if (!userStore.state.loginVerified) {
       await userStore.refreshLoginStatus();
     }
     await uiStore.loadDefaultSearchKeyword();

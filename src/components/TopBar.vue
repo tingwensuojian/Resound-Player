@@ -74,7 +74,7 @@
           rhythm="actions"
           :index="2"
           class-name="avatar button-surface"
-          :attrs="{ type: 'button', 'aria-label': userStore.isLogin ? '打开用户菜单' : '登录', 'aria-expanded': userStore.isLogin ? String(showUserMenu) : undefined }"
+          :attrs="{ type: 'button', 'aria-label': userStore.state.isLogin ? '打开用户菜单' : '登录', 'aria-expanded': userStore.state.isLogin ? String(showUserMenu) : undefined }"
           @click.stop="onUserButtonClick"
         >
           <img v-if="userAvatarUrl" :src="userAvatarUrl" :alt="userAvatarAlt" class="avatar-img" />
@@ -82,18 +82,18 @@
         </AnimatedAppear>
 
         <transition name="user-menu-fade">
-          <div v-if="showUserMenu && userStore.isLogin" class="user-menu" :style="userMenuStyle" @click.stop>
+          <div v-if="showUserMenu && userStore.state.isLogin" class="user-menu" :style="userMenuStyle" @click.stop>
             <div class="user-card">
               <img v-if="userAvatarUrl" :src="userAvatarUrl" :alt="userAvatarAlt" class="user-card-avatar" />
               <div class="user-card-meta">
                 <div class="user-card-name-row">
-                  <strong>{{ userStore.profile?.nickname || '未命名用户' }}</strong>
+                  <strong>{{ userStore.state.profile?.nickname || '未命名用户' }}</strong>
                 </div>
                 <div class="user-card-vip-row">
-                  <span class="level-tag">Lv.{{ userStore.level || 0 }}</span>
-                  <img v-if="userStore.isVip && userStore.vipInfo?.redVipLevelIcon" :src="userStore.vipInfo.redVipLevelIcon" class="vip-icon" alt="VIP" />
+                  <span class="level-tag">Lv.{{ userStore.state.level || 0 }}</span>
+                  <img v-if="userStore.state.isVip && userStore.state.vipInfo?.redVipLevelIcon" :src="userStore.state.vipInfo.redVipLevelIcon" class="vip-icon" alt="VIP" />
                 </div>
-                <span>UID {{ userStore.profile?.userId || '-' }}</span>
+                <span>UID {{ userStore.state.profile?.userId || '-' }}</span>
                 <em>{{ loginModeLabel }}</em>
               </div>
             </div>
@@ -229,7 +229,7 @@ async function handleIntelligencePlay() {
   if (!checkAuth()) return;
 
   // 从用户歌单列表中找一个有曲目的作为 pid
-  const validPlaylist = userStore.playlists.find(p => p.trackCount && p.trackCount > 0);
+  const validPlaylist = userStore.state.playlists.find(p => p.trackCount && p.trackCount > 0);
   if (!validPlaylist) {
     loginModalStore.showGlobalToast('您的歌单列表暂无心动推荐', 'warning');
     return;
@@ -263,22 +263,22 @@ const searchKeyword = computed({
   },
 });
 const searchPlaceholder = computed(() => uiStore.state.defaultSearchHint || '搜索歌曲/歌手，热搜：周杰伦、林俊杰、告五人');
-const userAvatarUrl = computed(() => userStore.profile?.avatarUrl || '');
-const userAvatarAlt = computed(() => `${userStore.profile?.nickname || '用户'}头像`);
+const userAvatarUrl = computed(() => userStore.state.profile?.avatarUrl || '');
+const userAvatarAlt = computed(() => `${userStore.state.profile?.nickname || '用户'}头像`);
 const userInitials = computed(() => {
-  if (!userStore.isLogin) return '登录';
-  const name = userStore.profile?.nickname?.trim() || '用户';
+  if (!userStore.state.isLogin) return '登录';
+  const name = userStore.state.profile?.nickname?.trim() || '用户';
   return Array.from(name).slice(0, 2).join('').toUpperCase();
 });
 const loginModeLabel = computed(() => {
-  if (userStore.loginMode === 'uid') return '搜索用户模式';
-  if (userStore.loginMode === 'qr') return '扫码登录';
-  if (userStore.loginMode === 'cookie') return 'Cookie 登录';
+  if (userStore.state.loginMode === 'uid') return '搜索用户模式';
+  if (userStore.state.loginMode === 'qr') return '扫码登录';
+  if (userStore.state.loginMode === 'cookie') return 'Cookie 登录';
   return '已登录';
 });
 const vipLabel = computed(() => {
-  if (!userStore.isVip) return '';
-  const info = userStore.vipInfo;
+  if (!userStore.state.isVip) return '';
+  const info = userStore.state.vipInfo;
   if (!info) return '';
   const parts: string[] = [];
   if (info.associator?.vipCode > 0) {
@@ -419,7 +419,7 @@ function closeUserMenu() {
 }
 
 function onUserButtonClick() {
-  if (!userStore.isLogin) {
+  if (!userStore.state.isLogin) {
     emit('user-click');
     return;
   }
@@ -465,7 +465,7 @@ function toggleAccentMode() {
 }
 
 async function copyUserId() {
-  const uid = userStore.profile?.userId;
+  const uid = userStore.state.profile?.userId;
   if (!uid) return;
   await navigator.clipboard?.writeText(String(uid));
   menuFeedback.value = '用户 ID 已复制';

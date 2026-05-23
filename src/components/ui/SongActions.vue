@@ -1,7 +1,7 @@
 <template>
   <div class="song-actions" @click.stop>
-    <TooltipWrapper :text="userStore.likedSongIds.includes(Number(song?.id || 0)) ? '取消收藏' : '收藏'">
-    <BookmarkIconButton :song-id="Number(song?.id || 0)" :liked="userStore.likedSongIds.includes(Number(song?.id || 0))" />
+    <TooltipWrapper :text="userStore.state.likedSongIds.includes(Number(song?.id || 0)) ? '取消收藏' : '收藏'">
+    <BookmarkIconButton :song-id="Number(song?.id || 0)" :liked="userStore.state.likedSongIds.includes(Number(song?.id || 0))" />
     </TooltipWrapper>
     <TooltipWrapper text="下一首播放">
     <button class="sa-btn" @click.stop="$emit('play-next', song)">
@@ -194,15 +194,15 @@ function openEncyclopedia() {
   showEncyclopediaId.value = Number(props.song?.id || 0);
 }
 
-const isRealLogin = computed(() => userStore.loginMode === 'cookie' || userStore.loginMode === 'qr');
+const isRealLogin = computed(() => userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr');
 
 function isQualityAvailable(level: string): boolean {
-  return isQualityAvailableRaw(level, isRealLogin.value, userStore.isVip);
+  return isQualityAvailableRaw(level, isRealLogin.value, userStore.state.isVip);
 }
 
 const isUnblockSource = computed(() => {
-  const isRealLogin = userStore.loginMode === 'cookie' || userStore.loginMode === 'qr';
-  return !(isRealLogin && userStore.isVip);
+  const isRealLogin = userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr';
+  return !(isRealLogin && userStore.state.isVip);
 });
 
 const showDownloadPopup = ref(false);
@@ -217,8 +217,8 @@ async function fetchDownloadSizes() {
   if (!songId) return;
   const sizes: Record<string, string> = {};
 
-  const isRealLogin = userStore.loginMode === 'cookie' || userStore.loginMode === 'qr';
-  const useOfficial = isRealLogin && userStore.isVip;
+  const isRealLogin = userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr';
+  const useOfficial = isRealLogin && userStore.state.isVip;
 
   if (!useOfficial) {
     // 非会员/未登录/搜索用户：使用音源替换的文件大小
@@ -240,7 +240,7 @@ async function fetchDownloadSizes() {
   // 会员或音源替换失败：使用官方大小
   for (const q of qualityOptions) {
     try {
-      const { data: body } = await getSongUrlV1(songId, q.level, userStore.loginCookie || undefined);
+      const { data: body } = await getSongUrlV1(songId, q.level, userStore.state.loginCookie || undefined);
       const item = Array.isArray(body?.data) ? body.data[0] : null;
       if (item?.size > 0) {
         const mb = item.size / 1048576;
@@ -339,7 +339,7 @@ async function downloadSong(level: string, label: string) {
   if (!songId) return;
 
   try {
-    const { data: body } = await getSongUrlV1(songId, level, userStore.loginCookie || undefined);
+    const { data: body } = await getSongUrlV1(songId, level, userStore.state.loginCookie || undefined);
     const item = Array.isArray(body?.data) ? body.data[0] : null;
     const url: string | undefined = item?.url;
     if (!url) {
@@ -365,8 +365,8 @@ async function downloadSong(level: string, label: string) {
         } catch { /* 直连失败，走回退 */ }
       }
       // 回退：走 Vite 代理（处理 music.163.com/package 等需 Cookie 的 URL）
-      const isRealLogin = userStore.loginMode === 'cookie' || userStore.loginMode === 'qr';
-      const c = isRealLogin ? (userStore.loginCookie || '') : '';
+      const isRealLogin = userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr';
+      const c = isRealLogin ? (userStore.state.loginCookie || '') : '';
       return fetch('/dl-proxy?url=' + encodeURIComponent(url) + '&cookie=' + encodeURIComponent(c));
     }
     let resp = await doFetch();
@@ -409,11 +409,11 @@ async function uploadToCloud() {
   }
 
   // 检查登录状态
-  if (!userStore.isLogin) {
+  if (!userStore.state.isLogin) {
     loginModalStore.showLoginModal('none');
     return;
   }
-  if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+  if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
     loginModalStore.showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000);
     return;
   }
@@ -425,7 +425,7 @@ async function uploadToCloud() {
 
   try {
     // 获取歌曲URL信息以获取md5、size、bitrate
-    const { data: body } = await getSongUrlV1(songId, 'exhigh', userStore.loginCookie || undefined);
+    const { data: body } = await getSongUrlV1(songId, 'exhigh', userStore.state.loginCookie || undefined);
     const item = Array.isArray(body?.data) ? body.data[0] : null;
 
     if (!item) {
@@ -454,7 +454,7 @@ async function uploadToCloud() {
       id: songId,
       artist: artistName,
       album: albumName,
-      cookie: userStore.loginCookie || undefined,
+      cookie: userStore.state.loginCookie || undefined,
     });
 
     if (result?.code === 200) {

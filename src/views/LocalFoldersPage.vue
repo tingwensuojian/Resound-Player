@@ -156,8 +156,8 @@ async function showOnlineAlbum(track: any) {
 /** 上传至云盘：读取本地文件信息，通过 API 导入云盘 */
 async function uploadToCloud(track: any) {
   if (!platform.localApi) return
-  if (!userStore.isLogin) { loginModalStore.showLoginModal('none'); return }
-  if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+  if (!userStore.state.isLogin) { loginModalStore.showLoginModal('none'); return }
+  if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
     loginModalStore.showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000)
     return
   }
@@ -175,7 +175,7 @@ async function uploadToCloud(track: any) {
       md5: info.md5,
       artist: track.artist || '未知歌手',
       album: track.album || '未知专辑',
-      cookie: userStore.loginCookie || undefined,
+      cookie: userStore.state.loginCookie || undefined,
     })
     if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
       loginModalStore.showGlobalToast('已上传至云盘', 'success', 3000)

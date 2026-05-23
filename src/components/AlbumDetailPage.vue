@@ -346,7 +346,7 @@ async function showAddToPlaylist(song: any) {
   if (!checkAuth()) return;
   pickerTargetSong.value = song;
   try {
-    const res = await getUserPlaylist(userStore.profile?.userId || 0, userStore.state.loginCookie || undefined);
+    const res = await getUserPlaylist(userStore.state.profile?.userId || 0, userStore.state.loginCookie || undefined);
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
   } catch {
     playlistPickerList.value = [];

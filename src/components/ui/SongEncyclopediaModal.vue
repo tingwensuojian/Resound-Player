@@ -255,7 +255,7 @@ async function fetchEncyclopedia(id: number) {
   wikiItems.value = [];
 
   try {
-    const cookie = userStore.loginCookie || undefined;
+    const cookie = userStore.state.loginCookie || undefined;
     const res = await getSongEncyclopedia(id, cookie);
     if (token !== fetchToken) return;
 
