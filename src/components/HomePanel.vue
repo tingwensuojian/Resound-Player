@@ -1155,7 +1155,6 @@ async function fetchDailyRecommendPlaylists() {
     if (cachedCover?.data) {
       radarCoverUrl.value = cachedCover.data;
     }
-    await fetchRadarPlaylistDetail();
     return;
   }
 
@@ -1167,7 +1166,6 @@ async function fetchDailyRecommendPlaylists() {
     const list = data?.recommend || [];
     privateRadar.value = list;
     apiCache.set('daily:playlists', list, dailyTtl());
-    await fetchRadarPlaylistDetail();
   } catch (e: any) {
     privateRadar.value = [];
     radarTopTracks.value = [];
@@ -1650,7 +1648,7 @@ onMounted(async () => {
     });
   }
 
-  await Promise.all([loadMoreHotSongs(), fetchDailyRecommendSongs(), fetchDailyRecommendPlaylists(), fetchPublicRecoPlaylists(), fetchPersonalFm(), fetchTopArtists(), fetchTopAlbums(), fetchLatestMusic(), fetchMvList(), fetchPodcastList(), fetchRadarPlaylists()]);
+  await Promise.all([loadMoreHotSongs(), fetchDailyRecommendSongs(), fetchDailyRecommendPlaylists(), fetchPublicRecoPlaylists(), fetchPersonalFm(), fetchRadarPlaylistDetail(), fetchTopArtists(), fetchTopAlbums(), fetchLatestMusic(), fetchMvList(), fetchPodcastList(), fetchRadarPlaylists()]);
 
   await nextTick();
   setupHotSongsObserver();
@@ -1683,7 +1681,7 @@ onBeforeUnmount(() => {
 watch(
   () => [userStore.isLogin, userStore.loginMode, userStore.profile?.userId],
   async () => {
-    await Promise.all([fetchDailyRecommendSongs(), fetchDailyRecommendPlaylists(), fetchPublicRecoPlaylists(), fetchPersonalFm()]);
+    await Promise.all([fetchDailyRecommendSongs(), fetchDailyRecommendPlaylists(), fetchPublicRecoPlaylists(), fetchPersonalFm(), fetchRadarPlaylistDetail()]);
   },
 );
 
