@@ -421,7 +421,7 @@ async function uploadToCloud(track: LocalTrack) {
   }
 }
 
-function sortBy(field: SortField) {
+function sortBy(field: string) {
   localMusicStore.toggleSort(field)
 }
 

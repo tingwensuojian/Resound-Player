@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue'
+import { computed, type Ref, type ComputedRef } from 'vue'
 
 export interface UseVirtualScrollOptions {
   /** 数据源 */

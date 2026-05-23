@@ -90,7 +90,7 @@ function set(key: string, value: any) { (s as any)[key] = value; lyricsSettings.
 const localBgMode = ref(s.bgMode);
 function setBgMode(v: string) { s.bgMode = v; lyricsSettings.save(); }
 const localBgCustomMode = ref(s.bgCustomMode);
-function setBgCustomMode(v: string) { s.bgCustomMode = v as any; lyricsSettings.save(); localBgCustomMode.value = v; }
+function setBgCustomMode(v: string) { s.bgCustomMode = v as any as any; lyricsSettings.save(); localBgCustomMode.value = v; }
 function setShowCover(v: boolean) { s.showCover = !v; if (v) { s.showLyrics = true; s.showMiniBar = true; } lyricsSettings.save(); }
 function setShowLyrics(v: boolean) { s.showLyrics = !v; if (v) s.showCover = true; lyricsSettings.save(); }
 

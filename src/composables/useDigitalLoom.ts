@@ -7,7 +7,7 @@ export function useDigitalLoom(
   let cleanup: (() => void) | null = null;
 
   function start() {
-    const ctn = containerRef.value;
+    const ctn = containerRef.value!;
     if (!ctn) return;
 
     const canvas = document.createElement('canvas');
@@ -16,7 +16,7 @@ export function useDigitalLoom(
     canvas.style.display = 'block';
     ctn.appendChild(canvas);
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d')!;
     if (!ctx) return;
 
     let threads: {

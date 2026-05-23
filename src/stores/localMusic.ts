@@ -211,7 +211,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       if (!uncached.length) return
       await Promise.all(uncached.map(async (track) => {
         try {
-          const cover = await platform.localApi!.readCover(track.path)
+          const cover = await (platform.localApi as any).readCover(track.path)
           if (cover) track.coverUrl = cover
         } catch { /* ignore single failure */ }
       }))
@@ -340,7 +340,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     state.scanning = true
     state.progress = { current: 0, total: 0 }
     try {
-      if (platform.localApi?.startScan) await platform.localApi.startScan()
+      if ((platform.localApi as any)?.startScan) await (platform.localApi as any).startScan()
     } catch (e) { console.warn('[localMusic] scanAll failed:', e) }
     finally { state.scanning = false }
   }

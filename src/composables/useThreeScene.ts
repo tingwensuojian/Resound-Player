@@ -87,7 +87,7 @@ export function useThreeScene(
 
   async function start() {
     const THREE = await import('three');
-    const ctn = containerRef.value;
+    const ctn = containerRef.value!;
     if (!ctn) return;
 
     const scene = new THREE.Scene();

@@ -167,7 +167,7 @@ const activeTab = ref<'episodes' | 'comments'>('episodes');
 const tabs = [
   { key: 'episodes', label: '声音' },
   { key: 'comments', label: '评论' },
-] as const;
+] ;
 const searchQuery = ref('');
 const tabContentKey = computed(() => `${podcastRid.value || 'pending'}:${activeTab.value}`);
 

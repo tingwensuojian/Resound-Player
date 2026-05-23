@@ -45,12 +45,12 @@ export function useDetailStickyState(
     const delta = Math.abs(progress - lastProgress);
     if (!force && delta < 0.005) return;
     lastProgress = progress;
-    host.style.setProperty('--sticky-progress', String(progress));
+    (host as HTMLElement).style.setProperty('--sticky-progress', String(progress));
   }
 
   /** 同步 content::before blur 的透明度 */
   function syncBlurOpacity(progress: number): void {
-    const contentEl = document.querySelector('.content');
+    const contentEl = document.querySelector('.content') as HTMLElement | null;
     if (contentEl) {
       const blurOpacity = Math.max(0, 1 - progress * 1.5);
       contentEl.style.setProperty('--blur-opacity', String(blurOpacity));
@@ -125,11 +125,11 @@ export function useDetailStickyState(
       host.style.removeProperty('--sticky-progress');
     }
     // 清理 blur opacity
-    document.querySelector('.content')?.style.removeProperty('--blur-opacity');
+    (document.querySelector('.content') as HTMLElement | null)?.style.removeProperty('--blur-opacity');
     // 清理 is-sticky-header class
     document.querySelector(STICKY_CLASS_TARGET)?.classList.remove('is-sticky-header');
     // 清理 --cover-bg-url（避免残留到下一个详情页）
-    document.querySelector('.content')?.style.removeProperty('--cover-bg-url');
+    (document.querySelector('.content') as HTMLElement | null)?.style.removeProperty('--cover-bg-url');
   });
 
   return { refresh };

@@ -57,7 +57,7 @@ export function usePaperShaders(
 
   async function start() {
     const THREE = await import('three');
-    const ctn = containerRef.value;
+    const ctn = containerRef.value!;
     if (!ctn) return;
 
     const w = ctn.clientWidth;

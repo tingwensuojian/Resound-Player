@@ -1114,7 +1114,7 @@ async function fetchPublicRecoPlaylists() {
           ? data.data.playlist
           : [];
     const uid = userStore.state.profile?.userId;
-    const createdList = uid ? list.filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) === Number(uid)) : list;
+    const createdList = uid ? list.filter((item: any) => Number((item as any).creator?.userId || item?.userId || 0) === Number(uid)) : list;
 
     publicRecoPlaylists.value = createdList
       .filter((item: any) => Number(item?.id || 0) > 0)
@@ -1585,7 +1585,7 @@ async function fetchMvList() {
       name: item.name || item.title,
       cover: item.cover || item.imgurl16v9 || item.coverImgUrl || item.picUrl || item.picUrl16v9 || item.imgurl || '',
       playCount: item.playCount || item.playTime || 0,
-      artistName: item.artistName || item.artist?.name || item.creator?.nickname || '',
+      artistName: item.artistName || item.artist?.name || (item as any).creator?.nickname || '',
     })).filter((item: any) => item.id);
     if (mvList.value.length) {
       apiCache.set(cacheKey, mvList.value, CACHE_TTL.LIST);

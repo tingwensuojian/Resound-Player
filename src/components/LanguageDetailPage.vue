@@ -127,9 +127,8 @@ const hasMore = ref(false);
 
 let fetchToken = 0;
 
-const { refresh } = useDetailStickyState({
-  scrollHostSelector: () => '.content',
-});
+const { refresh } = useDetailStickyState();
+  // scrollHostSelector removed: useDetailStickyState doesn't accept this parameter
 
 /** 计算实际要查的歌单分类 */
 const playlistCategory = computed(() => {

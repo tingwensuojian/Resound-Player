@@ -200,7 +200,7 @@ const activeTab = ref<'songs' | 'comments'>('songs');
 const tabs = [
   { key: 'songs', label: '歌曲' },
   { key: 'comments', label: '评论' },
-] as const;
+] ;
 const searchQuery = ref('');
 
 // 使用 useApiData 获取专辑详情

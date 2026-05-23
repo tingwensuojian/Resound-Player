@@ -206,7 +206,7 @@ const showAddTrackModal = ref(false)
 const hoveredIdx = ref(-1)
 
 function isTrackPlaying(track: LocalTrack) {
-  return nowPlayingId.value === track.id
+  return String(nowPlayingId.value) === String(track.id)
 }
 
 function isTrackPaused(track: LocalTrack) {
@@ -324,7 +324,7 @@ function playTrack(track: any, index: number) {
     source: 'local' as const, path: t.path,
   }))
   playerStore.setPlaylist(playlist as any, index)
-  playerStore.playByIndex(index)
+  playerStore.playByIndex(Number(index))
 }
 
 function handlePlayAll() {

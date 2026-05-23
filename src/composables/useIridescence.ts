@@ -53,6 +53,10 @@ export interface IridescenceConfig {
   amplitude: number;
 }
 
+type Program = any;
+// Color is dynamically imported from 'ogl'; declare var for type compatibility
+declare var Color: any;
+
 export function useIridescence(
   containerRef: Ref<HTMLElement | null>,
   config: Ref<IridescenceConfig>,
@@ -61,22 +65,22 @@ export function useIridescence(
   let cleanup: (() => void) | null = null;
   let started = false;
   let program: Program | null = null;
-  let gl: WebGLRenderingContext | null = null;
+  let gl: any = null;
   let rendererInst: any = null;
 
   function applyConfig() {
     if (!program) return;
     const { color1, color2, color3, speed, amplitude } = config.value;
-    program.uniforms.uColor1.value = new Color(color1[0], color1[1], color1[2]);
-    program.uniforms.uColor2.value = new Color(color2[0], color2[1], color2[2]);
-    program.uniforms.uColor3.value = new Color(color3[0], color3[1], color3[2]);
+    program.uniforms.uColor1.value = new (Color as any)(color1[0], color1[1], color1[2]);
+    program.uniforms.uColor2.value = new (Color as any)(color2[0], color2[1], color2[2]);
+    program.uniforms.uColor3.value = new (Color as any)(color3[0], color3[1], color3[2]);
     program.uniforms.uAmplitude.value = amplitude;
     program.uniforms.uSpeed.value = speed;
   }
 
   async function start() {
     const { Renderer, Program, Mesh, Triangle, Color } = await import('ogl');
-    const ctn = containerRef.value;
+    const ctn = containerRef.value!;
     if (!ctn || started) { return; }
 
     try { rendererInst = new Renderer({ alpha: true }); } catch(e) { console.error('[iri] Renderer init failed', e); return; }
@@ -100,7 +104,7 @@ export function useIridescence(
     let animId: number;
     try {
       const geometry = new Triangle(gl);
-      program = new Program(gl, {
+      program = new (Program as any)(gl as any, {
         vertex: vertexShader,
         fragment: fragmentShader,
         uniforms: {
@@ -123,14 +127,14 @@ export function useIridescence(
         rendererInst.render({ scene: mesh });
       }
       animId = requestAnimationFrame(update);
-      ctn.appendChild(gl.canvas);
+      ctn.appendChild(gl.canvas as HTMLCanvasElement);
       started = true;
     } catch(e) { console.error('[iri] setup failed', e); }
 
     cleanup = () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
-      if (gl.canvas.parentNode) ctn.removeChild(gl.canvas);
+      if ((gl.canvas as HTMLCanvasElement).parentNode) ctn.removeChild(gl.canvas);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
       started = false;
     };
@@ -139,7 +143,7 @@ export function useIridescence(
   function stop() {
     if (cleanup) { cleanup(); cleanup = null; }
     program = null;
-    gl = null;
+    gl = null as any;
     rendererInst = null;
   }
 

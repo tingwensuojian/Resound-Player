@@ -81,7 +81,7 @@ export function useMistBackground(
   let cleanup: (() => void) | null = null;
 
   function start() {
-    const ctn = containerRef.value;
+    const ctn = containerRef.value!;
     if (!ctn) return;
 
     const canvas = document.createElement('canvas');
@@ -90,7 +90,7 @@ export function useMistBackground(
     canvas.style.display = 'block';
     ctn.appendChild(canvas);
 
-    const gl = canvas.getContext('webgl');
+    const gl = canvas.getContext('webgl')!;
     if (!gl) return;
 
     const program = gl.createProgram()!;
