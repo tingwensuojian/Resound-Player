@@ -572,7 +572,6 @@ const playModeTooltip = computed(() => {
 });
 
 // ── 系统托盘歌词：发送歌词和播放状态到主进程 ──
-import { platform } from '../utils/platform';
 
 // ── 状态栏歌词：升级数据契约（完整歌词数组 + 精确进度） ──
 import { throttle } from '../utils/throttle';

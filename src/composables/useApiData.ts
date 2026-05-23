@@ -17,7 +17,7 @@
  * )
  * ```
  */
-import { ref, watch, readonly, type Ref, type UnwrapRef } from 'vue';
+import { ref, watch, readonly, type Ref } from 'vue';
 import { apiCache, CACHE_TTL, type CacheEntry } from '../stores/apiCache';
 import { dedup } from '../utils/requestDedup';
 import { useUserStore } from '../stores/user';
@@ -102,7 +102,7 @@ export function useApiData<T>(
         try {
           const freshData = await dedup(key, fetcher);
           if (token === loadToken) {
-            data.value = freshData as UnwrapRef<T>;
+            data.value = freshData as T;
             apiCache.set(key, freshData, ttl);
           }
         } catch {
@@ -119,7 +119,7 @@ export function useApiData<T>(
     try {
       const result = await dedup(key, fetcher);
       if (currentToken === loadToken) {
-        data.value = result as UnwrapRef<T>;
+        data.value = result as T;
         apiCache.set(key, result, ttl);
         onSuccess?.(result);
       }
@@ -143,7 +143,7 @@ export function useApiData<T>(
 
   /** 乐观更新 */
   function mutate(newData: T): void {
-    data.value = newData as UnwrapRef<T>;
+    data.value = newData as T;
     const key = resolveKey();
     if (key) {
       apiCache.set(key, newData, ttl);
