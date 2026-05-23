@@ -1089,11 +1089,20 @@ function handleLocalNavigate(e: Event) {
   }
 }
 
+/** 处理从子组件（如本地歌曲）触发的在线专辑导航 */
+function handleOpenAlbumDetail(e: Event) {
+  const detail = (e as CustomEvent).detail
+  if (detail?.albumId) {
+    openAlbumDetail(detail.albumId, 'local-music')
+  }
+}
+
 onMounted(async () => {
   syncViewport();
   window.addEventListener('resize', syncViewport);
   window.addEventListener('local-navigate', handleLocalNavigate);
   window.addEventListener('open-tray-settings', openTraySettings);
+  window.addEventListener('open-album-detail', handleOpenAlbumDetail);
 
   await userStore.hydrate();
   playerStore.init();
@@ -1124,6 +1133,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', syncViewport);
   window.removeEventListener('local-navigate', handleLocalNavigate);
   window.removeEventListener('open-tray-settings', openTraySettings);
+  window.removeEventListener('open-album-detail', handleOpenAlbumDetail);
 });
 </script>
 

@@ -15,6 +15,7 @@ export interface LocalApi {
   getLyric(filePath: string): Promise<{ text: string; format: string } | null>
   getCover(filePath: string): Promise<string | null>
   readFile(filePath: string): Promise<ArrayBuffer | null>
+  computeFileMd5(filePath: string): Promise<{ md5: string; size: number } | null>
   onScanProgress(cb: (data: any) => void): void
   removeScanListeners(): void
   // 本地歌单

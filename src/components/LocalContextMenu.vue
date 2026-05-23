@@ -86,12 +86,13 @@ watch(() => props.visible, (v) => {
   min-width: 160px;
   background: var(--bg-solid);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  border-radius: 10px;
   padding: var(--space-1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), var(--glass-highlight);
+  isolation: isolate;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 .context-backdrop {
   position: fixed;
@@ -102,19 +103,21 @@ watch(() => props.visible, (v) => {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: none;
-  background: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: var(--text-label-sm);
+  width: 100%;
+  min-height: 38px;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text-main);
+  font-size: 13px;
+  cursor: pointer;
   text-align: left;
   white-space: nowrap;
-  transition: background 0.1s;
+  transition: background 0.12s ease;
 }
 .context-item:hover {
-  background: var(--bg-muted);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-solid));
 }
 .context-item.danger {
   color: var(--danger);
@@ -129,6 +132,6 @@ watch(() => props.visible, (v) => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--text-sub);
+  color: var(--text-soft);
 }
 </style>

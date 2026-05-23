@@ -4,6 +4,7 @@
       v-if="tracks.length"
       :tracks="tracks"
       :now-playing-id="nowPlayingId"
+      :highlighted-id="localMusicStore.locatedTrackId"
       @play="playTrack"
     />
     <div v-if="!tracks.length" class="local-empty">暂无专辑数据</div>

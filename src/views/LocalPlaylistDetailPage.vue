@@ -54,13 +54,15 @@
           :key="track.id"
           class="local-song-row"
           :class="{ playing: nowPlayingId === track.id }"
+          @mouseenter="hoveredIdx = idx"
+          @mouseleave="hoveredIdx = -1"
           @dblclick="playTrack(track, idx)"
           @contextmenu.prevent="showContextMenu($event, track, idx)"
         >
           <button class="local-song-pp" @click.stop="handlePPClick(track, idx)" :title="ppTitle(track, idx)">
             <span v-if="!isTrackPlaying(track) && hoveredIdx !== idx" class="local-song-idx-inner">{{ idx + 1 }}</span>
-            <svg v-else-if="!isTrackPlaying(track) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><path d="M9 7.2v9.6c0 .7.8 1.1 1.4.7l8-4.8c.6-.4.6-1.3 0-1.7l-8-4.8c-.6-.4-1.4 0-1.4.7z" fill="currentColor"/></svg>
-            <svg v-else-if="isTrackPlaying(track) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>
+            <svg v-else-if="(!isTrackPlaying(track) || isTrackPaused(track)) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><path d="M9 7.2v9.6c0 .7.8 1.1 1.4.7l8-4.8c.6-.4.6-1.3 0-1.7l-8-4.8c-.6-.4-1.4 0-1.4.7z" fill="currentColor"/></svg>
+            <svg v-else-if="isTrackPlaying(track) && !isTrackPaused(track) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>
             <span v-else class="local-song-pp__wave" aria-hidden="true"><i></i><i></i><i></i></span>
           </button>
           <span class="local-song-cover">
@@ -74,6 +76,15 @@
             </span>
             <span class="local-song-artist" :title="track.artist">{{ track.artist }}</span>
           </div>
+          <LocalSongActions
+            @play="playTrack(track, idx)"
+            @play-next="addToQueue(track)"
+            @add-to-playlist="addToPlaylist(track)"
+            @show-in-folder="showInFolder(track)"
+            @show-local-album="showLocalAlbum(track)"
+            @show-online-album="showOnlineAlbum(track)"
+            @upload-to-cloud="uploadToCloud(track)"
+          />
         </div>
       </div>
     </AnimatedAppear>
@@ -105,6 +116,29 @@
       @update:open="showAddTrackModal = $event"
     />
   </AnimatedAppear>
+
+  <!-- 选择歌单对话框 -->
+  <Teleport to="body">
+    <div v-if="showPlaylistPicker" class="dialog-overlay" @click.self="cancelPlaylistPicker">
+      <div class="dialog-panel">
+        <h3 class="dialog-title">选择歌单</h3>
+        <div class="playlist-picker-list">
+          <button
+            v-for="pl in localMusicStore.playlists"
+            :key="pl.id"
+            class="playlist-picker-item"
+            @click="confirmPlaylistPicker(pl.id)"
+          >
+            {{ pl.name }}
+            <span class="playlist-picker-count">{{ pl.trackCount || 0 }} 首</span>
+          </button>
+        </div>
+        <div class="dialog-actions">
+          <button class="button-surface" @click="cancelPlaylistPicker">取消</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -118,6 +152,10 @@ import DetailStickyHeroHeader from '../components/DetailStickyHeroHeader.vue'
 import HeroCoverMedia from '../components/HeroCoverMedia.vue'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import PromptModal from '../components/ui/PromptModal.vue'
+import LocalSongActions from '../components/ui/LocalSongActions.vue'
+import { showGlobalToast, showLoginModal } from '../stores/loginModal'
+import { userStore } from '../stores/user'
+import { searchMusic, importToCloud } from '../api/music'
 
 // ── Data ──
 const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
@@ -167,10 +205,15 @@ function isTrackPlaying(track: LocalTrack) {
   return nowPlayingId.value === track.id
 }
 
+function isTrackPaused(track: LocalTrack) {
+  return isTrackPlaying(track) && !playerStore.isPlaying
+}
+
 function ppTitle(track: LocalTrack, idx: number) {
-  return isTrackPlaying(track) && hoveredIdx.value !== idx ? '正在播放'
-    : hoveredIdx.value === idx ? (isTrackPlaying(track) ? '暂停' : '播放')
-    : `第 ${idx + 1} 首`
+  if (!isTrackPlaying(track) && hoveredIdx.value !== idx) return `第 ${idx + 1} 首`
+  if ((!isTrackPlaying(track) || isTrackPaused(track)) && hoveredIdx.value === idx) return '播放'
+  if (isTrackPlaying(track) && !isTrackPaused(track) && hoveredIdx.value === idx) return '暂停'
+  return '正在播放'
 }
 
 function handlePPClick(track: LocalTrack, idx: number) {
@@ -284,6 +327,131 @@ function handlePlayAll() {
   if (!tracks.value.length) return
   playTrack(tracks.value[0], 0)
 }
+
+/** 下一首播放：插入到当前播放之后 */
+function addToQueue(track: LocalTrack) {
+  const song = {
+    id: track.id, name: track.title,
+    ar: [{ name: track.artist }],
+    al: { name: track.album, picUrl: track.coverUrl },
+    source: 'local' as const, path: track.path,
+  }
+  const idx = playerStore.currentIndex + 1
+  playerStore.playlist.splice(idx, 0, song)
+  showGlobalToast('已加入播放队列', 'success', 3000)
+}
+
+/** 添加到歌单 */
+const showPlaylistPicker = ref(false)
+const pendingTrackForPlaylist = ref<LocalTrack | null>(null)
+
+async function addToPlaylist(track: LocalTrack) {
+  if (!localMusicStore.playlists.length) {
+    await localMusicStore.loadPlaylists()
+  }
+  if (!localMusicStore.playlists.length) {
+    const create = confirm('还没有本地歌单，是否创建一个？')
+    if (!create) return
+    const pl = await localMusicStore.createPlaylist('新歌单')
+    if (pl) {
+      await localMusicStore.addTrackToPlaylist(pl.id, track.id)
+      showGlobalToast('已添加到歌单', 'success', 3000)
+    }
+    return
+  }
+  pendingTrackForPlaylist.value = track
+  showPlaylistPicker.value = true
+}
+
+async function confirmPlaylistPicker(playlistId: string) {
+  const track = pendingTrackForPlaylist.value
+  if (!track) return
+  showPlaylistPicker.value = false
+  pendingTrackForPlaylist.value = null
+  await localMusicStore.addTrackToPlaylist(playlistId, track.id)
+  showGlobalToast('已添加到歌单', 'success', 3000)
+}
+
+function cancelPlaylistPicker() {
+  showPlaylistPicker.value = false
+  pendingTrackForPlaylist.value = null
+}
+
+/** 定位到目录 */
+function showInFolder(track: LocalTrack) {
+  const treePath = localMusicStore.getTreePath(track.path)
+  if (!treePath) return
+  localMusicStore.expandFolderAncestors(treePath)
+  localMusicStore.selectedFolderPath = treePath
+  localMusicStore.locatedTrackId = track.id
+  localMusicStore.activeView = 'folders'
+  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
+}
+
+/** 查看本地专辑 */
+function showLocalAlbum(track: LocalTrack) {
+  localMusicStore.selectedAlbum = track.album
+  localMusicStore.locatedTrackId = track.id
+  localMusicStore.activeView = 'albums'
+  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
+}
+
+/** 查看在线专辑 */
+async function showOnlineAlbum(track: LocalTrack) {
+  try {
+    const songKw = [track.title, track.artist].filter(Boolean).join(' ')
+    const songRes = await searchMusic(songKw, { type: 1, limit: 3 })
+    const song = songRes?.result?.songs?.[0]
+    let albumId = song?.al?.id || song?.album?.id
+    if (!albumId) {
+      const albumKw = [track.artist, track.album].filter(Boolean).join(' ')
+      const albumRes = await searchMusic(albumKw, { type: 10, limit: 1 })
+      albumId = albumRes?.result?.albums?.[0]?.id
+    }
+    if (albumId) {
+      window.dispatchEvent(new CustomEvent('open-album-detail', { detail: { albumId } }))
+      showGlobalToast('已跳转到在线专辑，若信息有误请使用搜索查找', 'warning', 4000)
+    } else {
+      showGlobalToast('未找到在线专辑', 'warning', 3000)
+    }
+  } catch {
+    showGlobalToast('搜索专辑失败', 'error', 3000)
+  }
+}
+
+/** 上传至云盘 */
+async function uploadToCloud(track: LocalTrack) {
+  if (!platform.localApi) return
+  if (!userStore.isLogin) { showLoginModal('none'); return }
+  if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+    showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000)
+    return
+  }
+  try {
+    const info = await platform.localApi.computeFileMd5(track.path)
+    if (!info) { showGlobalToast('无法读取文件信息', 'error'); return }
+    const ext = track.path.split('.').pop()?.toLowerCase() || 'mp3'
+    const fileType = ext === 'flac' ? 'flac' : 'mp3'
+    const bitrate = track.duration > 0 ? Math.round((info.size * 8) / track.duration / 1000) : 128
+    const { data } = await importToCloud({
+      song: track.title,
+      fileType,
+      fileSize: info.size,
+      bitrate,
+      md5: info.md5,
+      artist: track.artist || '未知歌手',
+      album: track.album || '未知专辑',
+      cookie: userStore.loginCookie || undefined,
+    })
+    if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
+      showGlobalToast('已上传至云盘', 'success', 3000)
+    } else {
+      showGlobalToast('上传失败，请稍后重试', 'warning', 3000)
+    }
+  } catch {
+    showGlobalToast('上传至云盘失败', 'error', 3000)
+  }
+}
 </script>
 
 <style scoped>
@@ -310,6 +478,7 @@ function handlePlayAll() {
   background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
 }
 .local-song-row {
+  position: relative;
   display: grid;
   grid-template-columns: 40px 52px 1fr;
   align-items: center;
@@ -319,7 +488,7 @@ function handlePlayAll() {
   box-sizing: border-box;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   cursor: default;
   transition: background 0.15s;
 }
@@ -337,9 +506,6 @@ function handlePlayAll() {
   transition: background 0.15s, color 0.15s;
 }
 .local-song-row:hover .local-song-pp { color: var(--accent); }
-.local-song-row:hover .local-song-pp:hover {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
 .local-song-idx-inner { font-size: var(--text-label-sm); color: var(--text-soft); }
 .local-song-pp__icon { width: 18px; height: 18px; display: block; }
 .local-song-pp__wave {
@@ -408,5 +574,67 @@ function handlePlayAll() {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+</style>
+
+<style>
+/* 选择歌单对话框 — 与 LocalSongsPage 共用样式 */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.dialog-panel {
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border, #ddd);
+  border-radius: var(--radius-md, 12px);
+  padding: var(--space-5, 20px);
+  min-width: 320px;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.dialog-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-headline-md);
+  font-weight: 600;
+  color: var(--text-main);
+}
+.playlist-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+  max-height: 300px;
+  overflow-y: auto;
+}
+.playlist-picker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-muted) 70%, var(--border));
+  color: var(--text-main);
+  font-size: var(--text-body-sm);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.playlist-picker-item:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.playlist-picker-count {
+  font-size: var(--text-label-xs);
+  color: var(--text-soft);
+}
+.dialog-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
 }
 </style>

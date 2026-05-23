@@ -56,6 +56,12 @@
       :selected-ids="selectedIds"
       :now-playing-id="nowPlayingId"
       @play="playTrack"
+      @play-next="(track: LocalTrack) => addToQueue(track, true)"
+      @add-to-playlist="addToPlaylist"
+      @show-in-folder="showInFolder"
+      @show-local-album="showLocalAlbum"
+      @show-online-album="showOnlineAlbum"
+      @upload-to-cloud="uploadToCloud"
       @show-context-menu="showContextMenu"
       @toggle-select="toggleSelect"
       @toggle-select-all="toggleSelectAll"
@@ -101,9 +107,13 @@ import { computed, ref, onMounted } from 'vue'
 import { localMusicStore, type LocalTrack, type SortField } from '../stores/localMusic'
 import { playerStore } from '../stores/player'
 import { platform } from '../utils/platform'
+import { showGlobalToast, showLoginModal } from '../stores/loginModal'
+import { userStore } from '../stores/user'
+import { importToCloud } from '../api/music'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import VirtualSongList from '../components/VirtualSongList.vue'
 import DropdownSelect from '../components/ui/DropdownSelect.vue'
+import { searchMusic } from '../api/music'
 
 const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
 
@@ -284,6 +294,7 @@ function addToQueue(track: LocalTrack, playNext: boolean) {
   if (playNext) {
     const idx = playerStore.currentIndex + 1
     playerStore.playlist.splice(idx, 0, song)
+    showGlobalToast('已加入播放队列', 'success', 3000)
   } else {
     playerStore.appendToQueue([song])
   }
@@ -302,7 +313,10 @@ async function addToPlaylist(track: LocalTrack) {
     const create = confirm('还没有本地歌单，是否创建一个？')
     if (!create) return
     const pl = await localMusicStore.createPlaylist('新歌单')
-    if (pl) await localMusicStore.addTrackToPlaylist(pl.id, track.id)
+    if (pl) {
+      await localMusicStore.addTrackToPlaylist(pl.id, track.id)
+      showGlobalToast('已添加到歌单', 'success', 3000)
+    }
     return
   }
   pendingTrackForPlaylist.value = track
@@ -315,6 +329,7 @@ async function confirmPlaylistPicker(playlistId: string) {
   showPlaylistPicker.value = false
   pendingTrackForPlaylist.value = null
   await localMusicStore.addTrackToPlaylist(playlistId, track.id)
+  showGlobalToast('已添加到歌单', 'success', 3000)
 }
 
 function cancelPlaylistPicker() {
@@ -331,6 +346,75 @@ function showInFolder(track: LocalTrack) {
   localMusicStore.locatedTrackId = track.id
   localMusicStore.activeView = 'folders'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
+}
+
+/** 查看本地专辑：切换到专辑标签页，选中该专辑并高亮当前歌曲 */
+function showLocalAlbum(track: LocalTrack) {
+  localMusicStore.selectedAlbum = track.album
+  localMusicStore.locatedTrackId = track.id
+  localMusicStore.activeView = 'albums'
+  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
+}
+
+/** 查看在线专辑：先搜歌曲名+歌手找匹配歌曲，取其专辑 ID；失败则回退搜专辑名 */
+async function showOnlineAlbum(track: LocalTrack) {
+  try {
+    // 阶段 1：按歌曲名+歌手搜，匹配到的歌曲自带 album.id
+    const songKw = [track.title, track.artist].filter(Boolean).join(' ')
+    const songRes = await searchMusic(songKw, { type: 1, limit: 3 })
+    const song = songRes?.result?.songs?.[0]
+    let albumId = song?.al?.id || song?.album?.id
+
+    // 阶段 2：歌曲匹配失败，回退按专辑名+歌手搜
+    if (!albumId) {
+      const albumKw = [track.artist, track.album].filter(Boolean).join(' ')
+      const albumRes = await searchMusic(albumKw, { type: 10, limit: 1 })
+      albumId = albumRes?.result?.albums?.[0]?.id
+    }
+
+    if (albumId) {
+      window.dispatchEvent(new CustomEvent('open-album-detail', { detail: { albumId } }))
+      showGlobalToast('已跳转到在线专辑，若信息有误请使用搜索查找', 'warning', 4000)
+    } else {
+      showGlobalToast('未找到在线专辑', 'warning', 3000)
+    }
+  } catch {
+    showGlobalToast('搜索专辑失败', 'error', 3000)
+  }
+}
+
+/** 上传至云盘：读取本地文件信息，通过 API 导入云盘 */
+async function uploadToCloud(track: LocalTrack) {
+  if (!platform.localApi) return
+  if (!userStore.isLogin) { showLoginModal('none'); return }
+  if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+    showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000)
+    return
+  }
+  try {
+    const info = await platform.localApi.computeFileMd5(track.path)
+    if (!info) { showGlobalToast('无法读取文件信息', 'error'); return }
+    const ext = track.path.split('.').pop()?.toLowerCase() || 'mp3'
+    const fileType = ext === 'flac' ? 'flac' : 'mp3'
+    const bitrate = track.duration > 0 ? Math.round((info.size * 8) / track.duration / 1000) : 128
+    const { data } = await importToCloud({
+      song: track.title,
+      fileType,
+      fileSize: info.size,
+      bitrate,
+      md5: info.md5,
+      artist: track.artist || '未知歌手',
+      album: track.album || '未知专辑',
+      cookie: userStore.loginCookie || undefined,
+    })
+    if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
+      showGlobalToast('已上传至云盘', 'success', 3000)
+    } else {
+      showGlobalToast('上传失败，请稍后重试', 'warning', 3000)
+    }
+  } catch {
+    showGlobalToast('上传至云盘失败', 'error', 3000)
+  }
 }
 
 function sortBy(field: SortField) {

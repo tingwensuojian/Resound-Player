@@ -52,6 +52,15 @@
           </span>
           <span class="local-song-artist" :title="vi.track.artist">{{ vi.track.artist }}</span>
         </div>
+        <LocalSongActions
+          @play="$emit('play', vi.track, vi.index)"
+          @play-next="$emit('play-next', vi.track, vi.index)"
+          @add-to-playlist="$emit('add-to-playlist', vi.track, vi.index)"
+          @show-in-folder="$emit('show-in-folder', vi.track, vi.index)"
+          @show-local-album="$emit('show-local-album', vi.track, vi.index)"
+          @show-online-album="$emit('show-online-album', vi.track, vi.index)"
+          @upload-to-cloud="$emit('upload-to-cloud', vi.track, vi.index)"
+        />
       </div>
     </div>
 
@@ -66,6 +75,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { playerStore } from '../stores/player'
 import ScrollToTopFab from './ui/ScrollToTopFab.vue'
+import LocalSongActions from './ui/LocalSongActions.vue'
 
 const ROW_HEIGHT = 68
 const OVERSCAN = 15
@@ -91,6 +101,12 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   play: [track: LocalTrack, index: number]
+  'play-next': [track: LocalTrack, index: number]
+  'add-to-playlist': [track: LocalTrack, index: number]
+  'show-in-folder': [track: LocalTrack, index: number]
+  'show-local-album': [track: LocalTrack, index: number]
+  'show-online-album': [track: LocalTrack, index: number]
+  'upload-to-cloud': [track: LocalTrack, index: number]
   'show-context-menu': [event: MouseEvent, track: LocalTrack, index: number]
   'toggle-select': [id: string]
   'toggle-select-all': []
@@ -372,9 +388,6 @@ function handlePPClick(track: LocalTrack, index: number) {
   transition: background 0.15s, color 0.15s;
 }
 .local-song-row:hover .local-song-pp { color: var(--accent); }
-.local-song-row:hover .local-song-pp:hover {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-}
 .local-song-idx-inner {
   font-size: var(--text-label-sm);
   color: var(--text-soft);

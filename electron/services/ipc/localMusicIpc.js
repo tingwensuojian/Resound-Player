@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from "electron";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import jschardet from "jschardet";
 import iconv from "iconv-lite";
 import { CoverCache } from "../CoverCache.js";
@@ -117,6 +118,14 @@ function registerLocalMusicIpc(scanner, db) {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked read-file path:', filePath); return null; }
     if (!fs.existsSync(filePath)) return null;
     return fs.readFileSync(filePath).buffer;
+  });
+  ipcMain.handle("local:compute-file-md5", async (_event, filePath) => {
+    if (!isPathSafe(filePath)) { console.warn('[ipc] blocked compute-file-md5 path:', filePath); return null; }
+    if (!fs.existsSync(filePath)) return null;
+    const stat = fs.statSync(filePath);
+    const fileBuffer = fs.readFileSync(filePath);
+    const md5 = crypto.createHash('md5').update(fileBuffer).digest('hex');
+    return { md5, size: stat.size };
   });
   const playlistDb = db;
 
