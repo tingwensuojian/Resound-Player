@@ -13,7 +13,8 @@
  * - 响应原始数据整个缓存，由调用方决定哪些字段可用
  */
 import { computed, reactive } from 'vue';
-import { userStore } from './user';
+import { useUserStore } from './user';
+const userStore = useUserStore();
 import { platform } from '../utils/platform';
 
 // ---- 类型定义 ----
@@ -230,7 +231,7 @@ function needsUserScope(key: string): boolean {
 /** 构造完整缓存 key，追加用户 ID 隔离 */
 export function buildCacheKey(baseKey: string): string {
   if (!needsUserScope(baseKey)) return baseKey;
-  const uid = userStore.isLogin ? userStore.profile?.userId : undefined;
+  const uid = userStore.state.isLogin ? userStore.state.profile?.userId : undefined;
   return uid ? `${baseKey}@${uid}` : baseKey;
 }
 
@@ -321,7 +322,7 @@ export const apiCache = reactive({
 
   /** 清除当前用户作用域的缓存（含 @${userId} 的 key） */
   clearUserScoped(): void {
-    const uid = userStore.isLogin ? userStore.profile?.userId : undefined;
+    const uid = userStore.state.isLogin ? userStore.state.profile?.userId : undefined;
     if (!uid) return;
     const suffix = `@${uid}`;
     // 不支持枚举所有 key 的后端（如 Electron 文件）需要整体清除

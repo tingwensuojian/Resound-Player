@@ -156,7 +156,8 @@ import PromptModal from '../components/ui/PromptModal.vue'
 import LocalSongActions from '../components/ui/LocalSongActions.vue'
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
-import { userStore } from '../stores/user'
+import { useUserStore } from '../stores/user'
+const userStore = useUserStore()
 import { searchMusic, importToCloud } from '../api/music'
 
 // ── Data ──
@@ -424,8 +425,8 @@ async function showOnlineAlbum(track: LocalTrack) {
 /** 上传至云盘 */
 async function uploadToCloud(track: LocalTrack) {
   if (!platform.localApi) return
-  if (!userStore.isLogin) { loginModalStore.showLoginModal('none'); return }
-  if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+  if (!userStore.state.isLogin) { loginModalStore.showLoginModal('none'); return }
+  if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
     loginModalStore.showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000)
     return
   }
@@ -443,7 +444,7 @@ async function uploadToCloud(track: LocalTrack) {
       md5: info.md5,
       artist: track.artist || '未知歌手',
       album: track.album || '未知专辑',
-      cookie: userStore.loginCookie || undefined,
+      cookie: userStore.state.loginCookie || undefined,
     })
     if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
       loginModalStore.showGlobalToast('已上传至云盘', 'success', 3000)

@@ -46,7 +46,8 @@ const localMusicStore = useLocalMusicStore()
 import { playerStore } from '../stores/player'
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
-import { userStore } from '../stores/user'
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { platform } from '../utils/platform'
 import { searchMusic, importToCloud } from '../api/music'
 import VirtualSongList from '../components/VirtualSongList.vue'

@@ -1,6 +1,7 @@
 import { reactive } from 'vue';
 import { getIntelligenceList, getPlaylistTrackAll, getSongDetail, trashPersonalFm } from '../api/music';
-import { userStore } from './user';
+import { useUserStore } from './user';
+const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 import { hydrateCache, getCache, setCache } from './unblock-cache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';

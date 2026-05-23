@@ -296,7 +296,8 @@ import { toggleDjSubscribe, toggleSongLike, trashPersonalFm, deleteDjComment } f
 import { playerStore } from '../stores/player';
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
 import { useIridescence, type IridescenceConfig } from '../composables/useIridescence';
@@ -571,7 +572,7 @@ async function dislikeFmTrack() {
   const track = playerStore.currentTrack;
   const id = Number(track?.id || 0);
   if (!id) return;
-  try { await trashPersonalFm(id, userStore.loginCookie || undefined); } catch { /* ignore */ }
+  try { await trashPersonalFm(id, userStore.state.loginCookie || undefined); } catch { /* ignore */ }
   playerStore.next();
 }
 async function extractPaletteFromCover(url?: string) {

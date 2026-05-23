@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import { playerStore } from '../stores/player';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { toggleDjSubscribe, toggleSongLike } from '../api/music';
 
 /**
@@ -18,14 +19,14 @@ export function useCurrentTrackLike() {
     isCurrentPodcast.value ? currentPodcastRid.value > 0 : currentTrackId.value > 0,
   );
 
-  const likedSongSignature = computed(() => userStore.likedSongIds.join(','));
-  const subscribedDjSignature = computed(() => userStore.subscribedDjIds.join(','));
+  const likedSongSignature = computed(() => userStore.state.likedSongIds.join(','));
+  const subscribedDjSignature = computed(() => userStore.state.subscribedDjIds.join(','));
 
   const isCurrentLiked = computed(() => {
     void likedSongSignature.value;
     void subscribedDjSignature.value;
-    if (isCurrentPodcast.value) return userStore.subscribedDjIds.includes(currentPodcastRid.value);
-    return currentTrackId.value > 0 ? userStore.likedSongIds.includes(currentTrackId.value) : false;
+    if (isCurrentPodcast.value) return userStore.state.subscribedDjIds.includes(currentPodcastRid.value);
+    return currentTrackId.value > 0 ? userStore.state.likedSongIds.includes(currentTrackId.value) : false;
   });
 
   const likeLoading = ref(false);
@@ -45,22 +46,22 @@ export function useCurrentTrackLike() {
     likeLoading.value = true;
     try {
       const response = isCurrentPodcast.value
-        ? await toggleDjSubscribe({ rid: currentPodcastRid.value, subscribe: next, cookie: userStore.loginCookie || undefined })
-        : await toggleSongLike({ id: currentTrackId.value, like: next, uid: userStore.profile?.userId, cookie: userStore.loginCookie || undefined });
+        ? await toggleDjSubscribe({ rid: currentPodcastRid.value, subscribe: next, cookie: userStore.state.loginCookie || undefined })
+        : await toggleSongLike({ id: currentTrackId.value, like: next, uid: userStore.state.profile?.userId, cookie: userStore.state.loginCookie || undefined });
       const code = response?.data?.code ?? response?.data?.data?.code;
       if (typeof code === 'number' && code !== 200) throw new Error(`收藏失败，接口返回 ${code}`);
       if (isCurrentPodcast.value) {
         const rid = currentPodcastRid.value;
-        const exists = userStore.subscribedDjIds.includes(rid);
-        if (next && !exists) userStore.subscribedDjIds = [...userStore.subscribedDjIds, rid];
-        if (!next && exists) userStore.subscribedDjIds = userStore.subscribedDjIds.filter((id) => id !== rid);
+        const exists = userStore.state.subscribedDjIds.includes(rid);
+        if (next && !exists) userStore.state.subscribedDjIds = [...userStore.state.subscribedDjIds, rid];
+        if (!next && exists) userStore.state.subscribedDjIds = userStore.state.subscribedDjIds.filter((id) => id !== rid);
         return;
       }
       const id = currentTrackId.value;
       if (next) {
-        if (!userStore.likedSongIds.includes(id)) userStore.likedSongIds = [...userStore.likedSongIds, id];
+        if (!userStore.state.likedSongIds.includes(id)) userStore.state.likedSongIds = [...userStore.state.likedSongIds, id];
       } else {
-        userStore.likedSongIds = userStore.likedSongIds.filter((songId) => songId !== id);
+        userStore.state.likedSongIds = userStore.state.likedSongIds.filter((songId) => songId !== id);
       }
     } catch (error) {
       console.error('[like] toggle like failed', error);

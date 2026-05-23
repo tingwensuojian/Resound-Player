@@ -76,7 +76,8 @@ import PodcastDetailPage from './PodcastDetailPage.vue';
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserDetail, getUserPlaylist } from '../api/auth';
 import { getAlbumDetail, getAlbumSublist, getCloudStorage, getCloudStorageDetail, getDjDetail, getDjProgram, getDjSublist, getSongUrl } from '../api/music';
 import { playerStore } from '../stores/player';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 
 const emit = defineEmits<{ (e: 'open-playlist', playlistId: number, returnPage?: string): void; (e: 'open-artist', artist: any): void; (e: 'open-comment', songId: number): void }>();
 
@@ -108,11 +109,11 @@ const albumSongs = ref<any[]>([]);
 const albumLoading = ref(false);
 const albumError = ref('');
 
-const isLogin = computed(() => userStore.isLogin);
-const isPublicUserMode = computed(() => userStore.loginMode === 'uid');
+const isLogin = computed(() => userStore.state.isLogin);
+const isPublicUserMode = computed(() => userStore.state.loginMode === 'uid');
 const profileMeta = computed(() => ({
-  avatarUrl: detail.value?.profile?.avatarUrl || userStore.profile?.avatarUrl || '',
-  nickname: detail.value?.profile?.nickname || userStore.profile?.nickname || '未命名用户',
+  avatarUrl: detail.value?.profile?.avatarUrl || userStore.state.profile?.avatarUrl || '',
+  nickname: detail.value?.profile?.nickname || userStore.state.profile?.nickname || '未命名用户',
   signature: detail.value?.profile?.signature || '这里展示用户简介与登录状态信息',
 }));
 
@@ -261,14 +262,14 @@ function normalizeCloudItem(item: any) {
     type: 'cloud',
     source: 'cloud',
     cloudSid: Number(item.simpleSong?.id || source.id || id),
-    cloudOwnerId: Number(userStore.profile?.userId || 0),
+    cloudOwnerId: Number(userStore.state.profile?.userId || 0),
   };
 }
 
 async function enrichCloudUrls(items: any[]) {
   const validIds = items.map((item) => item.id).filter(Boolean);
   if (!validIds.length) return items;
-  const cookie = userStore.loginCookie || undefined;
+  const cookie = userStore.state.loginCookie || undefined;
   const urlRes = await Promise.all(
     validIds.map(async (id) => {
       try {
@@ -342,15 +343,15 @@ function normalizeAlbumItems(payload: any) {
 }
 
 async function loadUserData() {
-  if (!userStore.profile?.userId) return;
+  if (!userStore.state.profile?.userId) return;
   loading.value = true;
   try {
-    const uid = userStore.profile.userId;
+    const uid = userStore.state.profile.userId;
     const detailRes = await getUserDetail(uid);
-    const authCookie = userStore.loginMode === 'uid' ? '' : userStore.loginCookie || '';
+    const authCookie = userStore.state.loginMode === 'uid' ? '' : userStore.state.loginCookie || '';
     logUserPanelDebug('loadUserData:start', {
       uid,
-      loginMode: userStore.loginMode,
+      loginMode: userStore.state.loginMode,
       hasCookie: Boolean(authCookie),
       cookiePreview: authCookie ? `${authCookie.slice(0, 16)}...${authCookie.slice(-12)}` : '',
       activeTab: activeTab.value,
@@ -466,14 +467,14 @@ async function loadUserData() {
 
 async function loadCloudData() {
   if (cloudLoading.value) return;
-  const uid = userStore.profile?.userId;
+  const uid = userStore.state.profile?.userId;
   if (!uid) return;
   cloudLoading.value = true;
   try {
-    const authCookie = userStore.loginMode === 'uid' ? '' : userStore.loginCookie || '';
+    const authCookie = userStore.state.loginMode === 'uid' ? '' : userStore.state.loginCookie || '';
     logUserPanelDebug('loadCloudData:start', {
       uid,
-      loginMode: userStore.loginMode,
+      loginMode: userStore.state.loginMode,
       hasCookie: Boolean(authCookie),
     });
     const cloudRes = await getCloudStorage({ limit: 1000, offset: 0, cookie: authCookie });
@@ -632,7 +633,7 @@ function openPlaylist(playlistId: number) {
 onMounted(loadUserData);
 
 watch(
-  () => userStore.profile?.userId,
+  () => userStore.state.profile?.userId,
   () => {
     selectedItem.value = null;
     void loadUserData();

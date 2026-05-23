@@ -1,5 +1,6 @@
 import { ref, watch, type Ref, type ComputedRef } from 'vue';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 import {
   togglePlaylistSubscribe,
@@ -26,10 +27,10 @@ export function useEntitySubscribe(options: UseEntitySubscribeOptions) {
   // 从 store 获取对应的 ID 数组
   function getStoreArray(): number[] | undefined {
     switch (type) {
-      case 'playlist': return userStore.subscribedPlaylistIds;
-      case 'album': return userStore.subscribedAlbumIds;
-      case 'artist': return userStore.subscribedArtistIds;
-      case 'podcast': return userStore.subscribedDjIds;
+      case 'playlist': return userStore.state.subscribedPlaylistIds;
+      case 'album': return userStore.state.subscribedAlbumIds;
+      case 'artist': return userStore.state.subscribedArtistIds;
+      case 'podcast': return userStore.state.subscribedDjIds;
     }
   }
 
@@ -74,7 +75,7 @@ export function useEntitySubscribe(options: UseEntitySubscribeOptions) {
     }, () => {
       if (typeof initialSubscribed === 'boolean') return initialSubscribed;
       return (initialSubscribed as Ref<boolean> | undefined)?.value;
-    }, () => userStore.isLogin],
+    }, () => userStore.state.isLogin],
     syncState,
     { immediate: true },
   );
@@ -88,11 +89,11 @@ export function useEntitySubscribe(options: UseEntitySubscribeOptions) {
 
     // 鉴权检查
     const loginModalStore = useLoginModalStore();
-    if (!userStore.isLogin) {
+    if (!userStore.state.isLogin) {
       loginModalStore.showLoginModal('subscribe');
       return;
     }
-    if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+    if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
       loginModalStore.showGlobalToast('当前登录方式不支持此操作，请使用扫码或 Cookie 登录', 'warning', 5000);
       return;
     }
@@ -102,7 +103,7 @@ export function useEntitySubscribe(options: UseEntitySubscribeOptions) {
 
     try {
       let response: any;
-      const cookie = userStore.loginCookie || undefined;
+      const cookie = userStore.state.loginCookie || undefined;
 
       switch (type) {
         case 'playlist':

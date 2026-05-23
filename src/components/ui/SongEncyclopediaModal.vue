@@ -34,7 +34,8 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue';
 import { getSongEncyclopedia } from '../../api/music';
-import { userStore } from '../../stores/user';
+import { useUserStore } from '../../stores/user';
+const userStore = useUserStore();
 
 const props = withDefaults(
   defineProps<{

@@ -19,7 +19,8 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
 import { useLoginModalStore } from '../stores/loginModal';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import LoginPanel from './LoginPanel.vue';
 const loginModalStore = useLoginModalStore();
 

@@ -25,7 +25,7 @@
       </template>
       <template #actions>
         <UserFollowButton
-          v-if="userId && userId !== userStore.profile?.userId"
+          v-if="userId && userId !== userStore.state.profile?.userId"
           :status="followState.status.value"
           :loading="followState.isLoading.value"
           @toggle="followState.toggle"
@@ -93,7 +93,8 @@ import { useDominantColor } from '../composables/useDominantColor';
 import AnimatedAppear from './AnimatedAppear.vue';
 import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserDetail } from '../api/auth';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import UserFollowButton from './ui/UserFollowButton.vue';
 import { useUserFollow } from '../composables/useUserFollow';
 

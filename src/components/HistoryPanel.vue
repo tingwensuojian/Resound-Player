@@ -112,7 +112,8 @@ import ScrollToTopFab from './ui/ScrollToTopFab.vue';
 import { getAlbumSublist, getPlaylistDetail, getPlaylistTrackAll, getRecentSongs, getRecentPlaylists, getRecentAlbums, getRecentVoices, getHistoryRecommendSongDates, getHistoryRecommendSongDetail, getSongDetailBatch, getVoiceDetail, toggleAlbumSubscribe, toggleDjSubscribe, togglePlaylistSubscribe, toggleSongLike } from '../api/music';
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserLikeList, getUserPlaylist, getUserRecord } from '../api/auth';
 import { playerStore } from '../stores/player';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { readLocalHistory, recordLocalHistoryEntry } from '../utils/localHistory';
 
 const emit = defineEmits<{
@@ -310,7 +311,7 @@ function recordCurrentTrackFromPlayer() {
 async function setHistorySource(source: 'local' | 'cloud') {
   if (source === 'local') {
     hydrateLocalHistory();
-    localPlaylists.value = await hydratePlaylistTrackCount(localPlaylists.value, userStore.loginCookie || undefined);
+    localPlaylists.value = await hydratePlaylistTrackCount(localPlaylists.value, userStore.state.loginCookie || undefined);
   }
   historySource.value = source;
   selectedGroup.value = '';
@@ -590,7 +591,7 @@ async function loadFavoriteSongs(uid: number, cookie?: string) {
         favoriteSongs.value = tracks.map((track: any, index: number) => buildFavoriteSongItem(track, index));
         const likedIdsFromPlaylist = tracks.map((track: any) => Number(track?.id || 0)).filter((id: number) => id > 0);
         if (likedIdsFromPlaylist.length) {
-          userStore.likedSongIds = [...new Set([...userStore.likedSongIds, ...likedIdsFromPlaylist])];
+          userStore.state.likedSongIds = [...new Set([...userStore.state.likedSongIds, ...likedIdsFromPlaylist])];
         }
         return;
       }
@@ -613,7 +614,7 @@ async function loadFavoriteSongs(uid: number, cookie?: string) {
     favoriteSongs.value = tracks.map((track: any, index: number) => buildFavoriteSongItem(track, index));
     const likedIdsFromDetail = tracks.map((track: any) => Number(track?.id || 0)).filter((id: number) => id > 0);
     if (likedIdsFromDetail.length) {
-      userStore.likedSongIds = [...new Set([...userStore.likedSongIds, ...likedIdsFromDetail])];
+      userStore.state.likedSongIds = [...new Set([...userStore.state.likedSongIds, ...likedIdsFromDetail])];
     }
   } catch {
     favoriteSongs.value = [];
@@ -701,8 +702,8 @@ async function loadHistoryRecommendSongsAll(cookie?: string) {
 async function refreshAll() {
   loading.value = true;
   try {
-    const uid = userStore.profile?.userId;
-    const cookie = userStore.loginCookie || undefined;
+    const uid = userStore.state.profile?.userId;
+    const cookie = userStore.state.loginCookie || undefined;
     if (uid) {
       await loadFavoriteSongs(uid, cookie);
     } else {
@@ -847,16 +848,16 @@ async function removeSelected() {
 
     if (item.manageType === 'song') {
       // eslint-disable-next-line no-await-in-loop
-      await toggleSongLike({ id, like: false, uid: userStore.profile?.userId, cookie: userStore.loginCookie || undefined });
+      await toggleSongLike({ id, like: false, uid: userStore.state.profile?.userId, cookie: userStore.state.loginCookie || undefined });
     } else if (item.manageType === 'playlist') {
       // eslint-disable-next-line no-await-in-loop
-      await togglePlaylistSubscribe({ id, subscribe: false, cookie: userStore.loginCookie || undefined });
+      await togglePlaylistSubscribe({ id, subscribe: false, cookie: userStore.state.loginCookie || undefined });
     } else if (item.manageType === 'album') {
       // eslint-disable-next-line no-await-in-loop
-      await toggleAlbumSubscribe({ id, subscribe: false, cookie: userStore.loginCookie || undefined });
+      await toggleAlbumSubscribe({ id, subscribe: false, cookie: userStore.state.loginCookie || undefined });
     } else if (item.manageType === 'podcast') {
       // eslint-disable-next-line no-await-in-loop
-      await toggleDjSubscribe({ rid: id, subscribe: false, cookie: userStore.loginCookie || undefined });
+      await toggleDjSubscribe({ rid: id, subscribe: false, cookie: userStore.state.loginCookie || undefined });
     }
 
     removed.add(item.key);
@@ -959,7 +960,7 @@ function getListItemSongId(item: ListItem) {
 
 function isListItemLiked(item: ListItem) {
   const songId = getListItemSongId(item);
-  return songId > 0 && userStore.likedSongIds.includes(songId);
+  return songId > 0 && userStore.state.likedSongIds.includes(songId);
 }
 
 function getHistoryCount(item: ListItem) {

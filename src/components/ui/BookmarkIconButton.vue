@@ -48,7 +48,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Heart } from 'lucide-vue-next';
-import { userStore } from '../../stores/user';
+import { useUserStore } from '../../stores/user';
+const userStore = useUserStore();
 import { useLoginModalStore } from '../../stores/loginModal';
 const loginModalStore = useLoginModalStore();
 import { toggleSongLike } from '../../api/music';

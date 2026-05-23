@@ -226,7 +226,8 @@ import { playerStore } from './stores/player';
 import { useUiStore } from './stores/ui';
 const uiStore = useUiStore();
 import { apiCache } from './stores/apiCache';
-import { userStore } from './stores/user';
+import { useUserStore } from './stores/user';
+const userStore = useUserStore();
 import { recordLocalHistoryEntry } from './utils/localHistory';
 import { useNavigationHistory } from './composables/useNavigationHistory';
 

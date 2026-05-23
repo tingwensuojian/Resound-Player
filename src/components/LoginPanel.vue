@@ -131,9 +131,9 @@
 
     <div class="footer-bar">
       <div class="login-meta">
-        <span class="meta-dot" :class="{ active: userStore.isLogin }"></span>
-        <template v-if="userStore.isLogin && userStore.profile">
-          当前用户：<strong>{{ userStore.profile.nickname }}</strong>
+        <span class="meta-dot" :class="{ active: userStore.state.isLogin }"></span>
+        <template v-if="userStore.state.isLogin && userStore.state.profile">
+          当前用户：<strong>{{ userStore.state.profile.nickname }}</strong>
         </template>
         <template v-else>
           当前未登录
@@ -148,7 +148,8 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { checkQrStatus, createQr, getQrKey } from '../api/auth';
 import { searchMusic } from '../api/music';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 const loginModalStore = useLoginModalStore();
 import AnimatedAppear from './AnimatedAppear.vue';
@@ -342,7 +343,7 @@ async function submitUserSearchLogin() {
 watch(
   () => activeTab.value,
   (tab) => {
-    if (tab === 'qr' && !qrImg.value && !qrLoading.value && !userStore.isLogin) {
+    if (tab === 'qr' && !qrImg.value && !qrLoading.value && !userStore.state.isLogin) {
       void startQrLogin();
     }
   },
@@ -364,7 +365,7 @@ watch(
 );
 
 onMounted(() => {
-  if (activeTab.value === 'qr' && !qrImg.value && !userStore.isLogin) {
+  if (activeTab.value === 'qr' && !qrImg.value && !userStore.state.isLogin) {
     void startQrLogin();
   }
 });

@@ -98,7 +98,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { getDjCatelist, getDjRadioHot, getDjRecommendType } from '../api/music';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 import InteractiveCoverMedia from './InteractiveCoverMedia.vue';
 import HorizontalScrollRail from './ui/HorizontalScrollRail.vue';
@@ -118,7 +119,7 @@ const categoryLoadingMore = ref<Record<number, boolean>>({});
 const PAGE_SIZE = 30;
 const anyLoadingMore = computed(() => Object.values(categoryLoadingMore.value).some(Boolean));
 const fallbackCover = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="32" fill="#e2e8f0"/><circle cx="100" cy="84" r="40" fill="#cbd5e1"/><rect x="46" y="136" width="108" height="20" rx="10" fill="#cbd5e1"/></svg>`);
-const loginState = computed(() => userStore.loginMode === 'cookie' || userStore.loginMode === 'qr' ? { kind: 'full', badge: '完整登录', notice: '当前展示推荐电台与真实分类。' } : userStore.loginMode === 'uid' ? { kind: 'public', badge: '搜索用户模式', notice: '当前展示公开可访问的播客和有声书内容。' } : { kind: 'guest', badge: '游客模式', notice: '当前未登录，也可直接浏览播客和有声书内容。' });
+const loginState = computed(() => userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr' ? { kind: 'full', badge: '完整登录', notice: '当前展示推荐电台与真实分类。' } : userStore.state.loginMode === 'uid' ? { kind: 'public', badge: '搜索用户模式', notice: '当前展示公开可访问的播客和有声书内容。' } : { kind: 'guest', badge: '游客模式', notice: '当前未登录，也可直接浏览播客和有声书内容。' });
 const curatedItems = computed(() => props.items.slice(0, 40));
 const groupedSections = computed(() => {
   const categories = props.categoryOptions || [];
@@ -133,7 +134,7 @@ const groupedSections = computed(() => {
 });
 const sectionSummary = computed(() => loginState.value.kind === 'full' ? `共 ${props.categoryOptions?.length || 0} 个分类` : '探索内容');
 const pageSubtitle = computed(() => loginState.value.kind === 'full' ? '' : loginState.value.kind === 'public' ? '' : '');
-watch(() => userStore.loginMode, () => { void loadCategoryRecommendations(); }, { immediate: true });
+watch(() => userStore.state.loginMode, () => { void loadCategoryRecommendations(); }, { immediate: true });
 watch(() => props.categoryOptions, () => { void loadCategoryRecommendations(); }, { immediate: true });
 watch(activeSectionMode, () => { void loadCategoryRecommendations(); });
 

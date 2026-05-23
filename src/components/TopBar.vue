@@ -150,7 +150,8 @@ import { platform } from '../utils/platform';
 
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { playerStore } from '../stores/player';
 import { useAuthAction } from '../composables/useAuthAction';
 import { useLoginModalStore } from '../stores/loginModal';

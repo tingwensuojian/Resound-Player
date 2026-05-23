@@ -199,7 +199,8 @@ const lyricsSettings = useLyricsSettingsStore();
 import { playerStore } from '../stores/player';
 import { getSongUrlV1, trashPersonalFm } from '../api/music';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { clearCacheEntry } from '../stores/unblock-cache';
 import AnimatedAppear from './AnimatedAppear.vue';
 import EqPanel from './EqPanel.vue';
@@ -212,10 +213,10 @@ import { formatTime } from '../utils/formatTime';
 import { platform } from '../utils/platform';
 import { QUALITY_OPTIONS as qualityOptions, isQualityAvailable as isQualityAvailableRaw } from '../config/qualityOptions';
 
-const isRealLogin = computed(() => userStore.loginMode === 'cookie' || userStore.loginMode === 'qr');
+const isRealLogin = computed(() => userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr');
 
 function isQualityAvailable(level: string): boolean {
-  return isQualityAvailableRaw(level, isRealLogin.value, userStore.isVip);
+  return isQualityAvailableRaw(level, isRealLogin.value, userStore.state.isVip);
 }
 
 const showQualityPopup = ref(false);
@@ -226,7 +227,7 @@ async function dislikeFmTrack() {
   const track = playerStore.currentTrack;
   const id = Number(track?.id || 0);
   if (!id) return;
-  try { await trashPersonalFm(id, userStore.loginCookie || undefined); } catch { /* ignore */ }
+  try { await trashPersonalFm(id, userStore.state.loginCookie || undefined); } catch { /* ignore */ }
   playerStore.next();
 }
 
@@ -276,7 +277,7 @@ function selectSpeed(rate: number) {
 async function fetchQualitySizes() {
   const trackId = playerStore.currentTrack?.id;
   if (!trackId) return;
-  const cookie = userStore.loginCookie || undefined;
+  const cookie = userStore.state.loginCookie || undefined;
   const sizes: Record<string, string> = {};
   for (const q of qualityOptions) {
     try {

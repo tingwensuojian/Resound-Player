@@ -163,7 +163,8 @@ import DetailTabBar from './ui/DetailTabBar.vue';
 import PlaylistPickerModal from './common/PlaylistPickerModal.vue';
 import { useEntitySubscribe } from '../composables/useEntitySubscribe';
 import { useSongRowConfig } from '../composables/useSongRowConfig';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useAuthAction } from '../composables/useAuthAction';
 import * as commentApi from '../api/music';
 import { getAlbumDetail, addTrackToPlaylist, getUserPlaylist } from '../api/music';
@@ -344,7 +345,7 @@ async function showAddToPlaylist(song: any) {
   if (!checkAuth()) return;
   pickerTargetSong.value = song;
   try {
-    const res = await getUserPlaylist(userStore.profile?.userId || 0, userStore.loginCookie || undefined);
+    const res = await getUserPlaylist(userStore.profile?.userId || 0, userStore.state.loginCookie || undefined);
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
   } catch {
     playlistPickerList.value = [];
@@ -357,7 +358,7 @@ async function confirmAddToPlaylist() {
   const song = pickerTargetSong.value;
   if (!pid || !song) return;
   try {
-    await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.loginCookie || undefined);
+    await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.state.loginCookie || undefined);
     showToast('已添加至歌单', 'success', 3000);
   } catch {
     showToast('添加失败，请重试', 'error', 3000);

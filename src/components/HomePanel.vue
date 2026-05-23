@@ -40,7 +40,7 @@
         </button>
       </AnimatedAppear>
 
-      <AnimatedAppear v-if="userStore.isLogin" tag="article" variant="content" rhythm="body" class-name="top-mini-card radar-card" :index="1">
+      <AnimatedAppear v-if="userStore.state.isLogin" tag="article" variant="content" rhythm="body" class-name="top-mini-card radar-card" :index="1">
         <button class="radar-hero poster" :class="{ 'is-skeleton': !topRecoCard }" :title="topRecoCard?.name" @click="topRecoCard && openRecoDetail(topRecoCard.id)">
           <span class="radar-bg fade-in-bg" :class="{ 'bg-loaded': topRecoBgLoaded }" :style="{ backgroundImage: `url(${topRecoCardCoverUrl})` }"></span>
           <template v-if="topRecoCard">
@@ -330,7 +330,7 @@
           </AnimatedAppear>
         </template>
 
-        <template v-else-if="widget.id === 'exclusive-recommend' && (userStore.loginMode === 'cookie' || userStore.loginMode === 'qr')">
+        <template v-else-if="widget.id === 'exclusive-recommend' && (userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr')">
           <AnimatedAppear tag="h3" variant="title" rhythm="head">你的专属推荐</AnimatedAppear>
           <p v-if="exclusiveRecoLoading" class="custom-tip">专属推荐加载中…</p>
           <p v-else-if="exclusiveRecoError" class="custom-tip">{{ exclusiveRecoError }}</p>
@@ -599,7 +599,8 @@ import { getUserCreatedPlaylist } from '../api/auth';
 import { playerStore } from '../stores/player';
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 import GradientCard from './ui/GradientCard.vue';
 import BookmarkIconButton from './ui/BookmarkIconButton.vue';
@@ -672,7 +673,7 @@ const dailyRecommendCoverUrl = computed(() => dailyRecommendSongs.value[0]?.al?.
 const dailyRecommendHeroTitle = computed(() => dailyRecommendSongs.value[0]?.name || '每日推荐');
 const dailyRecommendHeroSubtitle = computed(() => dailyRecommendSongs.value[0]?.ar?.map((a: any) => a.name).join('/') || '每日为你更新的歌曲');
 const dailyRecommendTracks = computed(() => dailyRecommendSongs.value.slice(0, 3));
-const isUidLogin = computed(() => userStore.loginMode === 'uid');
+const isUidLogin = computed(() => userStore.state.loginMode === 'uid');
 const publicRecoPlaylists = ref<Array<{ id: number; name: string; coverImgUrl?: string; picUrl?: string; creator?: any }>>([]);
 const publicRecoTracks = ref<any[]>([]);
 const publicRecoCoverUrl = ref('');
@@ -693,7 +694,7 @@ const topRecoCardSubtitle = computed(() => {
 });
 const topRecoCardCoverUrl = computed(() => (
   isUidLogin.value
-    ? userStore.profile?.avatarUrl || publicRecoCoverUrl.value || topRecoCard.value?.coverImgUrl || topRecoCard.value?.picUrl || ''
+    ? userStore.state.profile?.avatarUrl || publicRecoCoverUrl.value || topRecoCard.value?.coverImgUrl || topRecoCard.value?.picUrl || ''
     : radarCoverUrl.value
 ));
 const topRecoLoading = computed(() => (isUidLogin.value ? publicRecoLoading.value : privateRadarLoading.value));
@@ -817,7 +818,7 @@ async function applyFmMode() {
   playerStore.setFmMode(mode, submode);
 
   try {
-    const cookie = userStore.loginCookie || undefined;
+    const cookie = userStore.state.loginCookie || undefined;
     const { data } = await setPersonalFmMode({ mode, submode: submode || undefined, cookie });
     const tracks = (data?.data || []) as any[];
     // 立即停止当前播放
@@ -1039,7 +1040,7 @@ async function fetchRadarPlaylistDetail() {
 
   try {
     // 必须传递 cookie，否则 API 可能返回非登录用户的默认/缓存数据（私人雷达是用户专属歌单）
-    const { data } = await getPlaylistDetail(id, 8, userStore.loginCookie || undefined);
+    const { data } = await getPlaylistDetail(id, 8, userStore.state.loginCookie || undefined);
     const playlist = data?.playlist;
     radarTopTracks.value = (playlist?.tracks || []).slice(0, 8);
     // 调试：确认获取到的是正确歌单
@@ -1090,7 +1091,7 @@ async function fetchPublicRecoPlaylistDetail() {
 }
 
 async function fetchPublicRecoPlaylists() {
-  if (!userStore.isLogin || !isUidLogin.value || !userStore.profile?.userId) {
+  if (!userStore.state.isLogin || !isUidLogin.value || !userStore.state.profile?.userId) {
     publicRecoPlaylists.value = [];
     publicRecoTracks.value = [];
     publicRecoCoverUrl.value = '';
@@ -1103,7 +1104,7 @@ async function fetchPublicRecoPlaylists() {
   publicRecoError.value = '';
 
   try {
-    const { data } = await getUserCreatedPlaylist(userStore.profile.userId, 8, 0);
+    const { data } = await getUserCreatedPlaylist(userStore.state.profile.userId, 8, 0);
     const list = Array.isArray(data?.playlist)
       ? data.playlist
       : Array.isArray(data?.list)
@@ -1111,14 +1112,14 @@ async function fetchPublicRecoPlaylists() {
         : Array.isArray(data?.data?.playlist)
           ? data.data.playlist
           : [];
-    const uid = userStore.profile?.userId;
+    const uid = userStore.state.profile?.userId;
     const createdList = uid ? list.filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) === Number(uid)) : list;
 
     publicRecoPlaylists.value = createdList
       .filter((item: any) => Number(item?.id || 0) > 0)
       .map((item: any) => ({
         ...item,
-        creator: item?.creator || userStore.profile || null,
+        creator: item?.creator || userStore.state.profile || null,
       }));
 
     await fetchPublicRecoPlaylistDetail();
@@ -1163,7 +1164,7 @@ async function fetchDailyRecommendPlaylists() {
   privateRadarError.value = '';
 
   try {
-    const { data } = await getRecommendPlaylists(userStore.loginCookie || undefined);
+    const { data } = await getRecommendPlaylists(userStore.state.loginCookie || undefined);
     const list = data?.recommend || [];
     privateRadar.value = list;
     apiCache.set('daily:playlists', list, dailyTtl());
@@ -1190,7 +1191,7 @@ async function fetchDailyRecommendSongs() {
   dailyRecommendLoading.value = true;
   dailyRecommendError.value = '';
   try {
-    const { data } = await getRecommendSongs(userStore.loginCookie || undefined);
+    const { data } = await getRecommendSongs(userStore.state.loginCookie || undefined);
     const list = Array.isArray(data?.recommend) ? data.recommend : Array.isArray(data?.songs) ? data.songs : Array.isArray(data?.data) ? data.data : Array.isArray(data?.data?.dailySongs) ? data.data.dailySongs : Array.isArray(data?.data?.recommend) ? data.data.recommend : Array.isArray(data?.data?.songs) ? data.data.songs : Array.isArray(data?.result?.songs) ? data.result.songs : [];
     dailyRecommendSongs.value = list;
     playerStore.defaultPlaylist = list;
@@ -1205,7 +1206,7 @@ async function fetchDailyRecommendSongs() {
 }
 
 async function requestPersonalFmBatch() {
-  const { data } = await getPersonalFm(userStore.loginCookie || undefined);
+  const { data } = await getPersonalFm(userStore.state.loginCookie || undefined);
   return (data?.data || []) as any[];
 }
 
@@ -1639,7 +1640,7 @@ onMounted(async () => {
   window.addEventListener('keydown', onFmPopoverKeydown);
 
   // 等待登录验证完成后再加载所有数据，确保所有卡片同时出现
-  if (!userStore.loginVerified && userStore.loginCookie) {
+  if (!userStore.loginVerified && userStore.state.loginCookie) {
     await new Promise<void>((resolve) => {
       const unwatch = watch(() => userStore.loginVerified, (val) => {
         if (val) { unwatch(); resolve(); }
@@ -1680,7 +1681,7 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => [userStore.isLogin, userStore.loginMode, userStore.profile?.userId],
+  () => [userStore.state.isLogin, userStore.state.loginMode, userStore.state.profile?.userId],
   async () => {
     await Promise.all([fetchDailyRecommendSongs(), fetchDailyRecommendPlaylists(), fetchPublicRecoPlaylists(), fetchPersonalFm(), fetchRadarPlaylistDetail()]);
   },
@@ -1846,7 +1847,7 @@ async function dislikePersonalFm() {
     await playPersonalFmByIndex(0);
   }
 
-  const disliked = await playerStore.dislikeCurrentPersonalFm(userStore.loginCookie || undefined);
+  const disliked = await playerStore.dislikeCurrentPersonalFm(userStore.state.loginCookie || undefined);
   syncPersonalFmViewFromPlayer();
 
   if (!disliked) {

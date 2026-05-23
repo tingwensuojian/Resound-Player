@@ -133,7 +133,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { getCommentHot } from '../api/music';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 const loginModalStore = useLoginModalStore();
 import AnimatedAppear from './AnimatedAppear.vue';
@@ -162,7 +163,7 @@ const LIMIT = 20;
 const toast = ref('');
 
 const hasMore = computed(() => comments.value.length < total.value);
-const myNickname = computed(() => userStore.profile?.nickname || '');
+const myNickname = computed(() => userStore.state.profile?.nickname || '');
 
 const emit = defineEmits<{ (e: 'open-user', userId: number): void }>();
 
@@ -196,7 +197,7 @@ function normalizeComment(c: any) {
 }
 
 function requireAuth(): boolean {
-  if (!userStore.isLogin) {
+  if (!userStore.state.isLogin) {
     loginModalStore.showLoginModal();
     return false;
   }
@@ -259,7 +260,7 @@ async function submitComment() {
   if (!requireAuth()) return;
   let res: any;
   try {
-    res = await props.sender({ id: props.resourceId, t: 1, content: text, type: props.resourceType, cookie: userStore.loginCookie || undefined });
+    res = await props.sender({ id: props.resourceId, t: 1, content: text, type: props.resourceType, cookie: userStore.state.loginCookie || undefined });
   } catch (e: any) {
     console.error('[comment] submit ERROR', e, e?.response?.data);
     return;
@@ -269,13 +270,13 @@ async function submitComment() {
     comments.value.unshift({
       id: `c-local-${Date.now()}`,
       rawId: null,
-      user: userStore.profile?.nickname || '我',
-      avatarUrl: userStore.profile?.avatarUrl || '',
+      user: userStore.state.profile?.nickname || '我',
+      avatarUrl: userStore.state.profile?.avatarUrl || '',
       content: text,
       time: '刚刚',
       likes: 0,
       liked: false,
-      ownerUserId: userStore.profile?.userId ?? null,
+      ownerUserId: userStore.state.profile?.userId ?? null,
       replyTo: null,
       showReply: false,
       replyDraft: '',
@@ -290,7 +291,7 @@ async function toggleLike(item: any) {
   const liked = !item.liked;
   const cid = item.rawId;
   if (!cid) return;
-  const res = await props.liker({ id: props.resourceId, cid, t: liked ? 1 : 0, type: props.resourceType, cookie: userStore.loginCookie || undefined }).catch(() => null);
+  const res = await props.liker({ id: props.resourceId, cid, t: liked ? 1 : 0, type: props.resourceType, cookie: userStore.state.loginCookie || undefined }).catch(() => null);
   if (res?.data?.code === 200 || res?.data?.code === 250) {
     item.liked = liked;
     item.likes += liked ? 1 : -1;
@@ -308,7 +309,7 @@ async function submitReply(item: any) {
   if (!cid) return;
   let res: any;
   try {
-    res = await props.sender({ id: props.resourceId, t: 2, content: item.replyDraft, commentId: cid, type: props.resourceType, cookie: userStore.loginCookie || undefined });
+    res = await props.sender({ id: props.resourceId, t: 2, content: item.replyDraft, commentId: cid, type: props.resourceType, cookie: userStore.state.loginCookie || undefined });
   } catch (e: any) {
     console.error('[reply] ERROR', e, e?.response?.data);
     return;
@@ -316,7 +317,7 @@ async function submitReply(item: any) {
   if (res?.data?.code === 200 || res?.data?.code === 250) {
     const rawId = Number(res?.data?.comment?.commentId || 0);
     item.replies = item.replies || [];
-    item.replies.push({ id: `r-${Date.now()}`, rawId: rawId > 0 ? rawId : undefined, user: userStore.profile?.nickname || '我', content: item.replyDraft, time: '刚刚', liked: false, likes: 0 });
+    item.replies.push({ id: `r-${Date.now()}`, rawId: rawId > 0 ? rawId : undefined, user: userStore.state.profile?.nickname || '我', content: item.replyDraft, time: '刚刚', liked: false, likes: 0 });
     item.replyDraft = '';
     item.showReply = false;
   }
@@ -330,8 +331,8 @@ function toggleReplyLike(item: any, rIdx: number) {
 }
 
 function canDelete(item: any) {
-  const uid = userStore.profile?.userId;
-  const nickname = userStore.profile?.nickname;
+  const uid = userStore.state.profile?.userId;
+  const nickname = userStore.state.profile?.nickname;
   if (!uid && !nickname) return false;
   if (item.user === '我') return true;
   if (uid && item.ownerUserId != null && item.ownerUserId === uid) return true;
@@ -346,7 +347,7 @@ async function removeComment(item: any) {
     total.value = Math.max(0, total.value - 1);
     return;
   }
-  const res = await props.deleter({ id: props.resourceId, commentId: cid, cookie: userStore.loginCookie || undefined }).catch(() => null);
+  const res = await props.deleter({ id: props.resourceId, commentId: cid, cookie: userStore.state.loginCookie || undefined }).catch(() => null);
   if (res?.data?.code === 200 || res?.data?.code === 250) {
     comments.value = comments.value.filter((c: any) => c.id !== item.id);
     total.value = Math.max(0, total.value - 1);
@@ -358,7 +359,7 @@ async function removeReply(item: any, rIdx: number) {
   if (!reply) return;
   const rawId = reply.rawId;
   if (rawId) {
-    const res = await props.deleter({ id: props.resourceId, commentId: rawId, cookie: userStore.loginCookie || undefined }).catch(() => null);
+    const res = await props.deleter({ id: props.resourceId, commentId: rawId, cookie: userStore.state.loginCookie || undefined }).catch(() => null);
     if (res?.data?.code !== 200 && res?.data?.code !== 250) return;
   }
   item.replies?.splice(rIdx, 1);

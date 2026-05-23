@@ -186,7 +186,8 @@ import AnimatedAppear from './AnimatedAppear.vue';
 import { Trophy, Flame, Moon } from 'lucide-vue-next';
 import { getListenTotal, getListenRealtimeReport, getListenReport, getListenYearReport, getListenTodaySong, getUserRecord } from '../api/music';
 import { playerStore } from '../stores/player';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import PlayPauseButton from './ui/PlayPauseButton.vue';
 
 const emit = defineEmits<{
@@ -449,7 +450,7 @@ function parseWallpaperSongs(wp: any): { id: number; name: string; artistName: s
 // ── Data Fetching ──
 async function fetchAll() {
   try {
-    const cookie = userStore.loginCookie || undefined;
+    const cookie = userStore.state.loginCookie || undefined;
     const [totalRes] = await Promise.all([
       getListenTotal(cookie),
     ]);
@@ -463,7 +464,7 @@ async function fetchAll() {
 
 async function fetchRealtime(type: 'week' | 'month') {
   try {
-    const cookie = userStore.loginCookie || undefined;
+    const cookie = userStore.state.loginCookie || undefined;
     const res = await getListenRealtimeReport(type, cookie);
     if (res?.code === 200 && res.data?.listenTimeDistributionBlock) {
       const block = res.data.listenTimeDistributionBlock;
@@ -493,7 +494,7 @@ async function fetchRealtime(type: 'week' | 'month') {
 
 async function fetchYearReport() {
   try {
-    const cookie = userStore.loginCookie || undefined;
+    const cookie = userStore.state.loginCookie || undefined;
     const res = await getListenYearReport(cookie);
     if (res?.code === 200 && res.data?.yearItems) {
       yearItems.value = res.data.yearItems;
@@ -505,7 +506,7 @@ async function fetchYearReport() {
 
 async function fetchWeekReport() {
   try {
-    const cookie = userStore.loginCookie || undefined;
+    const cookie = userStore.state.loginCookie || undefined;
     const res = await getListenReport('week', undefined, cookie);
     if (res?.code === 200 && res.data?.wallpaperBlock) {
       topSongs.value = parseWallpaperSongs(res.data.wallpaperBlock);
@@ -517,9 +518,9 @@ async function fetchWeekReport() {
 
 async function fetchUserRecord() {
   try {
-    if (!userStore.isLogin || !userStore.profile?.userId) return;
-    const cookie = userStore.loginCookie || undefined;
-    const res = await getUserRecord(userStore.profile.userId, 0, cookie);
+    if (!userStore.state.isLogin || !userStore.state.profile?.userId) return;
+    const cookie = userStore.state.loginCookie || undefined;
+    const res = await getUserRecord(userStore.state.profile.userId, 0, cookie);
     if (res?.code === 200 && res.data?.allData) {
       userAllRecord.value = res.data.allData;
     }
@@ -558,7 +559,7 @@ function switchRange(key: '7d' | '1m') {
 
 async function fetchTodaySongs() {
   try {
-    const cookie = userStore.loginCookie || undefined;
+    const cookie = userStore.state.loginCookie || undefined;
     const res = await getListenTodaySong(cookie);
     if (res?.code === 200 && Array.isArray(res.data)) {
       todaySongs.value = res.data.map((item: any) => ({

@@ -190,7 +190,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { getHistoryRecommendSongDates, getHistoryRecommendSongDetail, getPlaylistDetail, getPlaylistTrackAll, getSongDetailBatch, getRecommendSongs, getUserPlaylist, addTrackToPlaylist } from '../api/music';
 import { playerStore } from '../stores/player';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { apiCache, CACHE_TTL } from '../stores/apiCache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { useAuthAction } from '../composables/useAuthAction';
@@ -290,7 +291,7 @@ const historySelectedLabel = computed(() => {
   if (!selectedHistoryDate.value) return historyButtonLabel.value;
   return historyDates.value.find((item) => item.value === selectedHistoryDate.value)?.label || historyButtonLabel.value;
 });
-const showDailyHistoryDropdown = computed(() => isInjectedDailyRecommend.value && userStore.isLogin && historyDates.value.length > 0);
+const showDailyHistoryDropdown = computed(() => isInjectedDailyRecommend.value && userStore.state.isLogin && historyDates.value.length > 0);
 const detailPageClassName = computed(() => {  
   const classNames: string[] = [];
   if (props.backLabel === '返回排行榜') classNames.push('rank-detail-panel');
@@ -364,7 +365,7 @@ async function fetchDetail(id: number) {
   }
 
   try {
-    const { data } = await getPlaylistDetail(id, 1000, userStore.loginCookie || undefined);
+    const { data } = await getPlaylistDetail(id, 1000, userStore.state.loginCookie || undefined);
     if (currentToken !== fetchToken) return;
 
     const detail = data?.playlist || null;
@@ -506,13 +507,13 @@ function normalizeHistoryDateLabel(dateStr: string) {
 }
 
 async function loadHistoryDates() {
-  if (!isInjectedDailyRecommend.value || !userStore.isLogin) {
+  if (!isInjectedDailyRecommend.value || !userStore.state.isLogin) {
     historyDates.value = [];
     return;
   }
   historyLoading.value = true;
   try {
-    const { data } = await getHistoryRecommendSongDates(userStore.loginCookie || undefined);
+    const { data } = await getHistoryRecommendSongDates(userStore.state.loginCookie || undefined);
     const list = Array.isArray(data?.data?.dates)
       ? data.data.dates
       : Array.isArray(data?.data)
@@ -537,11 +538,11 @@ async function loadHistoryDates() {
 }
 
 async function loadTodayRecommendTracks() {
-  if (!isInjectedDailyRecommend.value || !userStore.isLogin || !playlist.value) return;
+  if (!isInjectedDailyRecommend.value || !userStore.state.isLogin || !playlist.value) return;
   historyLoading.value = true;
   selectedHistoryDate.value = '';
   try {
-    const { data } = await getRecommendSongs(userStore.loginCookie || undefined);
+    const { data } = await getRecommendSongs(userStore.state.loginCookie || undefined);
     const list = Array.isArray(data?.recommend)
       ? data.recommend
       : Array.isArray(data?.songs)
@@ -577,7 +578,7 @@ async function loadHistoryByDate(date: string) {
   selectedHistoryDate.value = date;
   error.value = '';
   try {
-    const { data } = await getHistoryRecommendSongDetail(date, userStore.loginCookie || undefined);
+    const { data } = await getHistoryRecommendSongDetail(date, userStore.state.loginCookie || undefined);
     const list = Array.isArray(data?.data?.songs)
       ? data.data.songs
       : Array.isArray(data?.data?.dailySongs)
@@ -718,7 +719,7 @@ async function showAddToPlaylist(song: any) {
   if (!checkAuth()) return;
   pickerTargetSong.value = song;
   try {
-    const res = await getUserPlaylist(userStore.profile?.userId || 0, userStore.loginCookie || undefined);
+    const res = await getUserPlaylist(userStore.state.profile?.userId || 0, userStore.state.loginCookie || undefined);
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
   } catch { playlistPickerList.value = []; }
   selectedPlaylistId.value = null;
@@ -729,7 +730,7 @@ async function confirmAddToPlaylist() {
   const song = pickerTargetSong.value;
   if (!pid || !song) return;
   try {
-    await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.loginCookie || undefined);
+    await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.state.loginCookie || undefined);
   } catch {}
   showPlaylistPicker.value = false;
 }

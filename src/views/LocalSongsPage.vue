@@ -110,7 +110,8 @@ import { playerStore } from '../stores/player'
 import { platform } from '../utils/platform'
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
-import { userStore } from '../stores/user'
+import { useUserStore } from '../stores/user'
+const userStore = useUserStore()
 import { importToCloud } from '../api/music'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import VirtualSongList from '../components/VirtualSongList.vue'

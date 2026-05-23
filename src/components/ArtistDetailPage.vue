@@ -204,7 +204,8 @@ import { getSongArtists } from '../utils/trackHelpers';
 import { getArtistAlbums, getArtistDescription, getArtistDetail, getArtistMvs, getArtistTopSongs, getUserPlaylist, addTrackToPlaylist } from '../api/music';
 import { resolveArtistImageUrl, normalizeImageUrl } from '../utils/image';
 import { playerStore } from '../stores/player';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useAuthAction } from '../composables/useAuthAction';
 import VirtualTrackList from './VirtualTrackList.vue';
 
@@ -422,7 +423,7 @@ async function showAddToPlaylist(song: any) {
   if (!checkAuth()) return;
   pickerTargetSong.value = song;
   try {
-    const res = await getUserPlaylist(userStore.profile?.userId || 0, userStore.loginCookie || undefined);
+    const res = await getUserPlaylist(userStore.state.profile?.userId || 0, userStore.state.loginCookie || undefined);
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
   } catch { playlistPickerList.value = []; }
   selectedPlaylistId.value = null;
@@ -433,7 +434,7 @@ async function confirmAddToPlaylist() {
   const song = pickerTargetSong.value;
   if (!pid || !song) return;
   try {
-    await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.loginCookie || undefined);
+    await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.state.loginCookie || undefined);
   } catch {}
   showPlaylistPicker.value = false;
 }

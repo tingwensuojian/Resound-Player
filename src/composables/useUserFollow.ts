@@ -1,5 +1,6 @@
 import { ref, watch, type Ref, type ComputedRef } from 'vue';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 import { toggleUserFollow, getUserMutualFollow } from '../api/music';
 
@@ -7,12 +8,12 @@ export type FollowStatus = 'none' | 'following' | 'mutual';
 
 async function checkMutual(rawId: number): Promise<'mutual' | 'following' | 'none'> {
   // 1. 先查是否已关注（store 数组）
-  if (!userStore.subscribedUserIds.includes(rawId)) {
+  if (!userStore.state.subscribedUserIds.includes(rawId)) {
     return 'none';
   }
   // 2. 已关注，查是否互关
   try {
-    const { data } = await getUserMutualFollow(rawId, userStore.loginCookie || undefined);
+    const { data } = await getUserMutualFollow(rawId, userStore.state.loginCookie || undefined);
     // 兼容多种响应格式: { data: { mutual: true } } / { data: true } / { mutual: true }
     const resp = data?.data;
     const mutual = typeof resp === 'boolean' ? resp : Boolean(resp?.mutual ?? data?.mutual ?? false);
@@ -51,7 +52,7 @@ export function useUserFollow(options: {
 
   // 监听 id、登录态、store 数组变化（数组异步填充后重查互关）
   watch(
-    [() => resolveUserId(), () => userStore.isLogin, () => userStore.subscribedUserIds.join(',')],
+    [() => resolveUserId(), () => userStore.state.isLogin, () => userStore.state.subscribedUserIds.join(',')],
     syncState,
     { immediate: true },
   );
@@ -61,11 +62,11 @@ export function useUserFollow(options: {
     if (!rawId || isLoading.value) return;
 
     const loginModalStore = useLoginModalStore();
-    if (!userStore.isLogin) {
+    if (!userStore.state.isLogin) {
       loginModalStore.showLoginModal('subscribe');
       return;
     }
-    if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+    if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
       loginModalStore.showGlobalToast('当前登录方式不支持此操作，请使用扫码或 Cookie 登录', 'warning', 5000);
       return;
     }
@@ -77,7 +78,7 @@ export function useUserFollow(options: {
       const response = await toggleUserFollow({
         id: rawId,
         follow: willFollow,
-        cookie: userStore.loginCookie || undefined,
+        cookie: userStore.state.loginCookie || undefined,
       });
 
       const code = response?.data?.code ?? response?.data?.data?.code;
@@ -86,12 +87,12 @@ export function useUserFollow(options: {
       }
 
       // 更新 store 数组
-      const exists = userStore.subscribedUserIds.includes(rawId);
+      const exists = userStore.state.subscribedUserIds.includes(rawId);
       if (willFollow && !exists) {
-        userStore.subscribedUserIds.push(rawId);
+        userStore.state.subscribedUserIds.push(rawId);
       } else if (!willFollow && exists) {
-        const idx = userStore.subscribedUserIds.indexOf(rawId);
-        if (idx >= 0) userStore.subscribedUserIds.splice(idx, 1);
+        const idx = userStore.state.subscribedUserIds.indexOf(rawId);
+        if (idx >= 0) userStore.state.subscribedUserIds.splice(idx, 1);
       }
 
       // 关注后查是否互关（直接查，不用等 watcher）

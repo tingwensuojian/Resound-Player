@@ -20,7 +20,8 @@
 import { ref, watch, readonly, type Ref, type UnwrapRef } from 'vue';
 import { apiCache, CACHE_TTL, type CacheEntry } from '../stores/apiCache';
 import { dedup } from '../utils/requestDedup';
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 
 export interface UseApiDataOptions<T> {
   /** 缓存 TTL（毫秒），默认使用缓存分组的默认 TTL */
@@ -151,7 +152,7 @@ export function useApiData<T>(
 
   // 监听 cacheKey 变化自动重新加载
   watch(
-    [resolveKey, () => userStore.isLogin],
+    [resolveKey, () => userStore.state.isLogin],
     ([newKey]) => {
       if (newKey) {
         load();

@@ -1,4 +1,5 @@
-import { userStore } from '../stores/user';
+import { useUserStore } from '../stores/user';
+const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 
 /**
@@ -19,11 +20,11 @@ export function useAuthAction(toastMsg: string, loginIntent: 'like' | 'playlist'
   }
 
   function checkAuth(): boolean {
-    if (!userStore.isLogin) {
+    if (!userStore.state.isLogin) {
       loginModalStore.showLoginModal(loginIntent);
       return false;
     }
-    if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
+    if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
       loginModalStore.showGlobalToast(toastMsg, 'warning', 5000);
       return false;
     }
