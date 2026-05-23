@@ -42,5 +42,11 @@ window.addEventListener('unhandledrejection', (event) => {
     console.warn('[global] Unhandled URL rejection:', err.message, err.stack);
   }
 });
+import { registerCoverCacheSW } from './utils/swRegister';
+
+// 注册 Service Worker 封面缓存
+if ('serviceWorker' in navigator) {
+  registerCoverCacheSW().catch(() => {});
+}
 
 createApp(App).mount('#app');
