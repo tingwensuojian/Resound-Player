@@ -110,7 +110,7 @@
                             v-for="artist in track.artists"
                             :key="`${item.id}-${trackIdx}-${artist.id || artist.name}`"
                             type="button"
-                            class="artist-link"
+                            class="artist-inline-btn"
                             @click.stop="openArtistDetail(artist)"
                           >
                             {{ artist.name || '未知歌手' }}
@@ -175,7 +175,7 @@
                             v-for="artist in track.artists"
                             :key="`${item.id}-${trackIdx}-${artist.id || artist.name}`"
                             type="button"
-                            class="artist-link"
+                            class="artist-inline-btn"
                             @click.stop="openArtistDetail(artist)"
                           >
                             {{ artist.name || '未知歌手' }}
@@ -325,7 +325,7 @@
                             v-for="artist in track.artists"
                             :key="`${item.id}-${trackIdx}-${artist.id || artist.name}`"
                             type="button"
-                            class="artist-link"
+                            class="artist-inline-btn"
                             @click.stop="openArtistDetail(artist)"
                           >
                             {{ artist.name || '未知歌手' }}
@@ -871,7 +871,7 @@ onMounted(() => {
 .global-track-text .track-artist-fallback { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .global-track-text .track-song { color: inherit; font-weight: inherit; }
 .global-track-text .track-artist-fallback,
-.global-track-text .artist-link,
+.global-track-text .artist-inline-btn,
 .global-track-text .track-separator { color: inherit; }
 .track-separator { color: var(--text-soft); }
 .muted { margin: 0; color: var(--text-soft); }
