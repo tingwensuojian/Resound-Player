@@ -1,6 +1,5 @@
 import { reactive } from 'vue';
 import { getIntelligenceList, getPlaylistTrackAll, getSongDetail, trashPersonalFm } from '../api/music';
-import { tryUnblockMatch } from '../api/unblock';
 import { userStore } from './user';
 import { showGlobalToast } from './loginModal';
 import { hydrateCache, getCache, setCache } from './unblock-cache';
@@ -8,6 +7,8 @@ import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { platform } from '../utils/platform';
 import { eqSettings } from './eqSettings';
 import { setupMediaSession } from '../composables/useMediaSession';
+import { createAudioEngine } from '../player/audioEngine';
+import { resolvePlayUrl } from '../player/playbackResolver';
 
 type Artist = { name: string };
 type Album = { name?: string; picUrl?: string };
@@ -59,63 +60,13 @@ function formatTrack(raw: any): Track {
 }
 
 
-const QUALITY_LEVELS: Record<string, string> = {
-  '标准': 'standard',
-  '较高': 'higher',
-  '极高(HQ)': 'exhigh',
-  '无损(SQ)': 'lossless',
-  'Hi-Res': 'hires',
-  '高清臻音': 'jyeffect',
-  '高清环绕声': 'jyeffect',
-  '沉浸环绕声': 'sky',
-  '杜比全景声': 'dolby',
-  '超清母带': 'jymaster',
-};
+const VALID_QUALITIES = new Set(['标准', '较高', '极高(HQ)', '无损(SQ)', 'Hi-Res', '高清臻音', '高清环绕声', '沉浸环绕声', '杜比全景声', '超清母带']);
 
-/** 各音质等级的最低比特率阈值，低于此值判定为 API 静默降级 */
-const QUALITY_MIN_BR: Record<string, number> = {
-  'standard': 128000,
-  'higher': 192000,
-  'exhigh': 320000,
-  'lossless': 800000,
-  'hires': 1920000,
-  'jyeffect': 1920000,
-  'sky': 1920000,
-  'dolby': 1920000,
-  'jymaster': 1920000,
-};
-
-/** 需要 VIP 的音质 API level（免费用户不可请求） */
-const VIP_ONLY_API_LEVELS = new Set([
-  'lossless',
-  'hires',
-  'jyeffect',
-  'sky',
-  'dolby',
-  'jymaster',
-]);
-
-
-function formatQualityBr(br: number): string {
-  if (br >= 1920000) return 'Hi-Res';
-  if (br >= 999000) return '无损(SQ)';
-  if (br >= 320000) return '极高(HQ)';
-  if (br >= 192000) return '较高';
-  if (br >= 128000) return '标准';
-  return '';
-}
-
-function toApiLevel(label: string): string {
-  return QUALITY_LEVELS[label] || 'exhigh';
-}
-
-const EQ_DEBUG = false;
-function logEqDebug(...args: unknown[]) {
-  if (EQ_DEBUG) console.debug('[EQ]', ...args);
-}
+const audioEl = new Audio();
+const audioEngine = createAudioEngine(audioEl);
 
 export const playerStore = reactive({
-  audio: new Audio(),
+  audio: audioEl,
   playlist: [] as Track[],
   currentIndex: -1,
   currentTrack: null as Track | null,
@@ -155,13 +106,6 @@ export const playerStore = reactive({
   currentIntelligenceLoading: false,
   isIntelligenceActive: false,
 
-  // ---- Web Audio 管线 ----
-  _audioCtx: null as AudioContext | null,
-  _sourceNode: null as MediaElementAudioSourceNode | null,
-  _gainNode: null as GainNode | null,
-  _eqFilters: [] as BiquadFilterNode[],
-  _eqEnabled: false,
-
   init() {
     hydrateCache();
     this.audio.volume = this.volume;
@@ -192,7 +136,7 @@ export const playerStore = reactive({
 
     // 预热音频硬件，缩短首次 AudioContext 创建时间
     // Windows 上首次 new AudioContext() 需初始化 WASAPI，延迟可达 500ms+
-    this._prewarmAudio();
+    audioEngine.ensureReady();
 
     this.hydrate();
   },
@@ -308,9 +252,10 @@ export const playerStore = reactive({
       this.paidContentSkip = typeof parsed.paidContentSkip === 'boolean' ? parsed.paidContentSkip : true;
       const savedQuality = localStorage.getItem('gm_quality_v1');
       const persistedQuality = typeof parsed.defaultQuality === 'string' ? parsed.defaultQuality : '';
-      this.defaultQuality = savedQuality && QUALITY_LEVELS[savedQuality] != null
+      const VALID_QUALITIES = new Set(['标准', '较高', '极高(HQ)', '无损(SQ)', 'Hi-Res', '高清臻音', '高清环绕声', '沉浸环绕声', '杜比全景声', '超清母带']);
+      this.defaultQuality = savedQuality && VALID_QUALITIES.has(savedQuality)
         ? savedQuality
-        : (QUALITY_LEVELS[persistedQuality] != null ? persistedQuality : '较高');
+        : (VALID_QUALITIES.has(persistedQuality) ? persistedQuality : '较高');
       console.debug('[player] hydrate defaultQuality:', parsed.defaultQuality, '→', this.defaultQuality);
       this.themePrimary = typeof parsed.themePrimary === 'string' && parsed.themePrimary ? parsed.themePrimary : 'var(--theme-primary)';
       this.themeMode = parsed.themeMode === '浅色' || parsed.themeMode === '深色' || parsed.themeMode === '跟随系统' ? parsed.themeMode : '跟随系统';
@@ -328,98 +273,16 @@ export const playerStore = reactive({
     }
   },
 
-  /** 预热音频硬件，缩短首次 AudioContext() 创建延迟 */
-  /** 预热：直接初始化 Web Audio 管线，消除首次播放时的 AudioContext 创建延迟 */
-  _prewarmAudio() {
-    this._ensureWebAudio();
-  },
-
-  /** 惰性创建 Web Audio 管线（MediaElementSourceNode + GainNode） */
-  _ensureWebAudio() {
-    if (this._audioCtx) {
-      logEqDebug('web audio already exists', { state: this._audioCtx.state, hasSource: !!this._sourceNode, hasGain: !!this._gainNode });
-      return;
-    }
-    // 已经尝试过但失败的，不再重试
-    if (this._audioCtx === null && this._sourceNode === undefined) {
-      console.warn('[EQ] web audio init previously failed, skip');
-      return;
-    }
-    logEqDebug('creating web audio pipeline');
-    try {
-      const ctx = new AudioContext();
-      // MediaElementSourceNode 需要音频资源的 CORS 权限，确保 audio 元素带上凭据
-      if (this.audio.crossOrigin !== 'anonymous') {
-        this.audio.crossOrigin = 'anonymous';
-        // 仅当当前有已加载的 src 时重载（首次启用 EQ 时触发）
-        if (this.audio.src && this.audio.src !== '') {
-          const savedSrc = this.audio.currentSrc || this.audio.src;
-          this.audio.src = savedSrc;
-          this.audio.load();
-        }
-      }
-      const src = ctx.createMediaElementSource(this.audio);
-      const gain = ctx.createGain();
-      src.connect(gain);
-      gain.connect(ctx.destination);
-      this._audioCtx = ctx;
-      this._sourceNode = src;
-      this._gainNode = gain;
-      this._syncVolumeToGain();
-      // 确保原生 audio volume 为最大值，音量全部由 GainNode 控制
-      this.audio.volume = 1;
-      ctx.onstatechange = () => {
-        logEqDebug('audio context state changed', ctx.state);
-        if (ctx.state === 'closed') {
-          this._audioCtx = null;
-          this._sourceNode = null;
-          this._gainNode = null;
-          this._eqFilters = [];
-          this._eqEnabled = false;
-        }
-      };
-      logEqDebug('web audio pipeline ready', { state: ctx.state, gain: gain.gain.value });
-    } catch (e) {
-      console.warn('[EQ] web audio init failed:', e);
-      // 标记失败，避免重复重试
-      this._audioCtx = null;
-      this._sourceNode = undefined as any;
-      this._gainNode = null;
-      this._eqFilters = [];
-    }
-  },
-
-  /** 将 this.volume + this.muted 同步到 GainNode */
-  _syncVolumeToGain() {
-    if (!this._gainNode) return;
-    this._gainNode.gain.value = this.muted ? 0 : this.volume;
-  },
-
-  /**
-   * 启用/停用 EQ 滤波链
-   * 首次启用时会惰性初始化 Web Audio 管线。
-   * 如果音频正在播放，会短暂暂停→重建→恢复，确保 createMediaElementSource 在可靠状态下执行。
-   */
   enableEq(on: boolean) {
-    if (this._eqEnabled === on) {
-      logEqDebug('enableEq skipped, already in target state', on);
-      return;
-    }
-    logEqDebug('switching EQ', { on, isPlaying: this.isPlaying, hasAudioCtx: !!this._audioCtx, hasGain: !!this._gainNode });
-    this._eqEnabled = on;
+    if (audioEngine.isEnabled === on) return;
 
     if (on) {
-      // 保存播放状态
       const wasPlaying = this.isPlaying;
       const savedTime = this.audio.currentTime;
+      if (wasPlaying) this.audio.pause();
 
-      // 暂停音频后再初始化 Web Audio 管线
-      if (wasPlaying) {
-        this.audio.pause();
-      }
-
-      this._ensureWebAudio();
-      if (!this._audioCtx || !this._sourceNode || !this._gainNode) {
+      audioEngine.ensureReady();
+      if (!audioEngine.isReady) {
         console.warn('[EQ] pipeline init failed, fallback to native');
         if (wasPlaying) {
           this.audio.currentTime = savedTime;
@@ -428,16 +291,8 @@ export const playerStore = reactive({
         return;
       }
 
-      // 强制 AudioContext resume
-      if (this._audioCtx.state === 'suspended') {
-        this._audioCtx.resume().catch((e) => {
-          console.warn('[EQ] AudioContext resume failed:', e);
-        });
-      }
+      audioEngine.rebuildChain(true, eqSettings.gains);
 
-      this._rebuildEqChain();
-
-      // 恢复播放
       if (wasPlaying) {
         this.audio.currentTime = savedTime;
         this.audio.play().catch((err) => {
@@ -445,18 +300,13 @@ export const playerStore = reactive({
         });
       }
 
-      // 同步音量
-      if (this._gainNode && !this.muted) {
-        this._gainNode.gain.value = this.volume;
-      }
+      audioEngine.syncVolume(this.volume, this.muted);
     } else {
-      logEqDebug('switching EQ off');
-      // 关闭 EQ 时，清除 crossOrigin 并重载音频，使 unblock 源能正常 seek
       const wasPlaying = this.isPlaying;
       const savedTime = this.audio.currentTime;
       if (wasPlaying) this.audio.pause();
 
-      this._rebuildEqChain();
+      audioEngine.rebuildChain(false);
 
       if (this.audio.crossOrigin === 'anonymous' && this.audio.src) {
         this.audio.crossOrigin = '';
@@ -472,77 +322,8 @@ export const playerStore = reactive({
     }
   },
 
-  /**
-   * 设置 10 段 EQ 增益值（单位 dB，范围 -12 ~ +12）
-   * 仅在 EQ 运行态启用且滤波链存在时写入节点；未启用时只保留设置。
-   */
   setEqGains(gains: number[]) {
-    if (gains.length !== 10) {
-      console.warn('[EQ] setEqGains invalid length:', gains.length);
-      return;
-    }
-    if (!this._eqEnabled) return;
-    if (this._eqFilters.length !== 10) {
-      this._rebuildEqChain();
-    }
-    if (this._eqFilters.length !== 10) return;
-
-    for (let i = 0; i < 10; i++) {
-      this._eqFilters[i].gain.value = Math.max(-12, Math.min(12, gains[i]));
-    }
-  },
-
-  /** 在 sourceNode→gainNode 之间插入或移除 EQ 滤波链 */
-  _rebuildEqChain() {
-    if (!this._sourceNode || !this._gainNode || !this._audioCtx) {
-      console.warn('[EQ] rebuild skipped, nodes missing', { hasSource: !!this._sourceNode, hasGain: !!this._gainNode, hasCtx: !!this._audioCtx });
-      return;
-    }
-    const mode = this._eqEnabled ? 'ENABLE' : 'BYPASS';
-    logEqDebug('rebuild chain', { mode, state: this._audioCtx.state });
-
-    // 先断开所有现有连接
-    this._sourceNode.disconnect();
-    this._gainNode.disconnect();
-    this._eqFilters.forEach((f) => { try { f.disconnect(); } catch {} });
-
-    if (!this._eqEnabled) {
-      // EQ 关闭：直连 source → gain
-      this._sourceNode.connect(this._gainNode);
-      this._gainNode.connect(this._audioCtx.destination);
-      this._eqFilters = [];
-      return;
-    }
-
-    // EQ 启用：创建 10 段 peaking 滤波器，串联插入
-    const ctx = this._audioCtx;
-    const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-    const Q = 1.41;
-    const currentGains = [...(eqSettings.gains || [])];
-    // 确保是 10 段
-    while (currentGains.length < 10) currentGains.push(0);
-
-    // 创建新滤波器链，直接使用当前增益值
-    const filters: BiquadFilterNode[] = [];
-    for (let i = 0; i < 10; i++) {
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'peaking';
-      filter.frequency.value = frequencies[i];
-      filter.Q.value = Q;
-      filter.gain.value = Math.max(-12, Math.min(12, currentGains[i]));
-      filters.push(filter);
-    }
-
-    // 串联连接：source → filter[0] → filter[1] → ... → filter[9] → gain
-    this._sourceNode.connect(filters[0]);
-    for (let i = 0; i < 9; i++) {
-      filters[i].connect(filters[i + 1]);
-    }
-    filters[9].connect(this._gainNode);
-    this._gainNode.connect(ctx.destination);
-
-    this._eqFilters = filters;
-    logEqDebug('EQ filter chain ready', currentGains);
+    audioEngine.setEqGains(gains);
   },
 
   setPlaylist(list: any[], startIndex = 0, playlistId?: number) {
@@ -791,92 +572,26 @@ export const playerStore = reactive({
         return true;
       }
 
-      // 使用 apiClient 的 proxy 逻辑：通过 unblock proxy 获取歌曲 URL
-      const unblockProxyUrl = platform.unblockProxyUrl;
-
-      // 并行：fee 探测 + uiStore 导入 + 音源匹配（三者同时发起）
-      const nocookie = userStore.loginCookie || undefined;
-      let level = toApiLevel(this.defaultQuality);
-      // 免费用户请求 VIP 音质时强制降为极高(HQ)
-      if (!userStore.isVip && VIP_ONLY_API_LEVELS.has(level)) {
-        level = 'exhigh';
-      }
-      // 不传 proxy 参数给 fee 探测 — 直连判断官方可播性
-      // unblock proxy 的 CONNECT 隧道对 music.163.com HTTPS 握手会失败
-      // 音源替换由下方的 tryUnblockMatch 独立负责
-      const qs = `id=${track.id}&level=${level}${nocookie ? '&cookie=' + encodeURIComponent(nocookie) : ''}`;
-      const feePromise = fetch(`${platform.apiBaseUrl}/song/url/v1?${qs}`);
+      // URL 决议：fee 探测 → 音质选择 → 缓存 → unblock → 降级检测 → 代理回退
       const uiImport = import("../stores/ui");
-      const cached = getCache(track.id);
       const { uiStore } = await uiImport;
-      const matchPromise = (!cached && uiStore.unblockEnabled)
-        ? tryUnblockMatch(track.id, uiStore.unblockSources)
-        : null;
-
-      // 1. 先等 fee 结果
-      let isFreePlayable = false;
-      let fee = 0;
-      let hasTrial = false;
-      try {
-        const directRes = await feePromise;
-        const directData = await directRes.json();
-        const officialItem = Array.isArray(directData?.data) ? directData.data[0] : null;
-        const officialCode = Number(officialItem?.code || 0);
-        fee = Number(officialItem?.fee ?? 0);
-        if (officialItem?.url) playUrl = officialItem.url;
-        if (officialItem?.br > 0) this.currentQualityBr = officialItem.br;
-        hasTrial = Boolean(officialItem?.freeTrialInfo);
-        // 无试听限制 = 用户有完整播放权限（含 VIP 登录后 fee=1 的场景）
-        isFreePlayable = officialCode === 200 && Boolean(playUrl) && !hasTrial;
-        // 检测 API 静默降级：返回 br 低于该音质最低阈值
-        const minBr = QUALITY_MIN_BR[level] || 0;
-        this.currentQualityDowngraded = minBr > 0 && this.currentQualityBr > 0 && this.currentQualityBr < minBr;
-        if (this.currentQualityDowngraded) {
-          const actualQ = formatQualityBr(this.currentQualityBr);
-          this.qualityDowngradeInfo = { from: this.defaultQuality, to: actualQ };
-          // 仅记录降级信息，不修改用户偏好：下一首歌仍会以 defaultQuality 请求
-          console.warn(
-            `[quality-downgrade] API 静默降级: 请求 ${this.qualityDowngradeInfo.from} (level=${level}, minBr=${minBr}) → 实际 br=${this.currentQualityBr} ≥ 交付 ${actualQ}（用户偏好 ${this.defaultQuality} 未变）`
-          );
-        }
-        console.log('[debug] direct fee:', { fee, hasTrial, officialCode, hasUrl: Boolean(playUrl), isFreePlayable });
-      } catch (e) {
-        console.warn('[debug] direct check failed:', e);
-      }
-
-      // 2. 官方可播 → 直接用；不可播 → 缓存/音源匹配
-      if (isFreePlayable) {
-        this.currentSource = "official";
-      } else if (cached) {
-        playUrl = cached.url;
-        this.currentSource = cached.source;
-        if (cached.br > 0) this.currentQualityBr = cached.br;
-      } else if (matchPromise) {
-        // 3. 付费/试听歌曲 - 等待匹配结果
-        const result = await matchPromise;
-        if (result?.url) {
-          playUrl = result.url;
-          this.currentSource = result.source || 'unblock';
-          if (result.br > 0) this.currentQualityBr = result.br;
-          setCache(track.id, { url: result.url, source: result.source || 'unblock', br: result.br || 0, size: result.size || 0, songName: track.name });
-        }
-      } else {
-        this.currentSource = "official";
-      }
-
-      // ── 音质切换决策链路日志 ──
-      const downgradeInfo = this.qualityDowngradeInfo;
-      console.log(
-        '[quality-switch] ═══════════════════════════════\n' +
-        `  歌曲: ${track.name} (id=${track.id})\n` +
-        `  请求音质: ${downgradeInfo?.from || this.defaultQuality} → API level: ${level}\n` +
-        `  官方返回: br=${this.currentQualityBr}  fee=${fee}  hasTrial=${hasTrial}\n` +
-        `  可直播: ${isFreePlayable}  |  缓存命中: ${!!cached}  |  unblock启用: ${uiStore.unblockEnabled}\n` +
-        `  决策: ${isFreePlayable ? '✅ 使用官方音源' : cached ? '📦 命中缓存' : this.currentSource === 'official' ? '⚠️ 回退官方(无可替换)' : '🔀 unblock替换'}\n` +
-        `  降级: ${downgradeInfo ? `⚠️ 是 (${downgradeInfo.from} → ${downgradeInfo.to})` : '否'}\n` +
-        `  最终音源: ${this.currentSource}  |  比特率: ${this.currentQualityBr}  |  显示音质: ${this.defaultQuality}\n` +
-        '[quality-switch] ═══════════════════════════════'
-      );
+      const result = await resolvePlayUrl({
+        trackId: track.id,
+        defaultQuality: this.defaultQuality,
+        isVip: userStore.isVip,
+        loginCookie: userStore.loginCookie,
+        unblockEnabled: uiStore.unblockEnabled,
+        unblockSources: uiStore.unblockSources,
+        apiBaseUrl: platform.apiBaseUrl,
+        unblockProxyUrl: platform.unblockProxyUrl,
+        getCache,
+        setCache,
+      });
+      playUrl = result.url;
+      this.currentSource = result.source;
+      this.currentQualityBr = result.br;
+      this.currentQualityDowngraded = result.isDowngraded;
+      this.qualityDowngradeInfo = result.downgradeInfo;
 
       const wasPlaying = this.isPlaying;
       if (typeof seekTo === 'number') {
@@ -914,10 +629,6 @@ export const playerStore = reactive({
         return false;
       }
 
-      // 非官方音源（unblock 匹配）的 URL 缺乏 CORS 头，通过 /dl-proxy 代理加载
-      if (this.currentSource !== 'official' && !playUrl.startsWith(location.origin + '/')) {
-        playUrl = '/dl-proxy?url=' + encodeURIComponent(playUrl);
-      }
       if (eqSettings.enabled && this.audio.crossOrigin !== 'anonymous') {
         this.audio.crossOrigin = 'anonymous';
       }
@@ -930,9 +641,7 @@ export const playerStore = reactive({
         this.audio.currentTime = seekTo;
       }
       // 确保 AudioContext 处于运行态（预创建时可能为 suspended）
-      if (this._audioCtx && this._audioCtx.state === 'suspended' && !this._eqEnabled) {
-        this._audioCtx.resume().catch(() => {});
-      }
+      audioEngine.resumeIfSuspended();
       try {
         await this.audio.play();
       } catch {
@@ -1089,8 +798,8 @@ export const playerStore = reactive({
     if (this.muted) {
       this.muted = false;
     }
-    if (this._gainNode) {
-      this._gainNode.gain.value = val;
+    if (audioEngine.isReady) {
+      audioEngine.syncVolume(val, false);
       this.audio.volume = 1;
     } else {
       this.audio.volume = val;
@@ -1102,8 +811,8 @@ export const playerStore = reactive({
     if (this.muted) {
       this.muted = false;
       const vol = this.volumeBeforeMute;
-      if (this._gainNode) {
-        this._gainNode.gain.value = vol;
+      if (audioEngine.isReady) {
+        audioEngine.syncVolume(vol, false);
         this.audio.volume = 1;
       } else {
         this.audio.volume = vol;
@@ -1111,8 +820,8 @@ export const playerStore = reactive({
     } else {
       this.volumeBeforeMute = this.volume;
       this.muted = true;
-      if (this._gainNode) {
-        this._gainNode.gain.value = 0;
+      if (audioEngine.isReady) {
+        audioEngine.syncVolume(0, true);
         this.audio.volume = 1;
       } else {
         this.audio.volume = 0;
