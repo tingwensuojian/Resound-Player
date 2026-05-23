@@ -5,7 +5,8 @@ import { useLoginModalStore } from '../stores/loginModal';
 import { hydrateCache, getCache, setCache } from './unblock-cache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { platform } from '../utils/platform';
-import { eqSettings } from './eqSettings';
+import { useEqSettingsStore } from './eqSettings';
+const eqSettings = useEqSettingsStore();
 import { setupMediaSession } from '../composables/useMediaSession';
 import { createAudioEngine } from '../player/audioEngine';
 import { resolvePlayUrl } from '../player/playbackResolver';
@@ -291,7 +292,7 @@ export const playerStore = reactive({
         return;
       }
 
-      audioEngine.rebuildChain(true, eqSettings.gains);
+      audioEngine.rebuildChain(true, eqSettings.state.gains);
 
       if (wasPlaying) {
         this.audio.currentTime = savedTime;
@@ -629,13 +630,13 @@ export const playerStore = reactive({
         return false;
       }
 
-      if (eqSettings.enabled && this.audio.crossOrigin !== 'anonymous') {
+      if (eqSettings.state.enabled && this.audio.crossOrigin !== 'anonymous') {
         this.audio.crossOrigin = 'anonymous';
       }
       this.audio.src = playUrl;
-      if (eqSettings.enabled) {
+      if (eqSettings.state.enabled) {
         this.enableEq(true);
-        this.setEqGains(eqSettings.gains);
+        this.setEqGains(eqSettings.state.gains);
       }
       if (typeof seekTo === 'number' && seekTo > 0) {
         this.audio.currentTime = seekTo;

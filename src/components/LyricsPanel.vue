@@ -2,9 +2,9 @@
   <div
     class="right-zone"
     :class="{
-      'l-center': lyricsSettings.centerAlign,
-      'l-no-cover': !lyricsSettings.showCover,
-      'l-hidden': !lyricsSettings.showLyrics,
+      'l-center': lyricsSettings.state.centerAlign,
+      'l-no-cover': !lyricsSettings.state.showCover,
+      'l-hidden': !lyricsSettings.state.showLyrics,
       'l-record': vinylMode,
       'l-fullscreen': fullscreen,
     }"
@@ -15,8 +15,8 @@
     @mouseleave="onZoneLeave"
   >
     <!-- 隐藏歌词时：空占位 -->
-    <template v-if="!lyricsSettings.showLyrics">
-      <div v-if="lyricsSettings.useAmllRenderer" class="amll-status" />
+    <template v-if="!lyricsSettings.state.showLyrics">
+      <div v-if="lyricsSettings.state.useAmllRenderer" class="amll-status" />
     </template>
     <!-- 显示歌词时 -->
     <template v-else>
@@ -26,14 +26,14 @@
       <div v-else-if="!lyricLines.length" class="amll-status">暂无歌词</div>
       <!-- 有歌词数据：双渲染器层叠，v-show 保持两个组件始终挂载 -->
       <div v-else class="renderer-stack">
-        <div v-if="lyricsSettings.useAmllRenderer" class="renderer-layer">
+        <div v-if="lyricsSettings.state.useAmllRenderer" class="renderer-layer">
           <LyricPlayer
             ref="amllPlayerCompRef"
             :lyricLines="amllLines"
             :currentTime="amllCurrentTime"
             :alignAnchor="amllAnchor.anchor"
             :alignPosition="amllAnchor.position"
-            :hidePassedLines="lyricsSettings.hidePlayed"
+            :hidePassedLines="lyricsSettings.state.hidePlayed"
             :enableBlur="true"
             :enableScale="true"
             :enableSpring="true"
@@ -42,17 +42,17 @@
             @lineClick="onAmllLineClick"
           />
         </div>
-        <div v-show="!lyricsSettings.useAmllRenderer" class="renderer-layer">
+        <div v-show="!lyricsSettings.state.useAmllRenderer" class="renderer-layer">
           <div ref="lyricBoxRef" class="lyric-box" :style="lyricBoxStyle" @scroll.passive="onLyricScroll">
-            <div v-for="(line, idx) in lyricLines" :key="`${idx}-${line.time}`" :ref="(el) => setLyricLineRef(el, idx)" class="line-wrap" :class="{ active: idx === currentLyricIndex, 'hide-played': lyricsSettings.hidePlayed && idx < currentLyricIndex }" :style="lineWrapStyle(idx, currentLyricIndex)" @click="seekToLine(idx)">
+            <div v-for="(line, idx) in lyricLines" :key="`${idx}-${line.time}`" :ref="(el) => setLyricLineRef(el, idx)" class="line-wrap" :class="{ active: idx === currentLyricIndex, 'hide-played': lyricsSettings.state.hidePlayed && idx < currentLyricIndex }" :style="lineWrapStyle(idx, currentLyricIndex)" @click="seekToLine(idx)">
               <p class="line" :class="{ active: idx === currentLyricIndex, passed: idx < currentLyricIndex }" :style="lineStyle(idx, line)">
                 <template v-if="line.words && line.words.length">
                   <span v-for="(word, wIdx) in line.words" :key="`${idx}-${wIdx}`" class="word" :style="getWordStyle(idx, word, currentLyricIndex, effectiveTime, lyricColorOpts)">{{ word.text }}<span v-if="word.space">&nbsp;</span></span>
                 </template>
                 <template v-else>{{ line.text || '...' }}</template>
               </p>
-              <p v-if="line.translation && lyricsSettings.showTranslation" class="line-sub" :class="{ active: idx === currentLyricIndex, passed: idx < currentLyricIndex }" :style="translationStyle(idx, line)">{{ line.translation }}</p>
-              <p v-if="line.romalrc && lyricsSettings.showRomalrc" class="line-sub line-roma" :class="{ active: idx === currentLyricIndex, passed: idx < currentLyricIndex }" :style="translationStyle(idx, line)">{{ line.romalrc }}</p>
+              <p v-if="line.translation && lyricsSettings.state.showTranslation" class="line-sub" :class="{ active: idx === currentLyricIndex, passed: idx < currentLyricIndex }" :style="translationStyle(idx, line)">{{ line.translation }}</p>
+              <p v-if="line.romalrc && lyricsSettings.state.showRomalrc" class="line-sub line-roma" :class="{ active: idx === currentLyricIndex, passed: idx < currentLyricIndex }" :style="translationStyle(idx, line)">{{ line.romalrc }}</p>
             </div>
           </div>
         </div>
@@ -64,7 +64,8 @@
 <script setup lang="ts">
 import { computed, watch, nextTick, ref, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
 import { playerStore } from '../stores/player';
-import { lyricsSettings } from '../stores/lyricsSettings';
+import { useLyricsSettingsStore } from '../stores/lyricsSettings';
+const lyricsSettings = useLyricsSettingsStore();
 import { useLyrics, getLineWrapStyle, getLineStyle, getWordStyle, getTranslationStyle, getAnchorRatio } from '../composables/useLyrics';
 import { convertToAmmlLyrics, mapAnchorPos } from '../composables/useAmllAdapter';
 
@@ -82,7 +83,7 @@ const props = defineProps<{
   accentColor?: string;
 }>();
 const lyricColorOpts = computed(() => {
-  if (!lyricsSettings.followCoverColor || !props.accentColor) return {};
+  if (!lyricsSettings.state.followCoverColor || !props.accentColor) return {};
   const accent = props.accentColor;
   return {
     baseColor: accent.replace('rgb', 'rgba').replace(')', ',0.35)'),
@@ -141,10 +142,10 @@ function onPodcastDescClick(e: MouseEvent) {
 }
 
 const lyricVars = computed(() => {
-  const fs = fontSizeMap[lyricsSettings.fontSize] || fontSizeMap[1];
-  const ls = letterSpacingMap[lyricsSettings.letterSpacing] || letterSpacingMap[1];
-  const fw = fontWeightMap[lyricsSettings.fontWeight] || fontWeightMap[4];
-  const lh = lineHeightMap[lyricsSettings.lineHeight] || lineHeightMap[4];
+  const fs = fontSizeMap[lyricsSettings.state.fontSize] || fontSizeMap[1];
+  const ls = letterSpacingMap[lyricsSettings.state.letterSpacing] || letterSpacingMap[1];
+  const fw = fontWeightMap[lyricsSettings.state.fontWeight] || fontWeightMap[4];
+  const lh = lineHeightMap[lyricsSettings.state.lineHeight] || lineHeightMap[4];
   const amllColor = lyricColorOpts.value.activeColor;
   return {
     // CSS 变量：自定义渲染器通过 var() 读取
@@ -165,12 +166,12 @@ const lyricVars = computed(() => {
 
 const zoneStyle = computed(() => ({
   boxSizing: 'border-box',
-  transform: `translateX(${lyricsSettings.lyricOffsetX}%)`,
+  transform: `translateX(${lyricsSettings.state.lyricOffsetX}%)`,
 }));
 
 const lyricBoxStyle = computed(() => {
-  const ratio = getAnchorRatio(lyricsSettings.anchorPos);
-  const topPad = lyricsSettings.showCover && lyricsSettings.displayMode !== 'fullscreen' ? '42%' : '0';
+  const ratio = getAnchorRatio(lyricsSettings.state.anchorPos);
+  const topPad = lyricsSettings.state.showCover && lyricsSettings.state.displayMode !== 'fullscreen' ? '42%' : '0';
   return { paddingTop: topPad, paddingBottom: `calc(${ratio * 100}vh - 80px)` };
 });
 
@@ -183,7 +184,7 @@ function seekToLine(idx: number) {
   if (scrollTimer) { clearTimeout(scrollTimer); scrollTimer = null; }
   origSeekToLine(idx);
   // 暂停状态时点击跳转后自动恢复播放
-  if (lyricsSettings.autoPlayOnSeek && !playerStore.isPlaying) {
+  if (lyricsSettings.state.autoPlayOnSeek && !playerStore.isPlaying) {
     nextTick(() => playerStore.togglePlay());
   }
 }
@@ -216,7 +217,7 @@ function translationStyle(idx: number, line: any) {
 /* ---- AMLL 相关 ---- */
 const amllLines = computed(() => convertToAmmlLyrics(lyricLines.value));
 const amllCurrentTime = computed(() => Math.round(effectiveTime.value * 1000));
-const amllAnchor = computed(() => mapAnchorPos(lyricsSettings.anchorPos));
+const amllAnchor = computed(() => mapAnchorPos(lyricsSettings.state.anchorPos));
 
 function onAmllLineClick(ev: any) {
   // ev.detail.lineIndex 包含被点击的行索引
@@ -225,7 +226,7 @@ function onAmllLineClick(ev: any) {
 }
 
 const amllPlayerCompRef = ref<any>(null);
-watch(() => lyricsSettings.useAmllRenderer, (useAmll) => {
+watch(() => lyricsSettings.state.useAmllRenderer, (useAmll) => {
   if (!useAmll || !lyricLines.value.length) return;
   nextTick(() => {
     amllPlayerCompRef.value?.lyricPlayer?.setCurrentTime(amllCurrentTime.value, true);
@@ -238,7 +239,7 @@ watch(() => lyricsSettings.useAmllRenderer, (useAmll) => {
 let amllSubLineRaf: number | null = null;
 
 function syncAmllSubLines() {
-  if (!lyricsSettings.hidePlayed || !lyricsSettings.useAmllRenderer) {
+  if (!lyricsSettings.state.hidePlayed || !lyricsSettings.state.useAmllRenderer) {
     amllSubLineRaf = null;
     return;
   }
@@ -271,7 +272,7 @@ function resetAmllSubLines() {
   }
 }
 
-watch([() => lyricsSettings.hidePlayed, () => lyricsSettings.useAmllRenderer], ([hide, useAmll]) => {
+watch([() => lyricsSettings.state.hidePlayed, () => lyricsSettings.state.useAmllRenderer], ([hide, useAmll]) => {
   if (hide && useAmll) {
     if (!amllSubLineRaf) amllSubLineRaf = requestAnimationFrame(syncAmllSubLines);
   } else {

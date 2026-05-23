@@ -3,12 +3,12 @@
     <div
       v-if="playerStore.expanded"
       class="expanded-wrap"
-      :class="{ 'mode-fullscreen': lyricsSettings.displayMode === 'fullscreen' }"
+      :class="{ 'mode-fullscreen': lyricsSettings.state.displayMode === 'fullscreen' }"
       :style="bgStyle"
       @click.self="playerStore.closeExpanded()"
     >
       <!-- 全屏封面（独立层）：有自定义背景时隐藏，让自定义背景覆盖 -->
-      <div v-if="lyricsSettings.showCover && lyricsSettings.displayMode === 'fullscreen' && !isCustomBg" class="fullscreen-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle"></div>
+      <div v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'fullscreen' && !isCustomBg" class="fullscreen-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle"></div>
       <Transition name="cover-switch" mode="out-in" appear>
         <div :key="trackId" class="cover-aura" :style="coverAuraStyle"></div>
       </Transition>
@@ -56,7 +56,7 @@
           </AnimatedAppear>
 
         <div class="panel-body" :class="{ 'comments-mode': showComments }" :style="panelBodyStyle">
-          <div v-if="!lyricsSettings.showCover || lyricsSettings.displayMode === 'fullscreen'" class="cover-hidden-head">
+          <div v-if="!lyricsSettings.state.showCover || lyricsSettings.state.displayMode === 'fullscreen'" class="cover-hidden-head">
                 <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="song-name-center">{{ playerStore.currentTrack?.name || '未在播放' }}</AnimatedAppear>
                 <AnimatedAppear tag="p" variant="text" rhythm="body" class-name="song-artist-center">
                   <template v-if="isCurrentPodcast">
@@ -69,9 +69,9 @@
                   <span v-if="playerStore.playbackRate !== 1" class="rate-badge">{{ playerStore.playbackRate.toFixed(2).replace(/\.00$/, '.0') }}x</span>
                 </AnimatedAppear>
               </div>
-              <div v-if="showLeftZone" class="left-zone" :class="{ 'mode-cover': lyricsSettings.displayMode === 'cover', 'mode-record': lyricsSettings.displayMode === 'record', 'l-only-cover': !lyricsSettings.showLyrics }">
+              <div v-if="showLeftZone" class="left-zone" :class="{ 'mode-cover': lyricsSettings.state.displayMode === 'cover', 'mode-record': lyricsSettings.state.displayMode === 'record', 'l-only-cover': !lyricsSettings.state.showLyrics }">
                 <!-- 封面模式 -->
-                <template v-if="lyricsSettings.showCover && lyricsSettings.displayMode === 'cover'">
+                <template v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'cover'">
                   <Transition name="cover-switch" mode="out-in" appear>
                     <div :key="trackId" class="album-shell" :class="{ playing: playerStore.isPlaying }">
                       <div class="album-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle"></div>
@@ -91,7 +91,7 @@
                   </Transition>
                 </template>
                 <!-- 唱片模式 -->
-                <template v-if="lyricsSettings.showCover && lyricsSettings.displayMode === 'record'">
+                <template v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'record'">
                   <Transition name="cover-switch" mode="out-in" appear>
                     <div :key="trackId" class="vinyl-record">
                       <div class="vinyl-pointer" :class="{ active: playerStore.isPlaying }">
@@ -103,7 +103,7 @@
                     </div>
                   </Transition>
                 </template>
-                <template v-if="lyricsSettings.showCover && lyricsSettings.displayMode !== 'fullscreen'">
+                <template v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode !== 'fullscreen'">
                   <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="song-name" :key="'sn-'+trackId">{{ playerStore.currentTrack?.name || '未在播放' }}</AnimatedAppear>
                   <AnimatedAppear tag="p" variant="text" rhythm="body" class-name="song-artist" :key="'sa-'+trackId">
                     <template v-if="isCurrentPodcast">
@@ -148,7 +148,7 @@
                   </button>
                 </div>
               </div>
-              <LyricsPanel :vinyl-mode="lyricsSettings.displayMode === 'record'" :fullscreen="lyricsSettings.displayMode === 'fullscreen'" :accent-color="palette.c3" />
+              <LyricsPanel :vinyl-mode="lyricsSettings.state.displayMode === 'record'" :fullscreen="lyricsSettings.state.displayMode === 'fullscreen'" :accent-color="palette.c3" />
 
           <div v-if="showComments" class="comments-overlay">
               <div class="comments-head">
@@ -218,11 +218,11 @@
                 <div class="trans-body">
                   <div class="trans-row">
                     <span class="trans-label">翻译</span>
-                    <FancySwitch :model-value="lyricsSettings.showTranslation" @update:model-value="lyricsSettings.showTranslation = $event; lyricsSettings.save()" />
+                    <FancySwitch :model-value="lyricsSettings.state.showTranslation" @update:model-value="lyricsSettings.state.showTranslation = $event; lyricsSettings.save()" />
                   </div>
                   <div class="trans-row">
                     <span class="trans-label">音译</span>
-                    <FancySwitch :model-value="lyricsSettings.showRomalrc" @update:model-value="lyricsSettings.showRomalrc = $event; lyricsSettings.save()" />
+                    <FancySwitch :model-value="lyricsSettings.state.showRomalrc" @update:model-value="lyricsSettings.state.showRomalrc = $event; lyricsSettings.save()" />
                   </div>
                 </div>
               </div>
@@ -230,7 +230,7 @@
           </transition>
         </Teleport>
 
-        <AnimatedAppear v-if="lyricsSettings.showMiniBar" tag="div" variant="content" rhythm="overlay" class-name="bottom-console" :class="{ 'ui-hidden': !uiRevealed }" @mouseenter="freeze" @mouseleave="unfreeze">
+        <AnimatedAppear v-if="lyricsSettings.state.showMiniBar" tag="div" variant="content" rhythm="overlay" class-name="bottom-console" :class="{ 'ui-hidden': !uiRevealed }" @mouseenter="freeze" @mouseleave="unfreeze">
           <div class="cc-left">
             <button class="con-btn" @click="playerStore.closeExpanded()" data-tooltip="关闭播放页" aria-label="关闭播放页"><ChevronDown :size="18" /></button>
             <button class="con-btn con-fav" :class="{ saved: isCurrentLiked }" type="button" :data-tooltip="isCurrentLiked ? '取消收藏' : '收藏'" :aria-label="isCurrentLiked ? '取消收藏' : '收藏'" :disabled="likeLoading || !canToggleCurrentLike" @click="toggleCurrentLike"><Heart :size="14" /></button>
@@ -296,7 +296,8 @@ import { toggleDjSubscribe, toggleSongLike, trashPersonalFm, deleteDjComment } f
 import { playerStore } from '../stores/player';
 import { uiStore } from '../stores/ui';
 import { userStore } from '../stores/user';
-import { lyricsSettings } from '../stores/lyricsSettings';
+import { useLyricsSettingsStore } from '../stores/lyricsSettings';
+const lyricsSettings = useLyricsSettingsStore();
 import { useIridescence, type IridescenceConfig } from '../composables/useIridescence';
 import { useThreeScene } from '../composables/useThreeScene';
 import { usePaperShaders } from '../composables/usePaperShaders';
@@ -436,80 +437,80 @@ const seekPreviewTime = ref(0);
 
 /* ---- custom background modes ---- */
 const iriContainerRef = ref<HTMLElement | null>(null);
-const showIridescence = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'iridescence');
-const showSoftGradient = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'soft-gradient');
+const showIridescence = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'iridescence');
+const showSoftGradient = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'soft-gradient');
 const softGradientDuration = computed(() => {
-  const speed = lyricsSettings.iriSpeed || 5;
+  const speed = lyricsSettings.state.iriSpeed || 5;
   return 12 - speed;
 });
 const threeSceneRef = ref<HTMLElement | null>(null);
-const showThreeScene = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'three-scene');
+const showThreeScene = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'three-scene');
 const threeSceneActive = computed(() => showThreeScene.value && playerStore.expanded);
 useThreeScene(threeSceneRef, threeSceneActive);
 const paperRef = ref<HTMLElement | null>(null);
-const showPaper = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'paper-shaders');
+const showPaper = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'paper-shaders');
 const paperActive = computed(() => showPaper.value && playerStore.expanded);
 const paperConfig = computed(() => ({
-  color1: lyricsSettings.iriColors?.[0] || '#3A29FF',
-  color2: lyricsSettings.iriColors?.[1] || '#FF94B4',
-  color3: lyricsSettings.iriColors?.[2] || '#FF3232',
-  color4: lyricsSettings.iriColors?.[3] || '#1a1a2e',
-  speed: (lyricsSettings.iriSpeed || 5) / 10,
+  color1: lyricsSettings.state.iriColors?.[0] || '#3A29FF',
+  color2: lyricsSettings.state.iriColors?.[1] || '#FF94B4',
+  color3: lyricsSettings.state.iriColors?.[2] || '#FF3232',
+  color4: lyricsSettings.state.iriColors?.[3] || '#1a1a2e',
+  speed: (lyricsSettings.state.iriSpeed || 5) / 10,
 }));
 usePaperShaders(paperRef, paperConfig, paperActive);
 const mistRef = ref<HTMLElement | null>(null);
-const showMist = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'mist');
+const showMist = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'mist');
 const mistActive = computed(() => showMist.value && playerStore.expanded);
 useMistBackground(mistRef, mistActive);
 const loomRef = ref<HTMLElement | null>(null);
-const showLoom = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'digital-loom');
+const showLoom = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'digital-loom');
 const loomActive = computed(() => showLoom.value && playerStore.expanded);
 useDigitalLoom(loomRef, loomActive);
 const silkRef = ref<HTMLElement | null>(null);
-const showSilk = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'silk');
+const showSilk = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'silk');
 const silkActive = computed(() => showSilk.value && playerStore.expanded);
 useSilkBackground(silkRef, silkActive);
 const auroraRef = ref<HTMLElement | null>(null);
-const showAurora = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'aurora');
+const showAurora = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'aurora');
 const auroraActive = computed(() => showAurora.value && playerStore.expanded);
 useAuroraShader(auroraRef, auroraActive);
 
 /* ---- AMLL fluid background ---- */
-const showAmllFluid = computed(() => lyricsSettings.bgMode === 'custom' && lyricsSettings.bgCustomMode === 'amll-fluid');
+const showAmllFluid = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'amll-fluid');
 const amllFluidSpeed = computed(() => {
-  const speed = lyricsSettings.iriSpeed || 5;
+  const speed = lyricsSettings.state.iriSpeed || 5;
   return speed / 5; // 0-10 → 0-2
 });
 const iriConfig = computed((): IridescenceConfig => {
   const toRgb = (hex: string) => { const h = (hex || '#3A29FF').replace('#',''); return [parseInt(h.substring(0,2),16)/255, parseInt(h.substring(2,4),16)/255, parseInt(h.substring(4,6),16)/255] as [number,number,number]; };
   return {
-    color1: toRgb(lyricsSettings.iriColors?.[0]),
-    color2: toRgb(lyricsSettings.iriColors?.[1]),
-    color3: toRgb(lyricsSettings.iriColors?.[2]),
-    speed: (lyricsSettings.iriSpeed || 5) / 10,
-    amplitude: (lyricsSettings.iriScale || 5) / 10,
+    color1: toRgb(lyricsSettings.state.iriColors?.[0]),
+    color2: toRgb(lyricsSettings.state.iriColors?.[1]),
+    color3: toRgb(lyricsSettings.state.iriColors?.[2]),
+    speed: (lyricsSettings.state.iriSpeed || 5) / 10,
+    amplitude: (lyricsSettings.state.iriScale || 5) / 10,
   };
 });
 const iriActive = computed(() => showIridescence.value && playerStore.expanded);
 useIridescence(iriContainerRef, iriConfig, iriActive);
 
 const iriBlurStyle = computed(() => {
-  const px = ((lyricsSettings.iriBlur || 0) / 10) * 24;
+  const px = ((lyricsSettings.state.iriBlur || 0) / 10) * 24;
   return { backdropFilter: `blur(${px}px)`, WebkitBackdropFilter: `blur(${px}px)` };
 });
 
 const coverAuraStyle = computed(() => { const url = playerStore.currentTrack?.al?.picUrl; return url ? { backgroundImage: `url(${url})` } : {}; });
 
 /* settings-driven */
-const showLeftZone = computed(() => lyricsSettings.showCover && lyricsSettings.displayMode !== 'fullscreen');
-const showLeftControls = computed(() => !lyricsSettings.showMiniBar);
+const showLeftZone = computed(() => lyricsSettings.state.showCover && lyricsSettings.state.displayMode !== 'fullscreen');
+const showLeftControls = computed(() => !lyricsSettings.state.showMiniBar);
 
-const displayMode = computed(() => lyricsSettings.displayMode);
-const isCustomBg = computed(() => lyricsSettings.bgMode === 'custom');
+const displayMode = computed(() => lyricsSettings.state.displayMode);
+const isCustomBg = computed(() => lyricsSettings.state.bgMode === 'custom');
 
 const panelBodyStyle = computed(() => {
-  if (!lyricsSettings.showCover || lyricsSettings.displayMode === 'fullscreen') return { display: 'grid', gridTemplateColumns: '1fr', gridTemplateRows: 'auto 1fr', rowGap: 'var(--space-3)' };
-  if (!lyricsSettings.showLyrics) return { display: 'grid', gridTemplateColumns: '1fr' };
+  if (!lyricsSettings.state.showCover || lyricsSettings.state.displayMode === 'fullscreen') return { display: 'grid', gridTemplateColumns: '1fr', gridTemplateRows: 'auto 1fr', rowGap: 'var(--space-3)' };
+  if (!lyricsSettings.state.showLyrics) return { display: 'grid', gridTemplateColumns: '1fr' };
   return { display: 'grid', gridTemplateColumns: '40% 60%', gap: '24px' };
 });
 
@@ -521,10 +522,10 @@ function getLuminance(rgb: string): number {
 }
 
 const bgStyle = computed(() => {
-  const { bgMode } = lyricsSettings;
+  const { bgMode } = lyricsSettings.state;
   // 自定义模式 → 虹彩效果由 canvas 渲染
   if (bgMode === 'custom') {
-    if (lyricsSettings.bgCustomMode === 'soft-gradient') {
+    if (lyricsSettings.state.bgCustomMode === 'soft-gradient') {
       return {
         background: '#0a0c14',
         '--panel-bg': 'rgba(0,0,0,0.3)',

@@ -1,12 +1,12 @@
+import { defineStore } from 'pinia';
 import { reactive } from 'vue';
 
 export type BgTheme = 'default' | 'light' | 'dark';
 export type BgMode = 'basic' | 'custom';
 export type BgCustomMode = 'solid' | 'gradient' | 'image' | 'css' | 'iridescence' | 'soft-gradient' | 'three-scene' | 'paper-shaders' | 'mist' | 'digital-loom' | 'silk' | 'aurora' | 'amll-fluid';
-
 export type DisplayMode = 'cover' | 'record' | 'fullscreen';
 
-export type LyricsSettings = {
+export interface LyricsSettings {
   showCover: boolean;
   displayMode: DisplayMode;
   centerAlign: boolean;
@@ -27,13 +27,15 @@ export type LyricsSettings = {
   bgTheme: BgTheme;
   bgCustomMode: BgCustomMode;
   bgColor: string;
-  anchorPos: number;  // 歌词高亮锚点位置 0-10 (对应 0.0~1.0)
-  hidePlayed: boolean; // 隐藏已播放歌词
-  iriColors: string[];  // 虹彩背景颜色组（最多5色）
-  iriSpeed: number;     // 虹彩速度 0-10
-  iriScale: number;     // 虹彩扩散范围 0-10
-  iriBlur: number;      // 虹彩模糊度 0-10（0=无模糊）
-};
+  anchorPos: number;
+  hidePlayed: boolean;
+  iriColors: string[];
+  iriSpeed: number;
+  iriScale: number;
+  iriBlur: number;
+  /** 歌词面板水平偏移（百分比） */
+  lyricOffsetX: number;
+}
 
 const STORAGE_KEY = 'gm_lyrics_settings_v1';
 
@@ -64,28 +66,25 @@ const defaults: LyricsSettings = {
   iriSpeed: 5,
   iriScale: 5,
   iriBlur: 10,
+  lyricOffsetX: 0,
 };
 
-function hydrate(): LyricsSettings {
+export const useLyricsSettingsStore = defineStore('lyricsSettings', () => {
+  const state = reactive<LyricsSettings>({ ...defaults });
+
+  // hydrate from localStorage
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...defaults };
-    return { ...defaults, ...JSON.parse(raw) };
-  } catch {
-    return { ...defaults };
+    if (raw) {
+      Object.assign(state, { ...defaults, ...JSON.parse(raw) });
+    }
+  } catch { /* ignore */ }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch { /* silently fail */ }
   }
-}
 
-function persist(settings: LyricsSettings) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch { /* silently fail */ }
-}
-
-const initial = hydrate();
-
-export const lyricsSettings = reactive<LyricsSettings>({ ...initial }) as LyricsSettings & { save(): void };
-
-lyricsSettings.save = function save() {
-  persist(this);
-};
+  return { state, save };
+});

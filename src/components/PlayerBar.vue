@@ -22,7 +22,7 @@
         <div class="title-row">
           <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="title">{{ playerStore.currentTrack?.name || '未在播放' }}</AnimatedAppear>
         </div>
-        <AnimatedAppear tag="div" variant="text" rhythm="body" :index="1" class-name="artist"><template v-if="playerStore.isPlaying && currentLyricText && lyricsSettings.showBarLyric"><span class="lyric-text" :title="currentLyricText">{{ currentLyricText }}</span></template><template v-else>{{ artistText }}<span v-if="uiStore.unblockEnabled && playerStore.currentTrack" class="source-badge">{{ sourceLabel }}</span></template></AnimatedAppear>
+        <AnimatedAppear tag="div" variant="text" rhythm="body" :index="1" class-name="artist"><template v-if="playerStore.isPlaying && currentLyricText && lyricsSettings.state.showBarLyric"><span class="lyric-text" :title="currentLyricText">{{ currentLyricText }}</span></template><template v-else>{{ artistText }}<span v-if="uiStore.unblockEnabled && playerStore.currentTrack" class="source-badge">{{ sourceLabel }}</span></template></AnimatedAppear>
       </div>
     </AnimatedAppear>
 
@@ -120,9 +120,9 @@
                     <span class="lyric-popover__item-label">桌面歌词</span>
                     <span class="lyric-popover__item-check" :class="{ on: desktopLyricEnabled }"><span class="dot"></span></span>
                   </button>
-                  <button type="button" class="lyric-popover__item" :class="{ active: lyricsSettings.showBarLyric }" @click="toggleBarLyric">
+                  <button type="button" class="lyric-popover__item" :class="{ active: lyricsSettings.state.showBarLyric }" @click="toggleBarLyric">
                     <span class="lyric-popover__item-label">控制中心歌词</span>
-                    <span class="lyric-popover__item-check" :class="{ on: lyricsSettings.showBarLyric }"><span class="dot"></span></span>
+                    <span class="lyric-popover__item-check" :class="{ on: lyricsSettings.state.showBarLyric }"><span class="dot"></span></span>
                   </button>
                 </div>
               </div>
@@ -193,7 +193,8 @@ import {
   VolumeX,
 } from 'lucide-vue-next';
 import { uiStore } from '../stores/ui';
-import { lyricsSettings } from '../stores/lyricsSettings';
+import { useLyricsSettingsStore } from '../stores/lyricsSettings';
+const lyricsSettings = useLyricsSettingsStore();
 import { playerStore } from '../stores/player';
 import { getSongUrlV1, trashPersonalFm } from '../api/music';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
@@ -413,7 +414,7 @@ const desktopLyricEnabled = ref(false);
 let _lyricCleanupFns: (() => void)[] = [];
 
 const isAnyLyricActive = computed(() =>
-  lyricsSettings.showBarLyric || trayLyricEnabled.value || desktopLyricEnabled.value
+  lyricsSettings.state.showBarLyric || trayLyricEnabled.value || desktopLyricEnabled.value
 );
 
 function updateLyricPopoverPosition() {
@@ -436,7 +437,7 @@ function handleLyricClick() {
       initLyricStates();
     }
   } else {
-    lyricsSettings.showBarLyric = !lyricsSettings.showBarLyric;
+    lyricsSettings.state.showBarLyric = !lyricsSettings.state.showBarLyric;
     lyricsSettings.save();
   }
 }
@@ -473,7 +474,7 @@ function toggleDesktopLyric() {
 }
 
 function toggleBarLyric() {
-  lyricsSettings.showBarLyric = !lyricsSettings.showBarLyric;
+  lyricsSettings.state.showBarLyric = !lyricsSettings.state.showBarLyric;
   lyricsSettings.save();
   showLyricPopover.value = false;
 }
@@ -635,7 +636,7 @@ watch([() => lyricLines.value, () => playerStore.currentTrack, () => playerStore
   if (!track) {
     window.appEnv.desktopLyric.updateData({
       lrcArray: [], currentTime: 0, trackName: '', artist: '', isPlaying: false,
-      showTranslation: lyricsSettings.showTranslation, showRomalrc: lyricsSettings.showRomalrc,
+      showTranslation: lyricsSettings.state.showTranslation, showRomalrc: lyricsSettings.state.showRomalrc,
     });
     return;
   }
@@ -649,8 +650,8 @@ watch([() => lyricLines.value, () => playerStore.currentTrack, () => playerStore
     trackName: track.name || '',
     artist: track.ar?.map((a: { name: string }) => a.name).join('/') || '',
     isPlaying: playerStore.isPlaying,
-    showTranslation: lyricsSettings.showTranslation,
-    showRomalrc: lyricsSettings.showRomalrc,
+    showTranslation: lyricsSettings.state.showTranslation,
+    showRomalrc: lyricsSettings.state.showRomalrc,
   });
 });
 
@@ -662,7 +663,7 @@ watch(() => lyricLines.value, (lines) => {
   if (!track) {
     window.appEnv.desktopLyric.updateData({
       lrcArray: [], currentTime: 0, trackName: '', artist: '', isPlaying: false,
-      showTranslation: lyricsSettings.showTranslation, showRomalrc: lyricsSettings.showRomalrc,
+      showTranslation: lyricsSettings.state.showTranslation, showRomalrc: lyricsSettings.state.showRomalrc,
     });
     return;
   }
@@ -673,8 +674,8 @@ watch(() => lyricLines.value, (lines) => {
     trackName: track.name || '',
     artist: track.ar?.map((a: { name: string }) => a.name).join('/') || '',
     isPlaying: playerStore.isPlaying,
-    showTranslation: lyricsSettings.showTranslation,
-    showRomalrc: lyricsSettings.showRomalrc,
+    showTranslation: lyricsSettings.state.showTranslation,
+    showRomalrc: lyricsSettings.state.showRomalrc,
   });
 });
 

@@ -73,7 +73,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { lyricsSettings as store } from '../stores/lyricsSettings';
+import { useLyricsSettingsStore } from '../stores/lyricsSettings';
+const lyricsSettings = useLyricsSettingsStore();
 import FancySwitch from './ui/FancySwitch.vue';
 import StepSliderRow from './ui/StepSliderRow.vue';
 import RadioRow from './ui/RadioRow.vue';
@@ -82,23 +83,23 @@ const props = defineProps<{ visible: boolean; anchor?: { top: number; right: num
 const emit = defineEmits<{ (e: 'close'): void }>();
 function close() { emit('close'); }
 
-const s = store;
-function set(key: string, value: any) { (s as any)[key] = value; s.save(); }
+const s = lyricsSettings.state;
+function set(key: string, value: any) { (s as any)[key] = value; lyricsSettings.save(); }
 
 // 本地驱动状态 — 绕过 Teleport 下 reactive proxy 依赖追踪失效的问题
 const localBgMode = ref(s.bgMode);
-function setBgMode(v: string) { s.bgMode = v; s.save(); }
+function setBgMode(v: string) { s.bgMode = v; lyricsSettings.save(); }
 const localBgCustomMode = ref(s.bgCustomMode);
-function setBgCustomMode(v: string) { s.bgCustomMode = v as any; s.save(); localBgCustomMode.value = v; }
-function setShowCover(v: boolean) { s.showCover = !v; if (v) { s.showLyrics = true; s.showMiniBar = true; } s.save(); }
-function setShowLyrics(v: boolean) { s.showLyrics = !v; if (v) s.showCover = true; s.save(); }
+function setBgCustomMode(v: string) { s.bgCustomMode = v as any; lyricsSettings.save(); localBgCustomMode.value = v; }
+function setShowCover(v: boolean) { s.showCover = !v; if (v) { s.showLyrics = true; s.showMiniBar = true; } lyricsSettings.save(); }
+function setShowLyrics(v: boolean) { s.showLyrics = !v; if (v) s.showCover = true; lyricsSettings.save(); }
 
 const displayModeOptions = [
   { value: 'cover', label: '封面模式' },
   { value: 'record', label: '唱片模式' },
   { value: 'fullscreen', label: '全屏封面' },
 ];
-function setDisplayMode(v: string) { s.displayMode = v as any; s.save(); }
+function setDisplayMode(v: string) { s.displayMode = v as any; lyricsSettings.save(); }
 
 const popoverStyle = computed(() => {
   const a = props.anchor || { top: 80, right: 24 };
@@ -155,7 +156,7 @@ function updateIriColor(idx: number, val: string) {
   const colors = [...s.iriColors];
   colors[idx] = val;
   s.iriColors = colors;
-  s.save();
+  lyricsSettings.save();
 }
 </script>
 

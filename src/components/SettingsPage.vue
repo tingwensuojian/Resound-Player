@@ -473,7 +473,8 @@ import { playerStore } from '../stores/player';
 import { uiStore } from '../stores/ui';
 import { userStore } from '../stores/user';
 import { getSourceMeta } from '../config/musicSources';
-import { lyricsSettings } from '../stores/lyricsSettings';
+import { useLyricsSettingsStore } from '../stores/lyricsSettings';
+const lyricsSettings = useLyricsSettingsStore();
 import { platform } from '../utils/platform';
 
 type SettingItem = {
@@ -709,7 +710,7 @@ const currentGroups = computed(() => {
 const switchState = reactive<Record<string, boolean>>({
   unblock: uiStore.unblockEnabled,
   autoplay: playerStore.autoplayNext,
-  barLyric: lyricsSettings.showBarLyric,
+  barLyric: lyricsSettings.state.showBarLyric,
   resumeAfterMv: uiStore.resumeAfterMv,
   showIntelligenceIndicator: uiStore.showIntelligenceIndicator,
   autoHidePlayerUI: uiStore.autoHidePlayerUI,
@@ -849,7 +850,7 @@ watch(
 watch(
   () => switchState.barLyric,
   (enabled) => {
-    lyricsSettings.showBarLyric = Boolean(enabled);
+    lyricsSettings.state.showBarLyric = Boolean(enabled);
     lyricsSettings.save();
   },
 );

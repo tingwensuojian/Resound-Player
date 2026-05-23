@@ -6,7 +6,7 @@
           <header class="eq-head">
             <div class="eq-head-left">
               <h3>均衡器</h3>
-              <FancySwitch :model-value="eq.enabled" @update:model-value="toggleEq" />
+              <FancySwitch :model-value="eq.state.enabled" @update:model-value="toggleEq" />
             </div>
             <button class="eq-close" type="button" @click="close" aria-label="关闭均衡器">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -21,7 +21,7 @@
               type="button"
               class="preset-chip"
               :class="{
-                active: eq.currentPreset === p.name,
+                active: eq.state.currentPreset === p.name,
                 'preset-chip--custom': eq.isCustomPreset(p.name),
               }"
               @click="selectPreset(p)"
@@ -38,12 +38,12 @@
                   :min="-12"
                   :max="12"
                   :step="0.5"
-                  :value="eq.gains[i]"
-                  :disabled="!eq.enabled"
+                  :value="eq.state.gains[i]"
+                  :disabled="!eq.state.enabled"
                   @input="onBandInput(i, $event)"
                 />
               </div>
-              <div class="eq-db-value">{{ eq.gains[i] > 0 ? '+' : '' }}{{ eq.gains[i].toFixed(1) }} dB</div>
+              <div class="eq-db-value">{{ eq.state.gains[i] > 0 ? '+' : '' }}{{ eq.state.gains[i].toFixed(1) }} dB</div>
               <div class="eq-freq-label">{{ freq }} Hz</div>
             </div>
           </div>
@@ -64,12 +64,12 @@
           </div>
 
           <div class="eq-footer ui-safe-group">
-            <button class="eq-action button-surface" type="button" :disabled="!eq.enabled" @click="openSavePreset">保存预设</button>
+            <button class="eq-action button-surface" type="button" :disabled="!eq.state.enabled" @click="openSavePreset">保存预设</button>
             <button
               v-if="isSelectedCustomPreset"
               class="eq-action button-surface"
               type="button"
-              :disabled="!eq.enabled"
+              :disabled="!eq.state.enabled"
               @click="overwritePreset"
             >覆盖</button>
             <button
@@ -78,7 +78,7 @@
               type="button"
               @click="deletePreset"
             >删除</button>
-            <button class="eq-reset button-surface" type="button" :disabled="!eq.enabled" @click="resetGains">重置</button>
+            <button class="eq-reset button-surface" type="button" :disabled="!eq.state.enabled" @click="resetGains">重置</button>
           </div>
         </div>
       </div>
@@ -88,7 +88,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { eqSettings, EQ_FREQ_LABELS, type EqPreset } from '../stores/eqSettings';
+import { useEqSettingsStore, EQ_FREQ_LABELS, type EqPreset } from '../stores/eqSettings';
+const eqSettings = useEqSettingsStore();
 import { playerStore } from '../stores/player';
 import FancySwitch from './ui/FancySwitch.vue';
 import HorizontalScrollRail from './ui/HorizontalScrollRail.vue';
@@ -101,7 +102,7 @@ const presets = computed(() => eq.getAllPresets());
 const freqLabels = EQ_FREQ_LABELS;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-const isSelectedCustomPreset = computed(() => eq.isCustomPreset(eq.currentPreset));
+const isSelectedCustomPreset = computed(() => eq.isCustomPreset(eq.state.currentPreset));
 const isSaveEditorOpen = ref(false);
 const saveDraftName = ref('');
 const saveError = ref('');
@@ -128,28 +129,28 @@ const panelStyle = computed(() => {
 });
 
 function toggleEq(value: boolean) {
-  eq.enabled = value;
+  eq.state.enabled = value;
   playerStore.enableEq(value);
   eq.save();
 }
 
 function selectPreset(preset: EqPreset) {
-  eq.currentPreset = preset.name;
-  eq.gains = [...preset.gains];
+  eq.state.currentPreset = preset.name;
+  eq.state.gains = [...preset.gains];
   eq.save();
-  if (eq.enabled) {
-    playerStore.setEqGains(eq.gains);
+  if (eq.state.enabled) {
+    playerStore.setEqGains(eq.state.gains);
   }
 }
 
 function onBandInput(index: number, event: Event) {
   const val = Number((event.target as HTMLInputElement).value);
-  eq.gains[index] = val;
+  eq.state.gains[index] = val;
   if (!isSelectedCustomPreset.value) {
-    eq.currentPreset = '自定义';
+    eq.state.currentPreset = '自定义';
   }
-  if (eq.enabled) {
-    playerStore.setEqGains(eq.gains);
+  if (eq.state.enabled) {
+    playerStore.setEqGains(eq.state.gains);
   }
   // 拖拽停止后再持久化，避免连续 input 频繁写 localStorage。
   if (saveTimer) clearTimeout(saveTimer);
@@ -157,7 +158,7 @@ function onBandInput(index: number, event: Event) {
 }
 
 function openSavePreset() {
-  saveDraftName.value = isSelectedCustomPreset.value ? eq.currentPreset : '';
+  saveDraftName.value = isSelectedCustomPreset.value ? eq.state.currentPreset : '';
   saveError.value = '';
   isSaveEditorOpen.value = true;
 }
@@ -179,21 +180,21 @@ function confirmSavePreset() {
 
 function overwritePreset() {
   if (!isSelectedCustomPreset.value) return;
-  eq.upsertCustomPreset(eq.currentPreset);
+  eq.upsertCustomPreset(eq.state.currentPreset);
 }
 
 function deletePreset() {
   if (!isSelectedCustomPreset.value) return;
-  eq.removeCustomPreset(eq.currentPreset);
+  eq.removeCustomPreset(eq.state.currentPreset);
 }
 
 function resetGains() {
   const flat = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-  eq.gains = flat;
-  eq.currentPreset = '原声';
+  eq.state.gains = flat;
+  eq.state.currentPreset = '原声';
   eq.save();
-  if (eq.enabled) {
-    playerStore.setEqGains(eq.gains);
+  if (eq.state.enabled) {
+    playerStore.setEqGains(eq.state.gains);
   }
 }
 </script>
