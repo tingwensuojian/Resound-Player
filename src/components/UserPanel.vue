@@ -75,7 +75,8 @@ import AlbumDetailPage from './AlbumDetailPage.vue';
 import PodcastDetailPage from './PodcastDetailPage.vue';
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserDetail, getUserPlaylist } from '../api/auth';
 import { getAlbumDetail, getAlbumSublist, getCloudStorage, getCloudStorageDetail, getDjDetail, getDjProgram, getDjSublist, getSongUrl } from '../api/music';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 

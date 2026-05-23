@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 import { toggleDjSubscribe, toggleSongLike } from '../api/music';
@@ -11,9 +12,9 @@ import { toggleDjSubscribe, toggleSongLike } from '../api/music';
  * 支持歌曲喜欢和播客 DJ 订阅两种模式。
  */
 export function useCurrentTrackLike() {
-  const currentTrackId = computed(() => Number(playerStore.currentTrack?.id || 0));
-  const currentPodcastRid = computed(() => Number(playerStore.currentTrack?.podcast?.rid || 0));
-  const isCurrentPodcast = computed(() => playerStore.currentTrack?.source === 'podcast' && currentPodcastRid.value > 0);
+  const currentTrackId = computed(() => Number(playerStore.state.currentTrack?.id || 0));
+  const currentPodcastRid = computed(() => Number(playerStore.state.currentTrack?.podcast?.rid || 0));
+  const isCurrentPodcast = computed(() => playerStore.state.currentTrack?.source === 'podcast' && currentPodcastRid.value > 0);
 
   const canToggleCurrentLike = computed(() =>
     isCurrentPodcast.value ? currentPodcastRid.value > 0 : currentTrackId.value > 0,
@@ -33,7 +34,7 @@ export function useCurrentTrackLike() {
 
   // 切歌时重置 loading 状态
   watch(
-    () => `${currentTrackId.value}-${currentPodcastRid.value}-${playerStore.currentTrack?.source || 'song'}`,
+    () => `${currentTrackId.value}-${currentPodcastRid.value}-${playerStore.state.currentTrack?.source || 'song'}`,
     () => {
       likeLoading.value = false;
     },

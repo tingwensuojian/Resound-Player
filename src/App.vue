@@ -222,7 +222,8 @@ const PodcastDetailPage = defineAsyncComponent(() => import('./components/Podcas
 const PodcastSubscribedPage = defineAsyncComponent(() => import('./components/PodcastSubscribedPage.vue'));
 import { waitForApiReady } from './api/client';
 import { getDjCategoryRecommend, getDjDetail, getDjProgram, getDjRecommend, getDjRecommendType, getDjSublist, getRecentDj, getSongDetail, getVoiceListDetail, getVoiceListItems, getVoiceListSearch } from './api/music';
-import { playerStore } from './stores/player';
+import { usePlayerStore } from './stores/player';
+const playerStore = usePlayerStore();
 import { useUiStore } from './stores/ui';
 const uiStore = useUiStore();
 import { apiCache } from './stores/apiCache';

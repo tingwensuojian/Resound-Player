@@ -189,7 +189,8 @@ import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { getHistoryRecommendSongDates, getHistoryRecommendSongDetail, getPlaylistDetail, getPlaylistTrackAll, getSongDetailBatch, getRecommendSongs, getUserPlaylist, addTrackToPlaylist } from '../api/music';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 import { apiCache, CACHE_TTL } from '../stores/apiCache';
@@ -707,8 +708,8 @@ const { checkAuth, showToast } = useAuthAction(
   'like',
 );
 function playNext(song: any) {
-  const idx = playerStore.currentIndex + 1;
-  playerStore.playlist.splice(idx, 0, { ...song });
+  const idx = playerStore.state.currentIndex + 1;
+  playerStore.state.playlist.splice(idx, 0, { ...song });
   showToast('已添加至播放列表', 'success', 3000);
 }
 const showPlaylistPicker = ref(false);

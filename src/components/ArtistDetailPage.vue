@@ -203,7 +203,8 @@ import { useSongRowConfig } from '../composables/useSongRowConfig';
 import { getSongArtists } from '../utils/trackHelpers';
 import { getArtistAlbums, getArtistDescription, getArtistDetail, getArtistMvs, getArtistTopSongs, getUserPlaylist, addTrackToPlaylist } from '../api/music';
 import { resolveArtistImageUrl, normalizeImageUrl } from '../utils/image';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 import { useAuthAction } from '../composables/useAuthAction';
@@ -415,8 +416,8 @@ const playlistPickerList = ref<any[]>([]);
 const pickerTargetSong = ref<any>(null);
 const selectedPlaylistId = ref<number | null>(null);
 function playNext(song: any) {
-  const idx = playerStore.currentIndex + 1;
-  playerStore.playlist.splice(idx, 0, { ...song });
+  const idx = playerStore.state.currentIndex + 1;
+  playerStore.state.playlist.splice(idx, 0, { ...song });
   showToast('已添加至播放列表', 'success', 3000);
 }
 async function showAddToPlaylist(song: any) {

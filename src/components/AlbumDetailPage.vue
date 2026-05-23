@@ -151,7 +151,8 @@ import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { useDominantColor } from '../composables/useDominantColor';
 import { useApiData } from '../composables/useApiData';
 import { CACHE_TTL } from '../stores/apiCache';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { getSongArtists } from '../utils/trackHelpers';
 import AnimatedAppear from './AnimatedAppear.vue';
@@ -337,8 +338,8 @@ const pickerTargetSong = ref<any>(null);
 const selectedPlaylistId = ref<number | null>(null);
 
 function playNext(song: any) {
-  const idx = playerStore.currentIndex + 1;
-  playerStore.playlist.splice(idx, 0, { ...song });
+  const idx = playerStore.state.currentIndex + 1;
+  playerStore.state.playlist.splice(idx, 0, { ...song });
   showToast('已添加至播放列表', 'success', 3000);
 }
 async function showAddToPlaylist(song: any) {

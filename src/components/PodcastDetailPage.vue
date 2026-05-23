@@ -130,7 +130,8 @@ import { useDetailStickyState } from '../composables/useDetailStickyState';
 import AnimatedAppear from './AnimatedAppear.vue';
 import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
 import HeroCoverMedia from './HeroCoverMedia.vue';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useLoginModalStore } from '../stores/loginModal';
 const loginModalStore = useLoginModalStore();
 import PlayPauseButton from './ui/PlayPauseButton.vue';
@@ -246,7 +247,7 @@ const normalizedItems = computed(() => displayedRawItems.value.map((item, idx) =
 }));
 
 function isCurrentTrack(item: any) {
-  const currentId = Number(playerStore.currentTrack?.id || 0);
+  const currentId = Number(playerStore.state.currentTrack?.id || 0);
   const itemTrackId = Number(item?.mainTrackId || item?.mainSong?.id || item?.song?.id || item?.program?.mainTrackId || item?.program?.mainSong?.id || 0);
   return currentId > 0 && itemTrackId > 0 && currentId === itemTrackId;
 }

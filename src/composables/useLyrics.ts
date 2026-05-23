@@ -1,6 +1,7 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { getCloudLyric, getSongLyric, getSongLyricNew } from '../api/music';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -355,7 +356,7 @@ export function useLyrics() {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const displayTime = ref(0);
-  const effectiveTime = computed(() => displayTime.value + playerStore.lyricsOffset);
+  const effectiveTime = computed(() => displayTime.value + playerStore.state.lyricsOffset);
   const lyricBoxRef = ref<HTMLElement | null>(null);
   const lyricLineRefs = ref<HTMLElement[]>([]);
 
@@ -379,9 +380,9 @@ export function useLyrics() {
 
     function tick() {
       if (!tickRunning.value) return;
-      if (playerStore.isPlaying) {
+      if (playerStore.state.isPlaying) {
         // 直接读 audio.currentTime 高精度值（~16ms），远超 timeupdate 事件精度（~250ms）
-        displayTime.value = playerStore.audio.currentTime || 0;
+        displayTime.value = playerStore.state.audio.currentTime || 0;
       }
       requestAnimationFrame(tick);
     }
@@ -397,7 +398,7 @@ export function useLyrics() {
     lyricLineRefs.value[idx] = el as HTMLElement;
   }
 
-  async function loadLyrics(track: typeof playerStore.currentTrack) {
+  async function loadLyrics(track: typeof playerStore.state.currentTrack) {
     const id = track?.id;
     if (!id) { lyricLines.value = []; return; }
     isLoading.value = true;

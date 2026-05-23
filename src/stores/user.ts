@@ -4,7 +4,8 @@ import { getLoginStatus, getUserAccount, getUserDetail, getUserLikeList, getUser
 import { getDjSublist, getAlbumSublist, getArtistSublist, getUserFollows } from '../api/music';
 import { clearCache } from './unblock-cache';
 import { apiCache } from './apiCache';
-import { playerStore } from './player';
+import { usePlayerStore } from './player'
+const playerStore = usePlayerStore();
 import { storageSetItem, storageGetItem, storageRemoveItem } from '../utils/storage';
 import { LOCAL_HISTORY_KEY } from '../utils/localHistory';
 

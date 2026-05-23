@@ -163,7 +163,7 @@
         <h3 class="top-header__title">本周你最爱收听</h3>
       </div>
       <div class="top-list">
-        <div v-for="(song, idx) in topSongs.slice(0, 10)" :key="song.id" class="top-row top-row--clickable" :class="{ playing: Number(song.id) > 0 && Number(song.id) === Number(playerStore.currentSongId || 0) }" @dblclick="playSong(song, idx)">
+        <div v-for="(song, idx) in topSongs.slice(0, 10)" :key="song.id" class="top-row top-row--clickable" :class="{ playing: Number(song.id) > 0 && Number(song.id) === Number(playerStore.state.currentSongId || 0) }" @dblclick="playSong(song, idx)">
           <PlayPauseButton :song-id="Number(song.id || 0)" :index-label="idx + 1" @play="playSong(song, idx)" />
           <div class="top-row__cover">
             <img :src="song.picUrl + '?param=100y100'" :alt="song.name" loading="lazy" />
@@ -185,7 +185,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import AnimatedAppear from './AnimatedAppear.vue';
 import { Trophy, Flame, Moon } from 'lucide-vue-next';
 import { getListenTotal, getListenRealtimeReport, getListenReport, getListenYearReport, getListenTodaySong, getUserRecord } from '../api/music';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 import PlayPauseButton from './ui/PlayPauseButton.vue';

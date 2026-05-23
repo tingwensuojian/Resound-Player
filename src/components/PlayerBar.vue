@@ -2,7 +2,7 @@
   <AnimatedAppear tag="footer" variant="content" rhythm="overlay" class-name="bar">
     <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="left">
       <AnimatedAppear tag="div" variant="media" rhythm="list" class-name="cover-wrap">
-        <button class="cover" :class="{ 'fade-in-bg': !!playerStore.currentTrack, 'bg-loaded': coverLoaded }" :style="coverStyle" @click="playerStore.openExpanded()">
+        <button class="cover" :class="{ 'fade-in-bg': !!playerStore.state.currentTrack, 'bg-loaded': coverLoaded }" :style="coverStyle" @click="playerStore.openExpanded()">
           <svg class="cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="30 30 140 140" width="100%" height="100%">
             <defs>
               <linearGradient id="logoGradBar" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -20,9 +20,9 @@
       </AnimatedAppear>
       <div class="meta">
         <div class="title-row">
-          <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="title">{{ playerStore.currentTrack?.name || '未在播放' }}</AnimatedAppear>
+          <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="title">{{ playerStore.state.currentTrack?.name || '未在播放' }}</AnimatedAppear>
         </div>
-        <AnimatedAppear tag="div" variant="text" rhythm="body" :index="1" class-name="artist"><template v-if="playerStore.isPlaying && currentLyricText && lyricsSettings.state.showBarLyric"><span class="lyric-text" :title="currentLyricText">{{ currentLyricText }}</span></template><template v-else>{{ artistText }}<span v-if="uiStore.state.unblockEnabled && playerStore.currentTrack" class="source-badge">{{ sourceLabel }}</span></template></AnimatedAppear>
+        <AnimatedAppear tag="div" variant="text" rhythm="body" :index="1" class-name="artist"><template v-if="playerStore.state.isPlaying && currentLyricText && lyricsSettings.state.showBarLyric"><span class="lyric-text" :title="currentLyricText">{{ currentLyricText }}</span></template><template v-else>{{ artistText }}<span v-if="uiStore.state.unblockEnabled && playerStore.state.currentTrack" class="source-badge">{{ sourceLabel }}</span></template></AnimatedAppear>
       </div>
     </AnimatedAppear>
 
@@ -35,7 +35,7 @@
           <SkipBack :size="16" />
         </AnimatedAppear>
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="ctrl main" @click="playerStore.togglePlay()" aria-label="播放或暂停">
-          <Pause v-if="playerStore.isPlaying" :size="18" />
+          <Pause v-if="playerStore.state.isPlaying" :size="18" />
           <Play v-else :size="18" />
         </AnimatedAppear>
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="2" class-name="ctrl" @click="playerStore.next()" aria-label="下一首">
@@ -43,33 +43,33 @@
         </AnimatedAppear>
       </div>
       <div class="progress-row">
-        <span class="time">{{ formatTime(playerStore.currentTime) }}</span>
+        <span class="time">{{ formatTime(playerStore.state.currentTime) }}</span>
         <input
           class="progress"
           type="range"
           min="0"
-          :max="Math.max(1, Math.floor(playerStore.duration || 0))"
-          :value="Math.floor(playerStore.currentTime || 0)"
+          :max="Math.max(1, Math.floor(playerStore.state.duration || 0))"
+          :value="Math.floor(playerStore.state.currentTime || 0)"
           @input="onSeek"
         />
-        <span class="time">{{ formatTime(playerStore.duration) }}</span>
+        <span class="time">{{ formatTime(playerStore.state.duration) }}</span>
       </div>
     </AnimatedAppear>
 
     <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="right">
       <AnimatedAppear tag="div" variant="control" rhythm="actions" class-name="vol">
-        <button class="vol-icon-btn" type="button" :aria-label="playerStore.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()">
-          <VolumeX v-if="playerStore.muted || playerStore.volume === 0" :size="16" />
-          <Volume v-else-if="playerStore.volume < 0.33" :size="16" />
-          <Volume1 v-else-if="playerStore.volume < 0.66" :size="16" />
+        <button class="vol-icon-btn" type="button" :aria-label="playerStore.state.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()">
+          <VolumeX v-if="playerStore.state.muted || playerStore.state.volume === 0" :size="16" />
+          <Volume v-else-if="playerStore.state.volume < 0.33" :size="16" />
+          <Volume1 v-else-if="playerStore.state.volume < 0.66" :size="16" />
           <Volume2 v-else :size="16" />
         </button>
-        <input type="range" min="0" max="100" :value="Math.round((playerStore.muted ? 0 : playerStore.volume) * 100)" @input="onVolume" />
+        <input type="range" min="0" max="100" :value="Math.round((playerStore.state.muted ? 0 : playerStore.state.volume) * 100)" @input="onVolume" />
       </AnimatedAppear>
-      <AnimatedAppear v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" tag="button" variant="control" rhythm="actions" class-name="icon intel-icon" aria-label="心动模式"><Sparkles :size="10" /></AnimatedAppear>
+      <AnimatedAppear v-if="playerStore.state.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" tag="button" variant="control" rhythm="actions" class-name="icon intel-icon" aria-label="心动模式"><Sparkles :size="10" /></AnimatedAppear>
       <div class="quality-wrap" ref="qualityWrapRef">
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="icon quality-icon" :class="{ active: showQualityPopup }" data-tooltip="音质选择" aria-label="音质选择" @click.stop="toggleQualityPopup">
-          <span class="quality-btn-label">{{ qualityLabel || playerStore.defaultQuality }}</span>
+          <span class="quality-btn-label">{{ qualityLabel || playerStore.state.defaultQuality }}</span>
         </AnimatedAppear>
         <Teleport to="body">
           <transition name="quality-fade">
@@ -83,14 +83,14 @@
                     :key="q.label"
                     type="button"
                     class="quality-popup__item"
-                    :class="{ active: playerStore.defaultQuality === q.label, disabled: !isQualityAvailable(q.level) }"
+                    :class="{ active: playerStore.state.defaultQuality === q.label, disabled: !isQualityAvailable(q.level) }"
                     :disabled="!isQualityAvailable(q.level)"
                     @click.stop="selectQuality(q.label)"
                   >
                     <span class="quality-popup__item-label">{{ q.label }}</span>
                     <span v-if="q.vip" class="quality-popup__item-vip">{{ q.vip }}</span>
                     <span class="quality-popup__item-size">{{ qualitySizes[q.label] || '' }}</span>
-                    <Check v-if="playerStore.defaultQuality === q.label" :size="14" class="quality-popup__check" />
+                    <Check v-if="playerStore.state.defaultQuality === q.label" :size="14" class="quality-popup__check" />
                   </button>
                 </div>
               </div>
@@ -144,11 +144,11 @@
                     :key="rate"
                     type="button"
                     class="quality-popup__item"
-                    :class="{ active: playerStore.playbackRate === rate }"
+                    :class="{ active: playerStore.state.playbackRate === rate }"
                     @click.stop="selectSpeed(rate)"
                   >
                     <span class="quality-popup__item-label">{{ rate.toFixed(2).replace(/\.?0+$/, '') }}x</span>
-                    <Check v-if="playerStore.playbackRate === rate" :size="14" class="quality-popup__check" />
+                    <Check v-if="playerStore.state.playbackRate === rate" :size="14" class="quality-popup__check" />
                   </button>
                 </div>
               </div>
@@ -157,8 +157,8 @@
         </Teleport>
       </div>
       <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="5" class-name="icon" :data-tooltip="playModeTooltip" aria-label="切换播放模式" @click="playerStore.cyclePlayMode()">
-        <Repeat v-if="playerStore.playMode === 'loop'" :size="14" />
-        <Repeat1 v-else-if="playerStore.playMode === 'single'" :size="14" />
+        <Repeat v-if="playerStore.state.playMode === 'loop'" :size="14" />
+        <Repeat1 v-else-if="playerStore.state.playMode === 'single'" :size="14" />
         <Shuffle v-else :size="14" />
       </AnimatedAppear>
       <template v-if="isPersonalFmCurrentTrack">
@@ -196,7 +196,8 @@ import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { getSongUrlV1, trashPersonalFm } from '../api/music';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
 import { useUserStore } from '../stores/user';
@@ -222,9 +223,9 @@ function isQualityAvailable(level: string): boolean {
 const showQualityPopup = ref(false);
 const qualitySizes = ref<Record<string, string>>({});
 
-const isPersonalFmCurrentTrack = computed(() => playerStore.isPersonalFmTrack(playerStore.currentTrack));
+const isPersonalFmCurrentTrack = computed(() => playerStore.isPersonalFmTrack(playerStore.state.currentTrack));
 async function dislikeFmTrack() {
-  const track = playerStore.currentTrack;
+  const track = playerStore.state.currentTrack;
   const id = Number(track?.id || 0);
   if (!id) return;
   try { await trashPersonalFm(id, userStore.state.loginCookie || undefined); } catch { /* ignore */ }
@@ -275,7 +276,7 @@ function selectSpeed(rate: number) {
 }
 
 async function fetchQualitySizes() {
-  const trackId = playerStore.currentTrack?.id;
+  const trackId = playerStore.state.currentTrack?.id;
   if (!trackId) return;
   const cookie = userStore.state.loginCookie || undefined;
   const sizes: Record<string, string> = {};
@@ -344,31 +345,31 @@ function selectQuality(quality: string) {
     return;
   }
 
-  const prevQuality = playerStore.defaultQuality;
+  const prevQuality = playerStore.state.defaultQuality;
   playerStore.setDefaultQuality(quality);
   showQualityPopup.value = false;
   console.log(
     '[quality-switch] ★ 用户切换音质 ★\n' +
-    `  ${prevQuality} → ${quality}  |  歌曲: ${playerStore.currentTrack?.name || '(无)'}`
+    `  ${prevQuality} → ${quality}  |  歌曲: ${playerStore.state.currentTrack?.name || '(无)'}`
   );
   // 如果正在播放，立即以新音质重新拉取播放地址，并保持当前进度
-  if (playerStore.currentTrack && playerStore.isPlaying) {
-    const currentTime = playerStore.currentTime;
-    const trackId = playerStore.currentTrack.id;
+  if (playerStore.state.currentTrack && playerStore.state.isPlaying) {
+    const currentTime = playerStore.state.currentTime;
+    const trackId = playerStore.state.currentTrack.id;
     if (trackId) {
       clearCacheEntry(trackId);
       console.log('[quality-switch] 已清除歌曲缓存 (id=' + trackId + ')');
     }
     console.log('[quality-switch] 调用 playTrack 重新拉取 (seekTo=' + Math.floor(currentTime) + 's)...');
-    playerStore.playTrack(playerStore.currentTrack, currentTime).then((ok) => {
-      const di = playerStore.qualityDowngradeInfo;
+    playerStore.playTrack(playerStore.state.currentTrack, currentTime).then((ok) => {
+      const di = playerStore.state.qualityDowngradeInfo;
       if (!ok) {
         console.log('[quality-switch] ❌ 切换失败，当前账号可能不支持此音质');
         loginModalStore.showGlobalToast('当前账号不支持 ' + quality + ' 音质', 'warning');
       } else if (di) {
         console.log(`[quality-switch] ⚠️ ${di.from} 不可用，已自动切换为 ${di.to}`);
         loginModalStore.showGlobalToast(di.from + ' 不可用，已自动切换为 ' + di.to, 'warning');
-        playerStore.qualityDowngradeInfo = null;
+        playerStore.state.qualityDowngradeInfo = null;
       }
     });
   } else {
@@ -510,9 +511,9 @@ onUnmounted(() => {
 const { lyricLines, currentLyricIndex, effectiveTime, startTick, isLoading, loadLyrics } = useLyrics();
 
 /* 加载歌词 — watch 必须在 loadLyrics 之后声明，避免 TDZ */
-watch(() => playerStore.currentTrack?.id, async (id) => {
+watch(() => playerStore.state.currentTrack?.id, async (id) => {
   if (!id) return;
-  await loadLyrics(playerStore.currentTrack);
+  await loadLyrics(playerStore.state.currentTrack);
 }, { immediate: true });
 
 startTick();
@@ -527,26 +528,26 @@ const currentLyricText = computed(() => {
 });
 
 const artistText = computed(() => {
-  const ar = playerStore.currentTrack?.ar || [];
+  const ar = playerStore.state.currentTrack?.ar || [];
   if (!ar.length) return 'Unknown Artist';
   return ar.map((a) => a.name).join('/');
 });
 
 const sourceLabel = computed(() => {
-  const s = playerStore.currentSource;
+  const s = playerStore.state.currentSource;
   if (s === 'official' || !s) return '官方';
   return s;
 });
 
 const qualityLabel = computed(() => {
-  const br = playerStore.currentQualityBr;
+  const br = playerStore.state.currentQualityBr;
   // 官方音源且 API 确认交付了请求的音质 → 直接显示用户选择
   if (
-    playerStore.currentSource === 'official' &&
+    playerStore.state.currentSource === 'official' &&
     br > 0 &&
-    !playerStore.currentQualityDowngraded
+    !playerStore.state.currentQualityDowngraded
   ) {
-    return playerStore.defaultQuality;
+    return playerStore.state.defaultQuality;
   }
   // 降级 / unblock / 其他音源 → 根据实际 br 反推音质标签
   if (br >= 1920000) return 'Hi-Res';
@@ -554,19 +555,19 @@ const qualityLabel = computed(() => {
   if (br >= 320000) return '极高(HQ)';
   if (br >= 192000) return '较高';
   if (br >= 128000) return '标准';
-  return playerStore.currentTrack ? playerStore.defaultQuality : '';
+  return playerStore.state.currentTrack ? playerStore.state.defaultQuality : '';
 });
 
 const coverStyle = computed(() => {
-  const url = playerStore.currentTrack?.al?.picUrl;
+  const url = playerStore.state.currentTrack?.al?.picUrl;
   if (!url) return {};
   return { backgroundImage: `url(${url})` };
 });
-const coverLoaded = useBgLoaded(() => playerStore.currentTrack?.al?.picUrl || '');
+const coverLoaded = useBgLoaded(() => playerStore.state.currentTrack?.al?.picUrl || '');
 
 const playModeTooltip = computed(() => {
-  if (playerStore.playMode === 'loop') return '列表循环';
-  if (playerStore.playMode === 'single') return '单曲循环';
+  if (playerStore.state.playMode === 'loop') return '列表循环';
+  if (playerStore.state.playMode === 'single') return '单曲循环';
   return '随机播放';
 });
 
@@ -580,7 +581,7 @@ let trayLastTrackId = -1;
 let trayLastSentLines = '';
 
 // 切歌时立即通知主进程清空旧歌词状态，即使新歌词尚未加载
-watch(() => playerStore.currentTrack, (track, oldTrack) => {
+watch(() => playerStore.state.currentTrack, (track, oldTrack) => {
   if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
   if (!track || track.id === oldTrack?.id) return;
   trayLastTrackId = track.id;
@@ -595,7 +596,7 @@ watch(() => playerStore.currentTrack, (track, oldTrack) => {
 // 歌词加载后推送完整数组（必须在 track-change 之后发送，避免被清空）
 watch(() => lyricLines.value, (lines) => {
   if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
-  const track = playerStore.currentTrack;
+  const track = playerStore.state.currentTrack;
   if (!track || !lines.length) return;
   if (track.id !== trayLastTrackId) return; // wait for track-change to fire first
   const linesJson = JSON.stringify(lines.map(l => ({ time: l.time, text: l.text })));
@@ -610,19 +611,19 @@ watch(() => lyricLines.value, (lines) => {
 // 高频推送精确进度（~200ms throttle）
 const sendTrayTick = throttle(() => {
   if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
-  if (!playerStore.isPlaying) return;
-  const currentTimeMs = Math.round(playerStore.currentTime * 1000);
-  const durationMs = Math.round(playerStore.duration * 1000);
+  if (!playerStore.state.isPlaying) return;
+  const currentTimeMs = Math.round(playerStore.state.currentTime * 1000);
+  const durationMs = Math.round(playerStore.state.duration * 1000);
   const offset = 0;
   window.appEnv.trayLyric.syncTick([currentTimeMs, durationMs, offset]);
 }, 200);
 
-watch(() => playerStore.currentTime, () => {
+watch(() => playerStore.state.currentTime, () => {
   sendTrayTick();
 });
 
 // 播放状态变化时通知
-watch(() => playerStore.isPlaying, (playing) => {
+watch(() => playerStore.state.isPlaying, (playing) => {
   if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
   window.appEnv.trayLyric.syncState({
     type: 'playback-state',
@@ -632,9 +633,9 @@ watch(() => playerStore.isPlaying, (playing) => {
 
 // ── 桌面歌词：发送完整 LRC 时间轴 + 播放进度 ──
 let desktopLastTrackId = -1;
-watch([() => lyricLines.value, () => playerStore.currentTrack, () => playerStore.isPlaying, () => playerStore.currentTime], () => {
+watch([() => lyricLines.value, () => playerStore.state.currentTrack, () => playerStore.state.isPlaying, () => playerStore.state.currentTime], () => {
   if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
-  const track = playerStore.currentTrack;
+  const track = playerStore.state.currentTrack;
   if (!track) {
     window.appEnv.desktopLyric.updateData({
       lrcArray: [], currentTime: 0, trackName: '', artist: '', isPlaying: false,
@@ -648,10 +649,10 @@ watch([() => lyricLines.value, () => playerStore.currentTrack, () => playerStore
   const lrcArray = lines.length ? lines.map((l) => ({ t: l.time, text: l.text, translation: l.translation, romalrc: l.romalrc })) : [];
   window.appEnv.desktopLyric.updateData({
     lrcArray,
-    currentTime: playerStore.currentTime,
+    currentTime: playerStore.state.currentTime,
     trackName: track.name || '',
     artist: track.ar?.map((a: { name: string }) => a.name).join('/') || '',
-    isPlaying: playerStore.isPlaying,
+    isPlaying: playerStore.state.isPlaying,
     showTranslation: lyricsSettings.state.showTranslation,
     showRomalrc: lyricsSettings.state.showRomalrc,
   });
@@ -661,7 +662,7 @@ watch([() => lyricLines.value, () => playerStore.currentTrack, () => playerStore
 watch(() => lyricLines.value, (lines) => {
   if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
   if (!lines.length) return;
-  const track = playerStore.currentTrack;
+  const track = playerStore.state.currentTrack;
   if (!track) {
     window.appEnv.desktopLyric.updateData({
       lrcArray: [], currentTime: 0, trackName: '', artist: '', isPlaying: false,
@@ -672,10 +673,10 @@ watch(() => lyricLines.value, (lines) => {
   const lrcArray = lines.map((l) => ({ t: l.time, text: l.text, translation: l.translation, romalrc: l.romalrc }));
   window.appEnv.desktopLyric.updateData({
     lrcArray,
-    currentTime: playerStore.currentTime,
+    currentTime: playerStore.state.currentTime,
     trackName: track.name || '',
     artist: track.ar?.map((a: { name: string }) => a.name).join('/') || '',
-    isPlaying: playerStore.isPlaying,
+    isPlaying: playerStore.state.isPlaying,
     showTranslation: lyricsSettings.state.showTranslation,
     showRomalrc: lyricsSettings.state.showRomalrc,
   });

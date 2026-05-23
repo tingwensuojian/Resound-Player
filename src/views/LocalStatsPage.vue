@@ -50,7 +50,8 @@
 import { ref, watch, onMounted } from 'vue'
 import { useLocalMusicStore } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
-import { playerStore } from '../stores/player'
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore()
 import { platform } from '../utils/platform'
 
 const recent = ref<any[]>([])

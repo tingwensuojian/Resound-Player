@@ -6,7 +6,7 @@
           <!-- header -->
           <div class="sel-head">
             <div class="sel-head-info">
-              <h3 class="sel-title">{{ playerStore.currentTrack?.name || '选择歌词' }}</h3>
+              <h3 class="sel-title">{{ playerStore.state.currentTrack?.name || '选择歌词' }}</h3>
               <p class="sel-artist">{{ artistText }}</p>
             </div>
             <button class="sel-close" type="button" aria-label="关闭" @click="lyricsSelection.closeSelection"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -55,17 +55,18 @@
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useLyrics } from '../composables/useLyrics';
 import { useLyricsSelectionStore } from '../stores/lyricsSelection';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 const lyricsSelection = useLyricsSelectionStore();
 
 const { lyricLines, isLoading, loadLyrics } = useLyrics();
 const backdropRef = ref<HTMLElement | null>(null);
-const artistText = computed(() => { const ar = playerStore.currentTrack?.ar || []; return ar.length ? ar.map((a: any) => a.name).join('/') : ''; });
+const artistText = computed(() => { const ar = playerStore.state.currentTrack?.ar || []; return ar.length ? ar.map((a: any) => a.name).join('/') : ''; });
 
 /* 加载歌词 */
-watch(() => playerStore.currentTrack?.id, async (id) => {
+watch(() => playerStore.state.currentTrack?.id, async (id) => {
   if (!id) return;
-  await loadLyrics(playerStore.currentTrack);
+  await loadLyrics(playerStore.state.currentTrack);
 }, { immediate: true });
 
 /* ESC 关闭 */
@@ -79,7 +80,7 @@ onMounted(() => document.addEventListener('keydown', onKeydown));
 onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
 /* 切歌时关闭浮窗重置状态 */
-watch(() => playerStore.currentTrack?.id, (newId) => {
+watch(() => playerStore.state.currentTrack?.id, (newId) => {
   if (lyricsSelection.isOpen) {
     lyricsSelection.currentTrackId = newId ?? null;
     lyricsSelection.selectedIndices = new Set();
@@ -90,7 +91,7 @@ watch(() => playerStore.currentTrack?.id, (newId) => {
 /* 展示行：歌曲名 + 歌手 + 歌词 */
 const displayLines = computed(() => {
   const lines: { text: string; tag?: string; translation?: string }[] = [];
-  if (playerStore.currentTrack?.name) lines.push({ text: playerStore.currentTrack.name, tag: '歌曲' });
+  if (playerStore.state.currentTrack?.name) lines.push({ text: playerStore.state.currentTrack.name, tag: '歌曲' });
   if (artistText.value) lines.push({ text: artistText.value, tag: '歌手' });
   for (const l of lyricLines.value) {
     lines.push({ text: l.text || '...', translation: l.translation });

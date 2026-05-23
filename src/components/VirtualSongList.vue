@@ -73,7 +73,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { playerStore } from '../stores/player'
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore()
 import ScrollToTopFab from './ui/ScrollToTopFab.vue'
 import LocalSongActions from './ui/LocalSongActions.vue'
 
@@ -244,7 +245,7 @@ function isTrackPlaying(vi: { track: LocalTrack }) {
 }
 
 function isPaused(vi: { track: LocalTrack }) {
-  return isTrackPlaying(vi) && !playerStore.isPlaying
+  return isTrackPlaying(vi) && !playerStore.state.isPlaying
 }
 
 function showIdx(vi: { track: LocalTrack }) {

@@ -469,7 +469,8 @@ const emit = defineEmits<{
 }>();
 import DropdownSelect from './ui/DropdownSelect.vue';
 import FancySwitch from './ui/FancySwitch.vue';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import { useUserStore } from '../stores/user';
@@ -712,21 +713,21 @@ const currentGroups = computed(() => {
 
 const switchState = reactive<Record<string, boolean>>({
   unblock: uiStore.state.unblockEnabled,
-  autoplay: playerStore.autoplayNext,
+  autoplay: playerStore.state.autoplayNext,
   barLyric: lyricsSettings.state.showBarLyric,
   resumeAfterMv: uiStore.state.resumeAfterMv,
   showIntelligenceIndicator: uiStore.state.showIntelligenceIndicator,
   autoHidePlayerUI: uiStore.state.autoHidePlayerUI,
-  paidContentSkip: playerStore.paidContentSkip,
+  paidContentSkip: playerStore.state.paidContentSkip,
   trayLyricEnabled: false, // 实际值从主进程加载
   desktopLyricEnabled: false, // 实际值从主进程加载
   desktopLyricAlwaysShowBg: false, // 实际值从主进程加载
 });
 
 const selectState = reactive<Record<string, string>>({
-  quality: playerStore.defaultQuality,
-  playMode: playerStore.playMode === 'single' ? '单曲循环' : playerStore.playMode === 'shuffle' ? '随机播放' : '列表循环',
-  playbackRate: `${playerStore.defaultPlaybackRate.toFixed(2).replace(/\.00$/, '.0')}x`,
+  quality: playerStore.state.defaultQuality,
+  playMode: playerStore.state.playMode === 'single' ? '单曲循环' : playerStore.state.playMode === 'shuffle' ? '随机播放' : '列表循环',
+  playbackRate: `${playerStore.state.defaultPlaybackRate.toFixed(2).replace(/\.00$/, '.0')}x`,
   theme: uiStore.state.themeMode,
   accent: uiStore.state.accentMode,
   desktopLyricMode: '滚动列表', // 实际值从主进程加载
@@ -770,7 +771,7 @@ const accentColors = computed<Record<string, string>>(() => ({
 }));
 
 const rangeState = reactive<Record<string, number>>({
-  crossfade: playerStore.crossfadeSec,
+  crossfade: playerStore.state.crossfadeSec,
 });
 
 const inputState = reactive<Record<string, string>>({
@@ -882,13 +883,13 @@ watch(
 watch(
   () => switchState.paidContentSkip,
   (enabled) => {
-    playerStore.paidContentSkip = Boolean(enabled);
+    playerStore.state.paidContentSkip = Boolean(enabled);
     playerStore.persist();
   },
 );
 
 // 从 playerStore 持久化数据同步到 selectState
-watch(() => playerStore.defaultQuality, (val) => {
+watch(() => playerStore.state.defaultQuality, (val) => {
   selectState.quality = val;
 });
 
@@ -898,11 +899,11 @@ watch(
     const validQualities = ['标准', '较高', '极高(HQ)', '无损(SQ)', 'Hi-Res', '高清臻音', '沉浸环绕声', '杜比全景声', '超清母带'];
     if (validQualities.includes(value)) {
       playerStore.setDefaultQuality(value);
-      console.log('[quality] 设置页切换为:', value, '| 歌曲:', playerStore.currentTrack?.name);
-      if (playerStore.currentTrack && playerStore.isPlaying) {
-        const ct = playerStore.currentTime;
+      console.log('[quality] 设置页切换为:', value, '| 歌曲:', playerStore.state.currentTrack?.name);
+      if (playerStore.state.currentTrack && playerStore.state.isPlaying) {
+        const ct = playerStore.state.currentTime;
         console.log('[quality] 设置页触发重拉, 进度:', Math.floor(ct), 's');
-        void playerStore.playTrack(playerStore.currentTrack, ct);
+        void playerStore.playTrack(playerStore.state.currentTrack, ct);
       }
     }
   },

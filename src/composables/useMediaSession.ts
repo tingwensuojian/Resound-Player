@@ -1,5 +1,6 @@
 import { watch } from 'vue'
-import { playerStore } from '../stores/player'
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore()
 
 /** 应用 badge 尺寸占封面总尺寸的比例 */
 const BADGE_SCALE = 0.49
@@ -139,7 +140,7 @@ export function setupMediaSession(): void {
 
   // ── 响应 track 切换 → 更新 metadata（含 badge 合成） ──
   watch(
-    () => playerStore.currentTrack,
+    () => playerStore.state.currentTrack,
     async (track) => {
       if (!track) {
         navigator.mediaSession.metadata = null
@@ -163,7 +164,7 @@ export function setupMediaSession(): void {
 
   // ── 响应播放/暂停状态 → 更新 playbackState ──
   watch(
-    () => playerStore.isPlaying,
+    () => playerStore.state.isPlaying,
     (playing) => {
       try {
         navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
@@ -177,15 +178,15 @@ export function setupMediaSession(): void {
   // ── 响应 duration 变化 → 更新 position state ──
   let lastDuration = -1
   watch(
-    () => playerStore.duration,
+    () => playerStore.state.duration,
     (dur) => {
       if (dur <= 0 || lastDuration === dur) return
       lastDuration = dur
       try {
         navigator.mediaSession.setPositionState({
           duration: dur,
-          playbackRate: playerStore.playbackRate || 1,
-          position: playerStore.currentTime || 0,
+          playbackRate: playerStore.state.playbackRate || 1,
+          position: playerStore.state.currentTime || 0,
         })
       } catch {
         // 不支持时静默跳过

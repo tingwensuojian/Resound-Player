@@ -37,7 +37,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { getSongDetail } from '../api/music';
 import * as api from '../api/music';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 import CommentPanel from './CommentPanel.vue';
 
@@ -46,8 +47,8 @@ const emit = defineEmits<{ (e: 'back'): void; (e: 'open-artist', artist: any): v
 
 const song = ref<any>(null);
 
-const isCurrentSong = computed(() => playerStore.currentTrack?.id === props.songId);
-const isPlayingThis = computed(() => isCurrentSong.value && playerStore.isPlaying);
+const isCurrentSong = computed(() => playerStore.state.currentTrack?.id === props.songId);
+const isPlayingThis = computed(() => isCurrentSong.value && playerStore.state.isPlaying);
 
 function togglePlayback() {
   if (isCurrentSong.value) {

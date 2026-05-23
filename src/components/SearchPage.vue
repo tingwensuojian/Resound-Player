@@ -443,7 +443,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { getPlaylistDetail, getSongDetailBatch, searchMusic, searchMusicDefault, searchMusicHotDetail } from '../api/music';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import { normalizeImageUrl, resolveArtistImageUrl } from '../utils/image';
@@ -975,7 +976,7 @@ function onSongItemDblClick(event: MouseEvent, index: number) {
 }
 
 function isCurrentTrack(song: any) {
-  return isCurrentTrackUtil(Number(song?.id || 0), Number(playerStore.currentSongId || 0));
+  return isCurrentTrackUtil(Number(song?.id || 0), Number(playerStore.state.currentSongId || 0));
 }
 
 async function playSong(index: number) {

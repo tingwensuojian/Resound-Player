@@ -42,7 +42,8 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { playerStore } from '../../stores/player';
+import { usePlayerStore } from '../../stores/player'
+const playerStore = usePlayerStore();
 
 const props = defineProps<{
   songId: number;
@@ -59,8 +60,8 @@ const isFocused = ref(false);
 const isRowHovered = ref(false);
 let hoverRowEl: HTMLElement | null = null;
 
-const isCurrentSong = computed(() => Number(props.songId || 0) > 0 && Number(props.songId || 0) === Number(playerStore.currentSongId || 0));
-const isCurrentSongPlaying = computed(() => isCurrentSong.value && playerStore.isPlaying);
+const isCurrentSong = computed(() => Number(props.songId || 0) > 0 && Number(props.songId || 0) === Number(playerStore.state.currentSongId || 0));
+const isCurrentSongPlaying = computed(() => isCurrentSong.value && playerStore.state.isPlaying);
 const isInteractiveState = computed(() => isHovered.value || isFocused.value || isRowHovered.value);
 const showIndex = computed(() => !isCurrentSongPlaying.value && !isInteractiveState.value);
 const showPlayIcon = computed(() => !isCurrentSongPlaying.value && isInteractiveState.value);

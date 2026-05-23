@@ -145,7 +145,8 @@
 import { computed, ref } from 'vue'
 import { useLocalMusicStore, type LocalTrack } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
-import { playerStore } from '../stores/player'
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore()
 import { platform } from '../utils/platform'
 import { useDetailStickyState } from '../composables/useDetailStickyState'
 import AnimatedAppear from '../components/AnimatedAppear.vue'
@@ -161,7 +162,7 @@ const userStore = useUserStore()
 import { searchMusic, importToCloud } from '../api/music'
 
 // ── Data ──
-const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
+const nowPlayingId = computed(() => playerStore.state.currentTrack?.id ?? null)
 const tracks = computed(() => localMusicStore.state.activePlaylistDetail?.tracks || [])
 
 const playlistName = computed(() => localMusicStore.state.activePlaylistDetail?.name || '本地歌单')
@@ -209,7 +210,7 @@ function isTrackPlaying(track: LocalTrack) {
 }
 
 function isTrackPaused(track: LocalTrack) {
-  return isTrackPlaying(track) && !playerStore.isPlaying
+  return isTrackPlaying(track) && !playerStore.state.isPlaying
 }
 
 function ppTitle(track: LocalTrack, idx: number) {
@@ -339,8 +340,8 @@ function addToQueue(track: LocalTrack) {
     al: { name: track.album, picUrl: track.coverUrl },
     source: 'local' as const, path: track.path,
   }
-  const idx = playerStore.currentIndex + 1
-  playerStore.playlist.splice(idx, 0, song)
+  const idx = playerStore.state.currentIndex + 1
+  playerStore.state.playlist.splice(idx, 0, song)
   loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
 }
 

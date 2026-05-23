@@ -16,9 +16,9 @@
           <!-- Header -->
           <div class="play-queue-header">
             <span class="play-queue-title">播放列表</span>
-            <span class="play-queue-count">{{ playerStore.playlist.length }} 首</span>
+            <span class="play-queue-count">{{ playerStore.state.playlist.length }} 首</span>
             <button
-              v-if="playerStore.playlist.length"
+              v-if="playerStore.state.playlist.length"
               class="play-queue-clear"
               @click="clearAll"
             >清空</button>
@@ -37,7 +37,7 @@
             <template #default="{ item: track, index: idx }">
               <div
                 class="song-item"
-                :class="{ 'song-item--playing': idx === playerStore.currentIndex }"
+                :class="{ 'song-item--playing': idx === playerStore.state.currentIndex }"
               >
                 <PlayPauseButton
                   :song-id="Number(track.id || 0)"
@@ -82,9 +82,9 @@
           </div>
 
           <!-- 当前播放信息 -->
-          <div v-if="playerStore.currentTrack" class="play-queue-footer">
+          <div v-if="playerStore.state.currentTrack" class="play-queue-footer">
             <span class="play-queue-footer-label">正在播放</span>
-            <span class="play-queue-footer-track">{{ playerStore.currentTrack.name }}</span>
+            <span class="play-queue-footer-track">{{ playerStore.state.currentTrack.name }}</span>
           </div>
         </AnimatedAppear>
       </div>
@@ -95,14 +95,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { ListMusic } from 'lucide-vue-next';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 import PlayPauseButton from './ui/PlayPauseButton.vue';
 import VirtualTrackList from './VirtualTrackList.vue';
 
-const queueItems = computed(() => playerStore.playlist);
+const queueItems = computed(() => playerStore.state.playlist);
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 function close() {

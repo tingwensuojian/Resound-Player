@@ -63,7 +63,8 @@
 
 <script setup lang="ts">
 import { computed, watch, nextTick, ref, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
 import { useLyrics, getLineWrapStyle, getLineStyle, getWordStyle, getTranslationStyle, getAnchorRatio } from '../composables/useLyrics';
@@ -99,10 +100,10 @@ const fontWeightMap = ['300','400','500','600','700','800','900','950','950','95
 const lineHeightMap = ['1.1','1.15','1.2','1.25','1.28','1.32','1.36','1.4','1.45','1.5','1.6'];
 
 /* 播客动态歌词区显示的简介 */
-const isCurrentPodcast = computed(() => playerStore.currentTrack?.source === 'podcast');
+const isCurrentPodcast = computed(() => playerStore.state.currentTrack?.source === 'podcast');
 const podcastDescription = computed(() => {
   if (!isCurrentPodcast.value) return '';
-  return playerStore.currentTrack?.description || '';
+  return playerStore.state.currentTrack?.description || '';
 });
 
 /** 将简介文本中的时间标签（MM:SS / H:MM:SS）替换为可点击 span */
@@ -136,7 +137,7 @@ function onPodcastDescClick(e: MouseEvent) {
   if (isNaN(sec) || sec < 0) return;
   playerStore.seek(sec);
   // 如果处于暂停状态则自动恢复播放
-  if (!playerStore.isPlaying) {
+  if (!playerStore.state.isPlaying) {
     nextTick(() => playerStore.togglePlay());
   }
 }
@@ -184,7 +185,7 @@ function seekToLine(idx: number) {
   if (scrollTimer) { clearTimeout(scrollTimer); scrollTimer = null; }
   origSeekToLine(idx);
   // 暂停状态时点击跳转后自动恢复播放
-  if (lyricsSettings.state.autoPlayOnSeek && !playerStore.isPlaying) {
+  if (lyricsSettings.state.autoPlayOnSeek && !playerStore.state.isPlaying) {
     nextTick(() => playerStore.togglePlay());
   }
 }
@@ -309,9 +310,9 @@ watch(currentLyricIndex, async (idx, prev) => {
   scrollToCurrentLine(prev === -1 ? 'auto' : 'smooth');
 });
 
-watch(() => playerStore.currentTrack?.id, async (id) => {
+watch(() => playerStore.state.currentTrack?.id, async (id) => {
   if (!id) return;
-  await loadLyrics(playerStore.currentTrack);
+  await loadLyrics(playerStore.state.currentTrack);
   await nextTick();
   if (currentLyricIndex.value >= 0) scrollToCurrentLine('auto');
 }, { immediate: true });

@@ -22,7 +22,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import AnimatedAppear from '../AnimatedAppear.vue';
-import { playerStore } from '../../stores/player';
+import { usePlayerStore } from '../../stores/player'
+const playerStore = usePlayerStore();
 
 const props = defineProps<{
   songId?: number;
@@ -33,8 +34,8 @@ const emit = defineEmits<{
   (e: 'play'): void;
 }>();
 
-const isCurrent = computed(() => Number(props.songId || 0) > 0 && Number(props.songId || 0) === Number(playerStore.currentSongId || 0));
-const shouldShowPause = computed(() => isCurrent.value && playerStore.isPlaying);
+const isCurrent = computed(() => Number(props.songId || 0) > 0 && Number(props.songId || 0) === Number(playerStore.state.currentSongId || 0));
+const shouldShowPause = computed(() => isCurrent.value && playerStore.state.isPlaying);
 const computedAriaLabel = computed(() => (shouldShowPause.value ? '暂停' : '播放'));
 
 function onClick() {

@@ -111,7 +111,8 @@ import PlayPauseIconButton from './ui/PlayPauseIconButton.vue';
 import ScrollToTopFab from './ui/ScrollToTopFab.vue';
 import { getAlbumSublist, getPlaylistDetail, getPlaylistTrackAll, getRecentSongs, getRecentPlaylists, getRecentAlbums, getRecentVoices, getHistoryRecommendSongDates, getHistoryRecommendSongDetail, getSongDetailBatch, getVoiceDetail, toggleAlbumSubscribe, toggleDjSubscribe, togglePlaylistSubscribe, toggleSongLike } from '../api/music';
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserLikeList, getUserPlaylist, getUserRecord } from '../api/auth';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 import { readLocalHistory, recordLocalHistoryEntry } from '../utils/localHistory';
@@ -301,8 +302,8 @@ function recordLocalHistoryItem(item: ListItem) {
 }
 
 function recordCurrentTrackFromPlayer() {
-  const track = playerStore.currentTrack;
-  const trackId = Number(track?.id || playerStore.currentSongId || 0);
+  const track = playerStore.state.currentTrack;
+  const trackId = Number(track?.id || playerStore.state.currentSongId || 0);
   if (!track || !trackId || track.source === 'podcast' || track.podcast?.rid || lastRecordedTrackId.value === trackId) return;
   lastRecordedTrackId.value = trackId;
   recordLocalHistoryItem(buildSongItem(track, 0));
@@ -1025,7 +1026,7 @@ onMounted(() => {
 });
 
 watch(
-  () => [playerStore.currentSongId, playerStore.isPlaying] as const,
+  () => [playerStore.state.currentSongId, playerStore.state.isPlaying] as const,
   ([songId, isPlaying]) => {
     if (isPlaying && Number(songId || 0) > 0) recordCurrentTrackFromPlayer();
   },

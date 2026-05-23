@@ -64,7 +64,7 @@
         </div>
       </AnimatedAppear>
 
-      <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="msg button-surface" :attrs="intelligenceBtnAttrs" :data-tooltip="playerStore.isIntelligenceActive ? '退出心动模式' : '心动模式'" data-tooltip-dir="down" @click="handleIntelligencePlay">
+      <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="msg button-surface" :attrs="intelligenceBtnAttrs" :data-tooltip="playerStore.state.isIntelligenceActive ? '退出心动模式' : '心动模式'" data-tooltip-dir="down" @click="handleIntelligencePlay">
         <Sparkles :size="16" />
       </AnimatedAppear>
       <div class="user-menu-wrap">
@@ -152,7 +152,8 @@ import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useAuthAction } from '../composables/useAuthAction';
 import { useLoginModalStore } from '../stores/loginModal';
 const loginModalStore = useLoginModalStore();
@@ -188,21 +189,21 @@ const userMenuStyle = ref<Record<string, string>>({});
 const recentPanelStyle = ref<Record<string, string>>({});
 
 const isIntelligenceDisabled = computed(() => {
-  return playerStore.currentIntelligenceLoading;
+  return playerStore.state.currentIntelligenceLoading;
 });
 
 const intelligenceBtnAttrs = computed(() => {
   const cls: string[] = [];
-  if (playerStore.currentIntelligenceLoading) cls.push('msg--loading');
-  if (playerStore.isIntelligenceActive) cls.push('msg--active');
+  if (playerStore.state.currentIntelligenceLoading) cls.push('msg--loading');
+  if (playerStore.state.isIntelligenceActive) cls.push('msg--active');
   return {
-    disabled: playerStore.currentIntelligenceLoading,
+    disabled: playerStore.state.currentIntelligenceLoading,
     class: cls.length ? cls.join(' ') : undefined,
   };
 });
 
 const intelligenceTooltip = computed(() => {
-  if (playerStore.currentIntelligenceLoading) return '';
+  if (playerStore.state.currentIntelligenceLoading) return '';
   return '';
 });
 
@@ -214,11 +215,11 @@ const { checkAuth } = useAuthAction(
 const showHeartbeatEffect = ref(false);
 
 async function handleIntelligencePlay() {
-  if (playerStore.currentIntelligenceLoading) return;
+  if (playerStore.state.currentIntelligenceLoading) return;
 
   // 已开启 → 退出心动模式
-  if (playerStore.isIntelligenceActive) {
-    playerStore.isIntelligenceActive = false;
+  if (playerStore.state.isIntelligenceActive) {
+    playerStore.state.isIntelligenceActive = false;
     playerStore.clearPlaylist();
     loginModalStore.showGlobalToast('已退出心动模式', 'success');
     showHeartbeatEffect.value = true;
@@ -233,22 +234,22 @@ async function handleIntelligencePlay() {
     loginModalStore.showGlobalToast('您的歌单列表暂无心动推荐', 'warning');
     return;
   }
-  playerStore.currentPlaylistId = validPlaylist.id;
+  playerStore.state.currentPlaylistId = validPlaylist.id;
 
   const err = await playerStore.playIntelligenceList();
   if (err) {
     loginModalStore.showGlobalToast(err, 'warning');
   } else {
-    playerStore.isIntelligenceActive = true;
+    playerStore.state.isIntelligenceActive = true;
     loginModalStore.showGlobalToast('已开启心动模式', 'success');
     showHeartbeatEffect.value = true;
   }
 }
 
 // 当心动模式激活时，如果用户切换了歌单播放，自动退出
-watch(() => playerStore.currentPlaylistId, () => {
-  if (playerStore.isIntelligenceActive) {
-    playerStore.isIntelligenceActive = false;
+watch(() => playerStore.state.currentPlaylistId, () => {
+  if (playerStore.state.isIntelligenceActive) {
+    playerStore.state.isIntelligenceActive = false;
     loginModalStore.showGlobalToast('已退出心动模式', 'success');
     showHeartbeatEffect.value = true;
   }

@@ -43,7 +43,8 @@
 import { computed, ref } from 'vue'
 import { useLocalMusicStore } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
-import { playerStore } from '../stores/player'
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore()
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
 import { useUserStore } from '../stores/user';
@@ -52,7 +53,7 @@ import { platform } from '../utils/platform'
 import { searchMusic, importToCloud } from '../api/music'
 import VirtualSongList from '../components/VirtualSongList.vue'
 
-const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
+const nowPlayingId = computed(() => playerStore.state.currentTrack?.id ?? null)
 const tracks = computed(() => localMusicStore.selectedFolderTracks)
 
 function playTrack(track: any, index: number) {
@@ -76,8 +77,8 @@ function playNext(track: any) {
     al: { name: track.album, picUrl: track.coverUrl },
     source: 'local' as const, path: track.path,
   }
-  const idx = playerStore.currentIndex + 1
-  playerStore.playlist.splice(idx, 0, song)
+  const idx = playerStore.state.currentIndex + 1
+  playerStore.state.playlist.splice(idx, 0, song)
   loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
 }
 

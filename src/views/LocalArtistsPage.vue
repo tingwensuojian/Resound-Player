@@ -14,10 +14,11 @@
 import { computed } from 'vue'
 import { useLocalMusicStore } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
-import { playerStore } from '../stores/player'
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore()
 import VirtualSongList from '../components/VirtualSongList.vue'
 
-const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
+const nowPlayingId = computed(() => playerStore.state.currentTrack?.id ?? null)
 const tracks = computed(() => localMusicStore.selectedArtistTracks)
 
 function playTrack(track: any, index: number) {

@@ -96,7 +96,7 @@
                 ref="fmModeBtnRef"
                 type="button"
                 class="fm-mode-btn"
-                :class="{ 'hover-visible': fmHovered, active: fmModePopoverOpen || playerStore.fmMode !== 'DEFAULT' }"
+                :class="{ 'hover-visible': fmHovered, active: fmModePopoverOpen || playerStore.state.fmMode !== 'DEFAULT' }"
                 :title="`当前模式: ${fmModeLabel}`"
                 aria-label="私人 FM 模式选择"
                 @click.stop="toggleFmModePopover"
@@ -246,7 +246,7 @@
               rhythm="list"
               :index="idx"
               class-name="song"
-              :class="{ 'song-item--playing': Number(song?.id) > 0 && Number(song?.id) === Number(playerStore.currentSongId || 0), playing: Number(song?.id) > 0 && Number(song?.id) === Number(playerStore.currentSongId || 0) }"
+              :class="{ 'song-item--playing': Number(song?.id) > 0 && Number(song?.id) === Number(playerStore.state.currentSongId || 0), playing: Number(song?.id) > 0 && Number(song?.id) === Number(playerStore.state.currentSongId || 0) }"
               @dblclick="onSongRowDblClick($event, idx)"
             >
               <AnimatedAppear tag="div" variant="media" rhythm="list" :index="idx" class-name="cover hover-scale-image" :style="{ backgroundImage: `url(${song.al?.picUrl || ''})` }" />
@@ -447,7 +447,7 @@
                     variant="text" rhythm="body"
                     :index="bandIdx * 12 + colIdx * 4 + rowIdx"
                     class-name="latest-row"
-                    :class="{ 'song-item--playing': Number(song?.id) > 0 && Number(song?.id) === Number(playerStore.currentSongId || 0) }"
+                    :class="{ 'song-item--playing': Number(song?.id) > 0 && Number(song?.id) === Number(playerStore.state.currentSongId || 0) }"
                     @click="playLatestSong(song.__idx)"
                   >
                     <div class="latest-cover" :style="{ backgroundImage: `url(${song.al?.picUrl || song.album?.picUrl || ''})` }"></div>
@@ -596,7 +596,8 @@ import { useBgLoaded } from '../composables/useBgLoaded';
 import { apiCache, CACHE_TTL } from '../stores/apiCache';
 import { getArtistDetail, getPersonalFm, getPlaylistDetail, getRecommendPlaylists, getRecommendSongs, getNewestAlbums, getTopAlbums, getTopArtists, getTopSongs, searchMusic, getAllMvs, getDjRecommend, setPersonalFmMode } from '../api/music';
 import { getUserCreatedPlaylist } from '../api/auth';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import { useUserStore } from '../stores/user';
@@ -711,10 +712,10 @@ const personalFmCoverUrl = computed(() => {
 const dailyBgLoaded = useBgLoaded(() => dailyRecommendCoverUrl.value);
 const topRecoBgLoaded = useBgLoaded(() => topRecoCardCoverUrl.value);
 const fmBgLoaded = useBgLoaded(() => personalFmCoverUrl.value);
-const fmControlColor = computed(() => playerStore.themePrimary || 'var(--theme-primary)');
-const fmControlContrastColor = computed(() => (playerStore.isDarkMode ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.92)'));
-const isPersonalFmCurrentTrack = computed(() => playerStore.isPersonalFmTrack(playerStore.currentTrack));
-const isPersonalFmPlaying = computed(() => isPersonalFmCurrentTrack.value && playerStore.isPlaying);
+const fmControlColor = computed(() => playerStore.state.themePrimary || 'var(--theme-primary)');
+const fmControlContrastColor = computed(() => (playerStore.state.isDarkMode ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.92)'));
+const isPersonalFmCurrentTrack = computed(() => playerStore.isPersonalFmTrack(playerStore.state.currentTrack));
+const isPersonalFmPlaying = computed(() => isPersonalFmCurrentTrack.value && playerStore.state.isPlaying);
 const playToggleIconSvg = computed(() => {
   const fill = isPersonalFmPlaying.value ? fmControlContrastColor.value : fmControlColor.value;
   return isPersonalFmPlaying.value
@@ -747,20 +748,20 @@ const fmSubmodeOptions = [
 ];
 const fmModePopoverOpen = ref(false);
 const fmHovered = ref(false);
-const selectedFmMode = ref(playerStore.fmMode);
-const selectedFmSubmode = ref(playerStore.fmSubmode);
+const selectedFmMode = ref(playerStore.state.fmMode);
+const selectedFmSubmode = ref(playerStore.state.fmSubmode);
 const fmModeBtnRef = ref<HTMLElement | null>(null);
 const fmPopoverRef = ref<HTMLElement | null>(null);
 const fmPopoverStyle = ref({ top: '0px', left: '0px' });
 
 const fmModeLabel = computed(() => {
-  if (playerStore.fmMode === 'DEFAULT' && !playerStore.fmSubmode) return '默认';
-  const opt = fmModeOptions.find(o => o.value === playerStore.fmMode);
-  if (playerStore.fmMode === 'SCENE_RCMD' && playerStore.fmSubmode) {
-    const sub = fmSubmodeOptions.find(o => o.value === playerStore.fmSubmode);
+  if (playerStore.state.fmMode === 'DEFAULT' && !playerStore.state.fmSubmode) return '默认';
+  const opt = fmModeOptions.find(o => o.value === playerStore.state.fmMode);
+  if (playerStore.state.fmMode === 'SCENE_RCMD' && playerStore.state.fmSubmode) {
+    const sub = fmSubmodeOptions.find(o => o.value === playerStore.state.fmSubmode);
     return `${opt?.label || '场景'}·${sub?.label || ''}`;
   }
-  return opt?.label || playerStore.fmMode;
+  return opt?.label || playerStore.state.fmMode;
 });
 
 function toggleFmModePopover() {
@@ -768,8 +769,8 @@ function toggleFmModePopover() {
     fmModePopoverOpen.value = false;
     return;
   }
-  selectedFmMode.value = playerStore.fmMode;
-  selectedFmSubmode.value = playerStore.fmSubmode;
+  selectedFmMode.value = playerStore.state.fmMode;
+  selectedFmSubmode.value = playerStore.state.fmSubmode;
   fmModePopoverOpen.value = true;
   nextTick(() => updateFmPopoverPosition());
 }
@@ -822,15 +823,15 @@ async function applyFmMode() {
     const { data } = await setPersonalFmMode({ mode, submode: submode || undefined, cookie });
     const tracks = (data?.data || []) as any[];
     // 立即停止当前播放
-    playerStore.audio?.pause();
-    playerStore.isPlaying = false;
+    playerStore.state.audio?.pause();
+    playerStore.state.isPlaying = false;
 
     if (tracks.length) {
       personalFmTracks.value = tracks;
       playerStore.setPersonalFmFetcher(() =>
         setPersonalFmMode({ mode, submode: submode || undefined, cookie }).then(r => r?.data?.data || [])
       );
-      playerStore.personalFmHasMore = true;
+      playerStore.state.personalFmHasMore = true;
       playerStore.setPersonalFmPlaylist(tracks, 0);
       await playerStore.playByIndex(0);
       syncPersonalFmViewFromPlayer();
@@ -1183,7 +1184,7 @@ async function fetchDailyRecommendSongs() {
   const cached = apiCache.get('daily:songs');
   if (cached?.data) {
     dailyRecommendSongs.value = cached.data;
-    playerStore.defaultPlaylist = cached.data;
+    playerStore.state.defaultPlaylist = cached.data;
     dailyRecommendLoading.value = false;
     return;
   }
@@ -1194,7 +1195,7 @@ async function fetchDailyRecommendSongs() {
     const { data } = await getRecommendSongs(userStore.state.loginCookie || undefined);
     const list = Array.isArray(data?.recommend) ? data.recommend : Array.isArray(data?.songs) ? data.songs : Array.isArray(data?.data) ? data.data : Array.isArray(data?.data?.dailySongs) ? data.data.dailySongs : Array.isArray(data?.data?.recommend) ? data.data.recommend : Array.isArray(data?.data?.songs) ? data.data.songs : Array.isArray(data?.result?.songs) ? data.result.songs : [];
     dailyRecommendSongs.value = list;
-    playerStore.defaultPlaylist = list;
+    playerStore.state.defaultPlaylist = list;
     apiCache.set('daily:songs', list, dailyTtl());
   } catch (e: any) {
     console.error('[HomePanel][recommend/songs] request failed', e);
@@ -1229,9 +1230,9 @@ function setupTopArtistsObserver() {
 }
 
 function syncPersonalFmViewFromPlayer() {
-  if (playerStore.personalFmTrackIds.length) {
-    const ids = new Set(playerStore.personalFmTrackIds);
-    const fmPlaylist = playerStore.playlist.filter((track) => ids.has(Number(track?.id || 0)));
+  if (playerStore.state.personalFmTrackIds.length) {
+    const ids = new Set(playerStore.state.personalFmTrackIds);
+    const fmPlaylist = playerStore.state.playlist.filter((track) => ids.has(Number(track?.id || 0)));
     if (fmPlaylist.length) {
       personalFmTracks.value = fmPlaylist;
       return;
@@ -1247,14 +1248,14 @@ async function fetchPersonalFm() {
     playerStore.setPersonalFmFetcher(requestPersonalFmBatch);
     const batch = await requestPersonalFmBatch();
     personalFmTracks.value = batch;
-    playerStore.personalFmHasMore = batch.length > 0;
+    playerStore.state.personalFmHasMore = batch.length > 0;
     playerStore.persist();
     if (!personalFmTracks.value.length) {
       personalFmError.value = '暂未获取到私人 FM 内容';
     }
   } catch (e: any) {
     personalFmTracks.value = [];
-    playerStore.personalFmHasMore = false;
+    playerStore.state.personalFmHasMore = false;
     playerStore.persist();
     personalFmError.value = e?.message || '私人 FM 获取失败，请稍后重试';
   } finally {
@@ -1697,7 +1698,7 @@ watch(
 );
 
 watch(
-  () => [playerStore.playlist.length, playerStore.currentIndex, playerStore.personalFmTrackIds.length],
+  () => [playerStore.state.playlist.length, playerStore.state.currentIndex, playerStore.state.personalFmTrackIds.length],
   () => {
     syncPersonalFmViewFromPlayer();
   },
@@ -1811,7 +1812,7 @@ async function playRecoByIndex(index: number) {
 async function playPersonalFmByIndex(index: number) {
   if (!personalFmTracks.value.length) return;
   playerStore.setPersonalFmFetcher(requestPersonalFmBatch);
-  playerStore.personalFmHasMore = true;
+  playerStore.state.personalFmHasMore = true;
   playerStore.setPersonalFmPlaylist(personalFmTracks.value, index);
   await playerStore.playByIndex(index);
   syncPersonalFmViewFromPlayer();

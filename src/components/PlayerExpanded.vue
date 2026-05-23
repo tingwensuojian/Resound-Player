@@ -1,7 +1,7 @@
 <template>
   <transition name="player-sheet">
     <div
-      v-if="playerStore.expanded"
+      v-if="playerStore.state.expanded"
       class="expanded-wrap"
       :class="{ 'mode-fullscreen': lyricsSettings.state.displayMode === 'fullscreen' }"
       :style="bgStyle"
@@ -25,8 +25,8 @@
       <div v-show="showAurora" ref="auroraRef" class="aurora-container"></div>
       <div v-if="showAmllFluid" class="amll-fluid-container">
         <BackgroundRender
-          :album="playerStore.currentTrack?.al?.picUrl || ''"
-          :playing="!playerStore.isPlaying"
+          :album="playerStore.state.currentTrack?.al?.picUrl || ''"
+          :playing="!playerStore.state.isPlaying"
           :flowSpeed="amllFluidSpeed"
           :fps="30"
           :has-lyric="true"
@@ -57,23 +57,23 @@
 
         <div class="panel-body" :class="{ 'comments-mode': showComments }" :style="panelBodyStyle">
           <div v-if="!lyricsSettings.state.showCover || lyricsSettings.state.displayMode === 'fullscreen'" class="cover-hidden-head">
-                <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="song-name-center">{{ playerStore.currentTrack?.name || '未在播放' }}</AnimatedAppear>
+                <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="song-name-center">{{ playerStore.state.currentTrack?.name || '未在播放' }}</AnimatedAppear>
                 <AnimatedAppear tag="p" variant="text" rhythm="body" class-name="song-artist-center">
                   <template v-if="isCurrentPodcast">
                     <button type="button" class="artist-inline-btn" @click.stop="openPodcastDetail">{{ currentAlbumName }}</button>
                   </template>
-                  <template v-else-if="playerStore.currentTrack?.ar?.length">
-                    <button v-for="artist in playerStore.currentTrack.ar" :key="artist.id || artist.name" type="button" class="artist-inline-btn" :disabled="!(artist.id || artist.artistId)" @click.stop="openArtist(artist)">{{ artist.name }}</button>
+                  <template v-else-if="playerStore.state.currentTrack?.ar?.length">
+                    <button v-for="artist in playerStore.state.currentTrack.ar" :key="artist.id || artist.name" type="button" class="artist-inline-btn" :disabled="!(artist.id || artist.artistId)" @click.stop="openArtist(artist)">{{ artist.name }}</button>
                   </template>
                   <template v-else>{{ artistText }}</template>
-                  <span v-if="playerStore.playbackRate !== 1" class="rate-badge">{{ playerStore.playbackRate.toFixed(2).replace(/\.00$/, '.0') }}x</span>
+                  <span v-if="playerStore.state.playbackRate !== 1" class="rate-badge">{{ playerStore.state.playbackRate.toFixed(2).replace(/\.00$/, '.0') }}x</span>
                 </AnimatedAppear>
               </div>
               <div v-if="showLeftZone" class="left-zone" :class="{ 'mode-cover': lyricsSettings.state.displayMode === 'cover', 'mode-record': lyricsSettings.state.displayMode === 'record', 'l-only-cover': !lyricsSettings.state.showLyrics }">
                 <!-- 封面模式 -->
                 <template v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'cover'">
                   <Transition name="cover-switch" mode="out-in" appear>
-                    <div :key="trackId" class="album-shell" :class="{ playing: playerStore.isPlaying }">
+                    <div :key="trackId" class="album-shell" :class="{ playing: playerStore.state.isPlaying }">
                       <div class="album-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle"></div>
                       <svg class="album-cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="30 30 140 140" width="100%" height="100%">
                         <defs>
@@ -94,54 +94,54 @@
                 <template v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'record'">
                   <Transition name="cover-switch" mode="out-in" appear>
                     <div :key="trackId" class="vinyl-record">
-                      <div class="vinyl-pointer" :class="{ active: playerStore.isPlaying }">
+                      <div class="vinyl-pointer" :class="{ active: playerStore.state.isPlaying }">
                         <img class="needle" src="/images/needle.png" alt="pointer" />
                       </div>
-                      <div class="vinyl-disc" :class="{ playing: playerStore.isPlaying }">
+                      <div class="vinyl-disc" :class="{ playing: playerStore.state.isPlaying }">
                         <div class="record-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle" />
                       </div>
                     </div>
                   </Transition>
                 </template>
                 <template v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode !== 'fullscreen'">
-                  <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="song-name" :key="'sn-'+trackId">{{ playerStore.currentTrack?.name || '未在播放' }}</AnimatedAppear>
+                  <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="song-name" :key="'sn-'+trackId">{{ playerStore.state.currentTrack?.name || '未在播放' }}</AnimatedAppear>
                   <AnimatedAppear tag="p" variant="text" rhythm="body" class-name="song-artist" :key="'sa-'+trackId">
                     <template v-if="isCurrentPodcast">
                       <button type="button" class="artist-inline-btn" @click.stop="openPodcastDetail">{{ currentAlbumName }}</button>
                     </template>
-                    <template v-else-if="playerStore.currentTrack?.ar?.length">
-                      <button v-for="artist in playerStore.currentTrack.ar" :key="artist.id || artist.name" type="button" class="artist-inline-btn" :disabled="!(artist.id || artist.artistId)" @click.stop="openArtist(artist)">{{ artist.name }}</button>
+                    <template v-else-if="playerStore.state.currentTrack?.ar?.length">
+                      <button v-for="artist in playerStore.state.currentTrack.ar" :key="artist.id || artist.name" type="button" class="artist-inline-btn" :disabled="!(artist.id || artist.artistId)" @click.stop="openArtist(artist)">{{ artist.name }}</button>
                     </template>
                     <template v-else>{{ artistText }}</template>
-                    <span v-if="playerStore.playbackRate !== 1" class="rate-badge">{{ playerStore.playbackRate.toFixed(2).replace(/\.00$/, '.0') }}x</span>
+                    <span v-if="playerStore.state.playbackRate !== 1" class="rate-badge">{{ playerStore.state.playbackRate.toFixed(2).replace(/\.00$/, '.0') }}x</span>
                   </AnimatedAppear>
                 </template>
                 <div v-show="showLeftControls" class="progress-wrap">
-                  <input class="progress" type="range" min="0" :max="Math.max(1, Math.floor(playerStore.duration || 0))" :value="Math.floor(playerStore.currentTime || 0)" @mousedown="onSeekStart" @touchstart.passive="onSeekStart" @input="onSeek" @change="onSeekEnd" @mouseup="onSeekEnd" @touchend="onSeekEnd" />
+                  <input class="progress" type="range" min="0" :max="Math.max(1, Math.floor(playerStore.state.duration || 0))" :value="Math.floor(playerStore.state.currentTime || 0)" @mousedown="onSeekStart" @touchstart.passive="onSeekStart" @input="onSeek" @change="onSeekEnd" @mouseup="onSeekEnd" @touchend="onSeekEnd" />
                   <div v-if="isSeeking" class="seek-preview">{{ formatTime(seekPreviewTime) }}</div>
-                  <div class="times"><span class="time">{{ formatTime(playerStore.currentTime) }}</span><span class="time">{{ formatTime(playerStore.duration) }}</span></div>
+                  <div class="times"><span class="time">{{ formatTime(playerStore.state.currentTime) }}</span><span class="time">{{ formatTime(playerStore.state.duration) }}</span></div>
                 </div>
                 <div v-show="showLeftControls" class="controls">
-                  <button class="ctrl" @click="playerStore.cyclePlayMode()" aria-label="切换播放模式"><Repeat v-if="playerStore.playMode === 'loop'" :size="16" /><Repeat1 v-else-if="playerStore.playMode === 'single'" :size="16" /><Shuffle v-else :size="16" /></button>
+                  <button class="ctrl" @click="playerStore.cyclePlayMode()" aria-label="切换播放模式"><Repeat v-if="playerStore.state.playMode === 'loop'" :size="16" /><Repeat1 v-else-if="playerStore.state.playMode === 'single'" :size="16" /><Shuffle v-else :size="16" /></button>
                   <template v-if="isPersonalFmCurrentTrack">
                     <button class="ctrl ctrl-dislike" @click="dislikeFmTrack" aria-label="不喜欢并切换下一首"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8 5.5H6.9c-.93 0-1.74.64-1.95 1.54l-1.14 4.9a2 2 0 0 0 1.95 2.46h3.38l-.53 3.92a1.85 1.85 0 0 0 3.4 1.18l4.3-6.14c.2-.28.3-.62.3-.97V7.4a1.9 1.9 0 0 0-1.9-1.9h-3.9Zm7.15 0h1.65A1.4 1.4 0 0 1 21 6.9v6.95a1.4 1.4 0 0 1-1.4 1.4h-1.65V5.5Z"/></svg></button>
-                    <button class="ctrl main" @click="playerStore.togglePlay()" aria-label="播放或暂停">{{ playerStore.isPlaying ? '❚❚' : '▶' }}</button>
+                    <button class="ctrl main" @click="playerStore.togglePlay()" aria-label="播放或暂停">{{ playerStore.state.isPlaying ? '❚❚' : '▶' }}</button>
                     <button class="ctrl" @click="playerStore.next()" aria-label="下一首"><SkipForward :size="16" /></button>
                     <button class="ctrl ctrl-fm-indicator" type="button" aria-label="当前为私人 FM" disabled>FM</button>
                   </template>
                   <template v-else>
                     <button class="ctrl" @click="playerStore.prev()" aria-label="上一首"><SkipBack :size="16" /></button>
-                    <button class="ctrl main" @click="playerStore.togglePlay()" aria-label="播放或暂停">{{ playerStore.isPlaying ? '❚❚' : '▶' }}</button>
+                    <button class="ctrl main" @click="playerStore.togglePlay()" aria-label="播放或暂停">{{ playerStore.state.isPlaying ? '❚❚' : '▶' }}</button>
                     <button class="ctrl" @click="playerStore.next()" aria-label="下一首"><SkipForward :size="16" /></button>
                     <button class="ctrl" @click="uiStore.togglePlayQueue()" aria-label="查看播放列表"><AlignJustify :size="16" /></button>
                   </template>
                 </div>
                 <div v-show="showLeftControls" class="volume-wrap">
                   <div class="volume-control">
-                    <button class="volume-icon-btn" type="button" :aria-label="playerStore.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()"><VolumeX v-if="playerStore.muted || playerStore.volume === 0" :size="18" /><Volume v-else-if="playerStore.volume < 0.33" :size="18" /><Volume1 v-else-if="playerStore.volume < 0.66" :size="18" /><Volume2 v-else :size="18" /></button>
-                    <input type="range" min="0" max="100" :value="Math.round((playerStore.muted ? 0 : playerStore.volume) * 100)" @input="onVolume" />
+                    <button class="volume-icon-btn" type="button" :aria-label="playerStore.state.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()"><VolumeX v-if="playerStore.state.muted || playerStore.state.volume === 0" :size="18" /><Volume v-else-if="playerStore.state.volume < 0.33" :size="18" /><Volume1 v-else-if="playerStore.state.volume < 0.66" :size="18" /><Volume2 v-else :size="18" /></button>
+                    <input type="range" min="0" max="100" :value="Math.round((playerStore.state.muted ? 0 : playerStore.state.volume) * 100)" @input="onVolume" />
                   </div>
-                  <button v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="ctrl intel-icon" type="button" aria-label="心动模式"><Sparkles :size="14" /></button>
+                  <button v-if="playerStore.state.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="ctrl intel-icon" type="button" aria-label="心动模式"><Sparkles :size="14" /></button>
                   <button class="ctrl favorite-ctrl" type="button" :class="{ saved: isCurrentLiked, loading: likeLoading }" :aria-pressed="isCurrentLiked" :aria-label="isCurrentLiked ? '取消收藏' : '收藏'" :disabled="likeLoading || !canToggleCurrentLike" @click="toggleCurrentLike"><Heart :size="16" /></button>
                   <button class="ctrl volume-ctrl-comment" :class="{ active: showComments }" :disabled="!canComment" @click="showComments = !showComments" aria-label="评论区">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -153,10 +153,10 @@
           <div v-if="showComments" class="comments-overlay">
               <div class="comments-head">
                 <div class="comments-head-cover">
-                  <img v-if="currentCover" :src="currentCover + '?param=80y80'" :alt="playerStore.currentTrack?.name" />
+                  <img v-if="currentCover" :src="currentCover + '?param=80y80'" :alt="playerStore.state.currentTrack?.name" />
                 </div>
                 <div class="comments-head-info">
-                  <h3 class="comments-head-title">{{ playerStore.currentTrack?.name || '评论' }}</h3>
+                  <h3 class="comments-head-title">{{ playerStore.state.currentTrack?.name || '评论' }}</h3>
                   <p v-if="isCurrentPodcast" class="comments-head-artist">播客：<button type="button" class="head-link" @click.stop="openPodcastDetail">{{ currentAlbumName }}</button></p>
                   <p v-if="isCurrentPodcast && podcastPublishTime" class="comments-head-time">发布时间：{{ podcastPublishTime }}</p>
                   <template v-else>
@@ -185,7 +185,7 @@
         >
           <button ref="gearBtnRef" class="ra-btn" title="歌词设置" @click="onOpenSettings"><Settings :size="22" /></button>
           <button class="ra-btn" title="歌词延迟0.5秒" @click="playerStore.adjustLyricsOffset(-0.5)"><Minus :size="22" /></button>
-          <button class="ra-btn ra-btn--rect" title="点击打开精细调整" @click="showOffsetPanel = !showOffsetPanel">{{ formatOffset(playerStore.lyricsOffset) }}</button>
+          <button class="ra-btn ra-btn--rect" title="点击打开精细调整" @click="showOffsetPanel = !showOffsetPanel">{{ formatOffset(playerStore.state.lyricsOffset) }}</button>
           <button class="ra-btn" title="歌词提前0.5秒" @click="playerStore.adjustLyricsOffset(0.5)"><Plus :size="22" /></button>
           <button class="ra-btn ra-btn-rect ra-btn-trans" :class="{ active: showTransPanel }" title="翻译/音译设置" @click="showTransPanel = !showTransPanel">译</button>
           <button class="ra-btn" title="多选歌词" @click="onOpenLyricsSelection"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg></button>
@@ -198,8 +198,8 @@
                 <div class="offset-head">歌词偏移</div>
                 <div class="offset-body">
                   <button class="of-step" @click="playerStore.adjustLyricsOffset(-0.1)"><Minus :size="18" /></button>
-                  <input v-if="editingOffset" ref="offsetInputRef" class="of-input" type="number" step="0.1" :value="playerStore.lyricsOffset" @blur="commitOffset" @keydown.enter="commitOffset" @keydown.escape="editingOffset = false" />
-                  <span v-else class="of-value" @click="startEditOffset">{{ playerStore.lyricsOffset > 0 ? '+' : '' }}{{ playerStore.lyricsOffset.toFixed(1) }}s</span>
+                  <input v-if="editingOffset" ref="offsetInputRef" class="of-input" type="number" step="0.1" :value="playerStore.state.lyricsOffset" @blur="commitOffset" @keydown.enter="commitOffset" @keydown.escape="editingOffset = false" />
+                  <span v-else class="of-value" @click="startEditOffset">{{ playerStore.state.lyricsOffset > 0 ? '+' : '' }}{{ playerStore.state.lyricsOffset.toFixed(1) }}s</span>
                   <button class="of-step" @click="playerStore.adjustLyricsOffset(0.1)"><Plus :size="18" /></button>
                 </div>
                 <div class="of-hint">点击数值可手动输入，步进 ±100ms</div>
@@ -234,7 +234,7 @@
           <div class="cc-left">
             <button class="con-btn" @click="playerStore.closeExpanded()" data-tooltip="关闭播放页" aria-label="关闭播放页"><ChevronDown :size="18" /></button>
             <button class="con-btn con-fav" :class="{ saved: isCurrentLiked }" type="button" :data-tooltip="isCurrentLiked ? '取消收藏' : '收藏'" :aria-label="isCurrentLiked ? '取消收藏' : '收藏'" :disabled="likeLoading || !canToggleCurrentLike" @click="toggleCurrentLike"><Heart :size="14" /></button>
-            <button class="con-btn" @click="playerStore.cyclePlayMode()" :data-tooltip="playerStore.playMode === 'loop' ? '列表循环' : playerStore.playMode === 'single' ? '单曲循环' : '随机播放'" aria-label="切换播放模式"><Repeat v-if="playerStore.playMode === 'loop'" :size="14" /><Repeat1 v-else-if="playerStore.playMode === 'single'" :size="14" /><Shuffle v-else :size="14" /></button>
+            <button class="con-btn" @click="playerStore.cyclePlayMode()" :data-tooltip="playerStore.state.playMode === 'loop' ? '列表循环' : playerStore.state.playMode === 'single' ? '单曲循环' : '随机播放'" aria-label="切换播放模式"><Repeat v-if="playerStore.state.playMode === 'loop'" :size="14" /><Repeat1 v-else-if="playerStore.state.playMode === 'single'" :size="14" /><Shuffle v-else :size="14" /></button>
             <button class="con-btn" :class="{ active: showComments }" :disabled="!canComment" @click="showComments = !showComments" data-tooltip="评论区" aria-label="评论区">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </button>
@@ -246,31 +246,31 @@
             <template v-else>
               <button class="con-btn" @click="playerStore.prev()" aria-label="上一首"><SkipBack :size="14" /></button>
             </template>
-            <button class="con-btn con-play" @click="playerStore.togglePlay()" aria-label="播放或暂停">{{ playerStore.isPlaying ? '❚❚' : '▶' }}</button>
+            <button class="con-btn con-play" @click="playerStore.togglePlay()" aria-label="播放或暂停">{{ playerStore.state.isPlaying ? '❚❚' : '▶' }}</button>
             <button class="con-btn" @click="playerStore.next()" aria-label="下一首"><SkipForward :size="14" /></button>
           </div>
           <div class="console-progress">
-            <span class="console-time">{{ formatTime(playerStore.currentTime) }}</span>
-            <input class="console-bar" type="range" min="0" :max="Math.max(1, Math.floor(playerStore.duration || 0))" :value="Math.floor(playerStore.currentTime || 0)" @mousedown="onSeekStart" @touchstart.passive="onSeekStart" @input="onSeek" @change="onSeekEnd" @mouseup="onSeekEnd" @touchend="onSeekEnd" />
-            <span class="console-time">{{ formatTime(playerStore.duration) }}</span>
+            <span class="console-time">{{ formatTime(playerStore.state.currentTime) }}</span>
+            <input class="console-bar" type="range" min="0" :max="Math.max(1, Math.floor(playerStore.state.duration || 0))" :value="Math.floor(playerStore.state.currentTime || 0)" @mousedown="onSeekStart" @touchstart.passive="onSeekStart" @input="onSeek" @change="onSeekEnd" @mouseup="onSeekEnd" @touchend="onSeekEnd" />
+            <span class="console-time">{{ formatTime(playerStore.state.duration) }}</span>
           </div>
           <div class="cc-right">
             <button class="con-btn" :class="{ active: showEqPanel }" title="均衡器" @click="showEqPanel = !showEqPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg></button>
-            <button v-if="playerStore.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="con-btn intel-icon" type="button" aria-label="心动模式"><Sparkles :size="10" /></button>
+            <button v-if="playerStore.state.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="con-btn intel-icon" type="button" aria-label="心动模式"><Sparkles :size="10" /></button>
             <button v-if="isPersonalFmCurrentTrack" class="con-btn con-fm-label" type="button" aria-label="当前为私人 FM" disabled>FM</button>
             <button v-else class="con-btn" @click="uiStore.togglePlayQueue()" data-tooltip="查看播放列表" aria-label="查看播放列表"><AlignJustify :size="14" /></button>
             <div class="con-volume">
-              <button class="con-btn con-vol-icon" type="button" :aria-label="playerStore.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()"><VolumeX v-if="playerStore.muted || playerStore.volume === 0" :size="14" /><Volume v-else-if="playerStore.volume < 0.33" :size="14" /><Volume1 v-else-if="playerStore.volume < 0.66" :size="14" /><Volume2 v-else :size="14" /></button>
-              <input class="con-vol-slider" type="range" min="0" max="100" :value="Math.round((playerStore.muted ? 0 : playerStore.volume) * 100)" @input="onVolume" />
+              <button class="con-btn con-vol-icon" type="button" :aria-label="playerStore.state.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()"><VolumeX v-if="playerStore.state.muted || playerStore.state.volume === 0" :size="14" /><Volume v-else-if="playerStore.state.volume < 0.33" :size="14" /><Volume1 v-else-if="playerStore.state.volume < 0.66" :size="14" /><Volume2 v-else :size="14" /></button>
+              <input class="con-vol-slider" type="range" min="0" max="100" :value="Math.round((playerStore.state.muted ? 0 : playerStore.state.volume) * 100)" @input="onVolume" />
             </div>
           </div>
         </AnimatedAppear>
 
         <div v-if="showPlaylistPopup" class="playlist-popup-mask" @click.self="showPlaylistPopup = false">
           <aside class="playlist-popup" @click.stop>
-            <div class="playlist-popup-head"><h3>播放列表</h3><div class="playlist-popup-actions"><button v-if="playerStore.playlist.length" class="ghost" title="清空列表" @click="onClearPlaylist">清空</button><button class="ghost" @click="showPlaylistPopup = false">关闭</button></div></div>
-            <ul v-if="playerStore.playlist.length">
-              <li v-for="(track, idx) in playerStore.playlist" :key="track.id" :class="{ active: idx === playerStore.currentIndex }" @click="playFromPopup(idx)">
+            <div class="playlist-popup-head"><h3>播放列表</h3><div class="playlist-popup-actions"><button v-if="playerStore.state.playlist.length" class="ghost" title="清空列表" @click="onClearPlaylist">清空</button><button class="ghost" @click="showPlaylistPopup = false">关闭</button></div></div>
+            <ul v-if="playerStore.state.playlist.length">
+              <li v-for="(track, idx) in playerStore.state.playlist" :key="track.id" :class="{ active: idx === playerStore.state.currentIndex }" @click="playFromPopup(idx)">
                 <span class="track-num">{{ idx + 1 }}</span>
                 <img v-if="track.al?.picUrl" class="track-cover" :src="track.al.picUrl + '?param=48y48'" alt="" loading="lazy" />
                 <span class="track-info"><span class="t">{{ track.name }}</span><span class="a">{{ (track.ar || []).map((x) => x.name).join('/') }}</span></span>
@@ -293,7 +293,8 @@
 import { AlignJustify, ChevronDown, Copy, Heart, Minus, Plus, Repeat, Repeat1, Settings, Shuffle, SkipBack, SkipForward, Sparkles, Volume, Volume1, Volume2, VolumeX } from 'lucide-vue-next';
 import { computed, nextTick, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { toggleDjSubscribe, toggleSongLike, trashPersonalFm, deleteDjComment } from '../api/music';
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import { useUserStore } from '../stores/user';
@@ -328,14 +329,14 @@ import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
 
 const emit = defineEmits<{ 'open-artist': [artist: Record<string, any>]; 'open-album': [albumId: number]; 'open-user': [userId: number]; 'open-podcast-detail': [item: any] }>();
 
-const artistText = computed(() => { const ar = playerStore.currentTrack?.ar || []; return ar.length ? ar.map((a) => a.name).join('/') : 'Unknown Artist'; });
+const artistText = computed(() => { const ar = playerStore.state.currentTrack?.ar || []; return ar.length ? ar.map((a) => a.name).join('/') : 'Unknown Artist'; });
 function openArtist(artist: Record<string, any>) { const id = Number(artist?.id || artist?.artistId || 0); if (id) emit('open-artist', artist); }
 function openAlbum(albumId: number | undefined | null) {
   const id = Number(albumId || 0);
   if (id > 0) emit('open-album', id);
 }
-const coverStyle = computed(() => { const url = playerStore.currentTrack?.al?.picUrl; return url ? { backgroundImage: `url(${url})` } : {}; });
-const { showFinal: coverLoaded } = useProgressiveCover(() => playerStore.currentTrack?.al?.picUrl || '', { targetSize: 'large' });
+const coverStyle = computed(() => { const url = playerStore.state.currentTrack?.al?.picUrl; return url ? { backgroundImage: `url(${url})` } : {}; });
+const { showFinal: coverLoaded } = useProgressiveCover(() => playerStore.state.currentTrack?.al?.picUrl || '', { targetSize: 'large' });
 const { uiRevealed, onActivity, onLeave, freeze, unfreeze } = useAutoHideUI(() => uiStore.state.autoHidePlayerUI, { idleTimeout: 3000 });
 function openUser(userId: number) { if (userId > 0) emit('open-user', userId); }
 function openPodcastDetail() {
@@ -343,10 +344,10 @@ function openPodcastDetail() {
   if (rid > 0) emit('open-podcast-detail', { radio: { id: rid }, name: currentAlbumName });
 }
 
-const currentCover = computed(() => playerStore.currentTrack?.al?.picUrl || '');
-const currentArtistList = computed(() => playerStore.currentTrack?.ar || []);
-const currentAlbumName = computed(() => playerStore.currentTrack?.al?.name || '');
-const currentAlbumId = computed(() => { const al: any = playerStore.currentTrack?.al; return al?.id ? Number(al.id) : 0; });
+const currentCover = computed(() => playerStore.state.currentTrack?.al?.picUrl || '');
+const currentArtistList = computed(() => playerStore.state.currentTrack?.ar || []);
+const currentAlbumName = computed(() => playerStore.state.currentTrack?.al?.name || '');
+const currentAlbumId = computed(() => { const al: any = playerStore.state.currentTrack?.al; return al?.id ? Number(al.id) : 0; });
 
 const palette = ref({ c1: 'rgb(28, 33, 53)', c2: 'rgb(84, 110, 126)', c3: 'rgb(195, 156, 118)', c4: 'rgb(20, 24, 36)' });
 const showPlaylistPopup = ref(false);
@@ -410,7 +411,7 @@ function onOpenSettings() {
   showSettings.value = true;
 }
 
-const isPersonalFmCurrentTrack = computed(() => playerStore.isPersonalFmTrack(playerStore.currentTrack));
+const isPersonalFmCurrentTrack = computed(() => playerStore.isPersonalFmTrack(playerStore.state.currentTrack));
 const {
   currentTrackId,
   currentPodcastRid,
@@ -420,9 +421,9 @@ const {
   likeLoading,
   toggleCurrentLike,
 } = useCurrentTrackLike();
-const currentPodcastProgramId = computed(() => Number(playerStore.currentTrack?.podcast?.programId || 0));
+const currentPodcastProgramId = computed(() => Number(playerStore.state.currentTrack?.podcast?.programId || 0));
 const podcastPublishTime = computed(() => {
-  const t = Number(playerStore.currentTrack?.podcast?.createTime || 0);
+  const t = Number(playerStore.state.currentTrack?.podcast?.createTime || 0);
   if (!t) return '';
   const d = new Date(t);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -447,11 +448,11 @@ const softGradientDuration = computed(() => {
 });
 const threeSceneRef = ref<HTMLElement | null>(null);
 const showThreeScene = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'three-scene');
-const threeSceneActive = computed(() => showThreeScene.value && playerStore.expanded);
+const threeSceneActive = computed(() => showThreeScene.value && playerStore.state.expanded);
 useThreeScene(threeSceneRef, threeSceneActive);
 const paperRef = ref<HTMLElement | null>(null);
 const showPaper = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'paper-shaders');
-const paperActive = computed(() => showPaper.value && playerStore.expanded);
+const paperActive = computed(() => showPaper.value && playerStore.state.expanded);
 const paperConfig = computed(() => ({
   color1: lyricsSettings.state.iriColors?.[0] || '#3A29FF',
   color2: lyricsSettings.state.iriColors?.[1] || '#FF94B4',
@@ -462,19 +463,19 @@ const paperConfig = computed(() => ({
 usePaperShaders(paperRef, paperConfig, paperActive);
 const mistRef = ref<HTMLElement | null>(null);
 const showMist = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'mist');
-const mistActive = computed(() => showMist.value && playerStore.expanded);
+const mistActive = computed(() => showMist.value && playerStore.state.expanded);
 useMistBackground(mistRef, mistActive);
 const loomRef = ref<HTMLElement | null>(null);
 const showLoom = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'digital-loom');
-const loomActive = computed(() => showLoom.value && playerStore.expanded);
+const loomActive = computed(() => showLoom.value && playerStore.state.expanded);
 useDigitalLoom(loomRef, loomActive);
 const silkRef = ref<HTMLElement | null>(null);
 const showSilk = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'silk');
-const silkActive = computed(() => showSilk.value && playerStore.expanded);
+const silkActive = computed(() => showSilk.value && playerStore.state.expanded);
 useSilkBackground(silkRef, silkActive);
 const auroraRef = ref<HTMLElement | null>(null);
 const showAurora = computed(() => lyricsSettings.state.bgMode === 'custom' && lyricsSettings.state.bgCustomMode === 'aurora');
-const auroraActive = computed(() => showAurora.value && playerStore.expanded);
+const auroraActive = computed(() => showAurora.value && playerStore.state.expanded);
 useAuroraShader(auroraRef, auroraActive);
 
 /* ---- AMLL fluid background ---- */
@@ -493,7 +494,7 @@ const iriConfig = computed((): IridescenceConfig => {
     amplitude: (lyricsSettings.state.iriScale || 5) / 10,
   };
 });
-const iriActive = computed(() => showIridescence.value && playerStore.expanded);
+const iriActive = computed(() => showIridescence.value && playerStore.state.expanded);
 useIridescence(iriContainerRef, iriConfig, iriActive);
 
 const iriBlurStyle = computed(() => {
@@ -501,7 +502,7 @@ const iriBlurStyle = computed(() => {
   return { backdropFilter: `blur(${px}px)`, WebkitBackdropFilter: `blur(${px}px)` };
 });
 
-const coverAuraStyle = computed(() => { const url = playerStore.currentTrack?.al?.picUrl; return url ? { backgroundImage: `url(${url})` } : {}; });
+const coverAuraStyle = computed(() => { const url = playerStore.state.currentTrack?.al?.picUrl; return url ? { backgroundImage: `url(${url})` } : {}; });
 
 /* settings-driven */
 const showLeftZone = computed(() => lyricsSettings.state.showCover && lyricsSettings.state.displayMode !== 'fullscreen');
@@ -569,7 +570,7 @@ const bgStyle = computed(() => {
 });
 
 async function dislikeFmTrack() {
-  const track = playerStore.currentTrack;
+  const track = playerStore.state.currentTrack;
   const id = Number(track?.id || 0);
   if (!id) return;
   try { await trashPersonalFm(id, userStore.state.loginCookie || undefined); } catch { /* ignore */ }
@@ -591,13 +592,13 @@ async function extractPaletteFromCover(url?: string) {
   palette.value = { c1: tone(-52, -46, -40), c2: tone(-8, -4, 6), c3: tone(42, 34, 26), c4: tone(-86, -80, -72) };
 }
 
-watch(() => playerStore.currentTrack?.al?.picUrl, async (url) => { try { await extractPaletteFromCover(url); } catch { /* keep previous */ } }, { immediate: true });
+watch(() => playerStore.state.currentTrack?.al?.picUrl, async (url) => { try { await extractPaletteFromCover(url); } catch { /* keep previous */ } }, { immediate: true });
 
 /* 切歌过渡动画 */
 const prevBg = ref('');
 const bgFadeOpacity = ref(0);
 let transitionTimer: ReturnType<typeof setTimeout> | null = null;
-const trackId = computed(() => playerStore.currentTrack?.id);
+const trackId = computed(() => playerStore.state.currentTrack?.id);
 
 watch(trackId, (newId, oldId) => {
   if (!oldId || newId === oldId) return;
@@ -614,9 +615,9 @@ watch(trackId, (newId, oldId) => {
 });
 
 function onVolume(e: Event) { playerStore.setVolume(Number((e.target as HTMLInputElement).value) / 100); }
-function onSeekStart() { isSeeking.value = true; seekPreviewTime.value = playerStore.currentTime || 0; }
+function onSeekStart() { isSeeking.value = true; seekPreviewTime.value = playerStore.state.currentTime || 0; }
 function onSeek(e: Event) { const t = Number((e.target as HTMLInputElement).value); seekPreviewTime.value = t; playerStore.seek(t); }
-function onSeekEnd() { seekPreviewTime.value = playerStore.currentTime || 0; setTimeout(() => { isSeeking.value = false; }, 80); }
+function onSeekEnd() { seekPreviewTime.value = playerStore.state.currentTime || 0; setTimeout(() => { isSeeking.value = false; }, 80); }
 
 function scrollPlaylistIntoView() { if (!isPersonalFmCurrentTrack.value) showPlaylistPopup.value = true; }
 async function playFromPopup(index: number) { await playerStore.playByIndex(index); showPlaylistPopup.value = false; }
@@ -632,8 +633,8 @@ function commitOffset(e: Event) {
   editingOffset.value = false;
 }
 
-function copyTrackInfo() { const t = playerStore.currentTrack; if (!t?.name) return; navigator.clipboard.writeText(`${t.name} - ${(t.ar||[]).map(a=>a.name).join('/')}`); }
-function onOpenLyricsSelection() { useLyricsSelectionStore().openSelection(playerStore.currentTrack?.id ?? null); }
+function copyTrackInfo() { const t = playerStore.state.currentTrack; if (!t?.name) return; navigator.clipboard.writeText(`${t.name} - ${(t.ar||[]).map(a=>a.name).join('/')}`); }
+function onOpenLyricsSelection() { useLyricsSelectionStore().openSelection(playerStore.state.currentTrack?.id ?? null); }
 function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 ? '+' : ''; return `${sign}${v.toFixed(1)}s`; }
 </script>
 

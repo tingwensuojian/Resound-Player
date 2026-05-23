@@ -106,7 +106,8 @@
 import { computed, ref, onMounted } from 'vue'
 import { useLocalMusicStore, type LocalTrack, type SortField } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
-import { playerStore } from '../stores/player'
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore()
 import { platform } from '../utils/platform'
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
@@ -118,7 +119,7 @@ import VirtualSongList from '../components/VirtualSongList.vue'
 import DropdownSelect from '../components/ui/DropdownSelect.vue'
 import { searchMusic } from '../api/music'
 
-const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
+const nowPlayingId = computed(() => playerStore.state.currentTrack?.id ?? null)
 
 // ── 多选模式 ──
 const selectionMode = ref(false)
@@ -295,8 +296,8 @@ function addToQueue(track: LocalTrack, playNext: boolean) {
     source: 'local', path: track.path,
   }
   if (playNext) {
-    const idx = playerStore.currentIndex + 1
-    playerStore.playlist.splice(idx, 0, song)
+    const idx = playerStore.state.currentIndex + 1
+    playerStore.state.playlist.splice(idx, 0, song)
     loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
   } else {
     playerStore.appendToQueue([song])

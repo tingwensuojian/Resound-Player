@@ -90,7 +90,8 @@
 import { computed, ref } from 'vue';
 import { useEqSettingsStore, EQ_FREQ_LABELS, type EqPreset } from '../stores/eqSettings';
 const eqSettings = useEqSettingsStore();
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import FancySwitch from './ui/FancySwitch.vue';
 import HorizontalScrollRail from './ui/HorizontalScrollRail.vue';
 

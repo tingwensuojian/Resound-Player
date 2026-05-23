@@ -1,4 +1,5 @@
-import { playerStore } from '../stores/player';
+import { usePlayerStore } from '../stores/player'
+const playerStore = usePlayerStore();
 import { isCurrentTrack as isCurrentTrackUtil } from '../utils/trackHelpers';
 
 /**
@@ -8,7 +9,7 @@ import { isCurrentTrack as isCurrentTrackUtil } from '../utils/trackHelpers';
  */
 export function useSongRowConfig(playFn: (index: number) => Promise<void> | void) {
   function isCurrentTrack(song: any): boolean {
-    return isCurrentTrackUtil(Number(song?.id || 0), Number(playerStore.currentSongId || 0));
+    return isCurrentTrackUtil(Number(song?.id || 0), Number(playerStore.state.currentSongId || 0));
   }
 
   function onSongItemDblClick(event: MouseEvent, index: number): void {
