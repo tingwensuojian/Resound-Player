@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const unblockMatchTarget = env.VITE_UNBLOCK_MATCH_TARGET || 'http://127.0.0.1:38763';
 
   return {
-    base: env.VITE_BASE_URL || '/',
+    base: env.VITE_BASE_URL || './',
     plugins: [
       vue(),
       {

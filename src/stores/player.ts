@@ -805,7 +805,7 @@ export const playerStore = reactive({
       // unblock proxy 的 CONNECT 隧道对 music.163.com HTTPS 握手会失败
       // 音源替换由下方的 tryUnblockMatch 独立负责
       const qs = `id=${track.id}&level=${level}${nocookie ? '&cookie=' + encodeURIComponent(nocookie) : ''}`;
-      const feePromise = fetch(`/api/song/url/v1?${qs}`);
+      const feePromise = fetch(`${platform.apiBaseUrl}/song/url/v1?${qs}`);
       const uiImport = import("../stores/ui");
       const cached = getCache(track.id);
       const { uiStore } = await uiImport;

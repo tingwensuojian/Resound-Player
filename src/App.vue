@@ -165,7 +165,7 @@
           <LanguageDetailPage v-else-if="activePage === 'language-detail'" :language-name="activeLanguage" :back-label="activeLanguageReturnPage === 'song-comment' ? '评论' : undefined" @back="backToLanguage" @open-detail="(playlistId) => openPlaylistDetail(playlistId, undefined, activePage)" />
           <LocalMusicHub v-else-if="activePage === 'local-music' && platform.isDesktop" />
           <LocalPlaylistDetailPage v-else-if="activePage === 'local-playlist-detail' && platform.isDesktop" />
-          <PlaceholderPanel v-else :page-key="activePage" />
+          <PlaceholderPanel v-else-if="activePage" :page-key="activePage" />
         </KeepAlive>
         </div>
       </main>
@@ -231,7 +231,7 @@ import { useNavigationHistory } from './composables/useNavigationHistory';
 
 const navHistory = useNavigationHistory();
 
-const activePage = ref('home');
+const activePage = ref('');  // 初始为空，登录验证完成后再切到首页
 const activePlaylistId = ref(0);
 const activeSongId = ref(0);
 const activeSongCommentReturnPage = ref('playlist-detail');
@@ -973,6 +973,8 @@ function openSettings(tab: 'playback' | 'appearance' | 'account' = 'appearance')
   activePage.value = 'settings';
 }
 
+const openTraySettings = () => openSettings('playback');
+
 function openArtistFromComment(artist: any) {
   openArtistDetail(artist, 'song-comment');
 }
@@ -1091,26 +1093,37 @@ onMounted(async () => {
   syncViewport();
   window.addEventListener('resize', syncViewport);
   window.addEventListener('local-navigate', handleLocalNavigate);
+  window.addEventListener('open-tray-settings', openTraySettings);
 
   await userStore.hydrate();
   playerStore.init();
   uiStore.init();
   apiCache.init();
 
-  apiReady.value = await waitForApiReady({ maxAttempts: 30, intervalMs: 500 });
+  // 并行：登录验证和 API 就绪检测同时进行
+  // refreshLoginStatus 首次调用可能因 API 未就绪而失败，静默处理
+  const [apiReadyResult] = await Promise.all([
+    waitForApiReady({ maxAttempts: 30, intervalMs: 500 }),
+    userStore.refreshLoginStatus().catch(() => {/* 静默 */}),
+  ]);
+  apiReady.value = apiReadyResult;
+
   if (apiReady.value) {
-    try {
-      await Promise.all([userStore.refreshLoginStatus(), uiStore.loadDefaultSearchKeyword()]);
-    } catch {
-      // ignore
+    // API 已就绪，确认登录状态（首次成功则跳过，失败则重试）
+    if (!userStore.loginVerified) {
+      await userStore.refreshLoginStatus();
     }
+    await uiStore.loadDefaultSearchKeyword();
   }
+  // 登录验证完成后再进入首页，确保 HomePanel 挂载时登录态已就绪
+  activePage.value = 'home';
   navHistory.replace({ page: 'home' });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', syncViewport);
   window.removeEventListener('local-navigate', handleLocalNavigate);
+  window.removeEventListener('open-tray-settings', openTraySettings);
 });
 </script>
 

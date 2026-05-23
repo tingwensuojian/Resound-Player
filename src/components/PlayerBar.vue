@@ -180,6 +180,7 @@ import { useLyrics } from '../composables/useLyrics';
 import { showGlobalToast } from '../stores/loginModal';
 import { useBgLoaded } from '../composables/useBgLoaded';
 import { formatTime } from '../utils/formatTime';
+import { platform } from '../utils/platform';
 import { QUALITY_OPTIONS as qualityOptions, isQualityAvailable as isQualityAvailableRaw } from '../config/qualityOptions';
 
 const isRealLogin = computed(() => userStore.loginMode === 'cookie' || userStore.loginMode === 'qr');
@@ -369,6 +370,13 @@ const {
   toggleCurrentLike,
 } = useCurrentTrackLike();
 
+// 同步收藏状态到托盘菜单
+watch(isCurrentLiked, (liked) => {
+  if (platform.isDesktop && window.appEnv?.trayLyric) {
+    window.appEnv.trayLyric.notifyLikeStatus(liked);
+  }
+}, { immediate: true });
+
 /* 播放时显示当前歌词行 */
 const { lyricLines, currentLyricIndex, effectiveTime, startTick, isLoading, loadLyrics } = useLyrics();
 
@@ -431,6 +439,150 @@ const playModeTooltip = computed(() => {
   if (playerStore.playMode === 'loop') return '列表循环';
   if (playerStore.playMode === 'single') return '单曲循环';
   return '随机播放';
+});
+
+// ── 系统托盘歌词：发送歌词和播放状态到主进程 ──
+import { platform } from '../utils/platform';
+
+// ── 状态栏歌词：升级数据契约（完整歌词数组 + 精确进度） ──
+import { throttle } from '../utils/throttle';
+
+let trayLastTrackId = -1;
+let trayLastSentLines = '';
+
+// 切歌时立即通知主进程清空旧歌词状态，即使新歌词尚未加载
+watch(() => playerStore.currentTrack, (track, oldTrack) => {
+  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
+  if (!track || track.id === oldTrack?.id) return;
+  trayLastTrackId = track.id;
+  trayLastSentLines = '';
+  const artist = track.ar?.map((a: { name: string }) => a.name).join('/') || '';
+  window.appEnv.trayLyric.syncState({
+    type: 'track-change',
+    data: { title: track.name || '', artist, cover: '' },
+  });
+});
+
+// 歌词加载后推送完整数组（必须在 track-change 之后发送，避免被清空）
+watch(() => lyricLines.value, (lines) => {
+  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
+  const track = playerStore.currentTrack;
+  if (!track || !lines.length) return;
+  if (track.id !== trayLastTrackId) return; // wait for track-change to fire first
+  const linesJson = JSON.stringify(lines.map(l => ({ time: l.time, text: l.text })));
+  if (linesJson === trayLastSentLines) return;
+  trayLastSentLines = linesJson;
+  window.appEnv.trayLyric.syncState({
+    type: 'lyrics-loaded',
+    data: { lines: lines.map(l => ({ time: l.time, text: l.text })), type: 'line' },
+  });
+});
+
+// 高频推送精确进度（~200ms throttle）
+const sendTrayTick = throttle(() => {
+  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
+  if (!playerStore.isPlaying) return;
+  const currentTimeMs = Math.round(playerStore.currentTime * 1000);
+  const durationMs = Math.round(playerStore.duration * 1000);
+  const offset = 0;
+  window.appEnv.trayLyric.syncTick([currentTimeMs, durationMs, offset]);
+}, 200);
+
+watch(() => playerStore.currentTime, () => {
+  sendTrayTick();
+});
+
+// 播放状态变化时通知
+watch(() => playerStore.isPlaying, (playing) => {
+  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
+  window.appEnv.trayLyric.syncState({
+    type: 'playback-state',
+    data: { isPlaying: !!playing },
+  });
+});
+
+// ── 桌面歌词：发送完整 LRC 时间轴 + 播放进度 ──
+let desktopLastTrackId = -1;
+watch([() => lyricLines.value, () => playerStore.currentTrack, () => playerStore.isPlaying, () => playerStore.currentTime], () => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  const track = playerStore.currentTrack;
+  if (!track) {
+    window.appEnv.desktopLyric.updateData({
+      lrcArray: [], currentTime: 0, trackName: '', artist: '', isPlaying: false,
+      showTranslation: lyricsSettings.showTranslation, showRomalrc: lyricsSettings.showRomalrc,
+    });
+    return;
+  }
+  const lines = lyricLines.value;
+  if (!lines.length && track.id === desktopLastTrackId) return;
+  desktopLastTrackId = track.id;
+  const lrcArray = lines.length ? lines.map((l) => ({ t: l.time, text: l.text, translation: l.translation, romalrc: l.romalrc })) : [];
+  window.appEnv.desktopLyric.updateData({
+    lrcArray,
+    currentTime: playerStore.currentTime,
+    trackName: track.name || '',
+    artist: track.ar?.map((a: { name: string }) => a.name).join('/') || '',
+    isPlaying: playerStore.isPlaying,
+    showTranslation: lyricsSettings.showTranslation,
+    showRomalrc: lyricsSettings.showRomalrc,
+  });
+});
+
+// ── 桌面歌词：独立监听歌词加载完成，确保数据必达 ──
+watch(() => lyricLines.value, (lines) => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  if (!lines.length) return;
+  const track = playerStore.currentTrack;
+  if (!track) {
+    window.appEnv.desktopLyric.updateData({
+      lrcArray: [], currentTime: 0, trackName: '', artist: '', isPlaying: false,
+      showTranslation: lyricsSettings.showTranslation, showRomalrc: lyricsSettings.showRomalrc,
+    });
+    return;
+  }
+  const lrcArray = lines.map((l) => ({ t: l.time, text: l.text, translation: l.translation, romalrc: l.romalrc }));
+  window.appEnv.desktopLyric.updateData({
+    lrcArray,
+    currentTime: playerStore.currentTime,
+    trackName: track.name || '',
+    artist: track.ar?.map((a: { name: string }) => a.name).join('/') || '',
+    isPlaying: playerStore.isPlaying,
+    showTranslation: lyricsSettings.showTranslation,
+    showRomalrc: lyricsSettings.showRomalrc,
+  });
+});
+
+// ── 系统托盘动作：处理来自 tray 菜单/弹窗的播放控制 ──
+function handleTrayAction(e: CustomEvent) {
+  const action = e.detail;
+  if (action === 'togglePlay') playerStore.togglePlay();
+  else if (action === 'next') playerStore.next();
+  else if (action === 'prev') playerStore.prev();
+  else if (action === 'toggleDesktopLyric') {
+    if (platform.isDesktop && window.appEnv?.desktopLyric) {
+      window.appEnv.desktopLyric.getConfig().then((cfg) => {
+        const newEnabled = !cfg.enabled;
+        window.appEnv.desktopLyric.setConfig({ enabled: newEnabled });
+        // Notify main process so tray menu checkbox updates
+        if (window.appEnv?.trayLyric) {
+          // The main process already listens for desktop-lyric:set-config changes
+        }
+      }).catch(() => {});
+    }
+  }
+  else if (action === 'cycleMode') playerStore.setPlayMode('loop');
+  else if (action === 'singleMode') playerStore.setPlayMode('single');
+  else if (action === 'shuffleMode') playerStore.setPlayMode('shuffle');
+  else if (action === 'toggleLike') toggleCurrentLike();
+  else if (action === 'openSettings') {
+    document.dispatchEvent(new CustomEvent('open-tray-settings'));
+  }
+}
+onMounted(() => {
+  document.addEventListener('tray-action', handleTrayAction as EventListener);
+});
+onUnmounted(() => {
+  document.removeEventListener('tray-action', handleTrayAction as EventListener);
 });
 
 function onVolume(e: Event) {

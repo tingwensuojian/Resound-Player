@@ -330,11 +330,10 @@
           </AnimatedAppear>
         </template>
 
-        <template v-else-if="widget.id === 'exclusive-recommend'">
+        <template v-else-if="widget.id === 'exclusive-recommend' && (userStore.loginMode === 'cookie' || userStore.loginMode === 'qr')">
           <AnimatedAppear tag="h3" variant="title" rhythm="head">你的专属推荐</AnimatedAppear>
           <p v-if="exclusiveRecoLoading" class="custom-tip">专属推荐加载中…</p>
           <p v-else-if="exclusiveRecoError" class="custom-tip">{{ exclusiveRecoError }}</p>
-          <p v-else-if="!exclusiveRecoPlaylists.length" class="custom-tip">登录后可查看专属推荐</p>
           <AnimatedAppear
             v-else
             tag="div"

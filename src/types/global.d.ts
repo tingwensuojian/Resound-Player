@@ -17,6 +17,7 @@ interface Window {
     isDesktop: boolean
     platform: string
     apiBaseUrl: string
+    apiPort: number
     unblockProxyUrl: string
     unblockMatchUrl: string
     electronVersion: string
@@ -25,6 +26,23 @@ interface Window {
       getItem: () => Promise<any>
       setItem: (data: any) => Promise<boolean>
       clear: () => Promise<boolean>
+    }
+    trayLyric?: {
+      getConfig: () => Promise<{ enabled: boolean; mode: 'title' | 'popup'; bgColor?: string }>
+      setConfig: (config: { enabled: boolean; mode: 'title' | 'popup'; bgColor?: string }) => Promise<void>
+      updateLyric: (data: {
+        line: string
+        trackName: string
+        artist: string
+        isPlaying: boolean
+      }) => void
+      syncState: (payload: {
+        type: 'lyrics-loaded' | 'playback-state' | 'track-change' | 'full-hydration'
+        data: any
+      }) => void
+      syncTick: (payload: [number, number, number]) => void
+      notifyLikeStatus: (liked: boolean) => void
+      onConfigChanged: (cb: (config: { enabled: boolean; mode: 'title' | 'popup'; bgColor?: string }) => void) => () => void
     }
   }
   localApi?: LocalApi

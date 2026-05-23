@@ -11,6 +11,23 @@ function readLyricFile(lrcPath) {
   const text = iconv.decode(raw, encoding);
   return text.replace(/^\uFEFF/, "");
 }
+
+// ── 路径安全校验 ──
+// 阻止路径穿越和敏感目录访问
+function isPathSafe(requestedPath) {
+  if (typeof requestedPath !== 'string' || !requestedPath.trim()) return false;
+  try {
+    const normalized = path.resolve(requestedPath);
+    const blockedPrefixes = ['/etc', '/var', '/System', '/Library/Preferences', '/Windows/System32', '/usr'].map(p => path.resolve(p));
+    for (const prefix of blockedPrefixes) {
+      if (normalized.startsWith(prefix)) return false;
+    }
+    if (normalized.includes('/../') || normalized.includes('\\..\\')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 ipcMain.handle("select-directory", async () => {
   const { dialog } = await import("electron");
   const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
@@ -80,6 +97,8 @@ function registerLocalMusicIpc(scanner, db) {
     return db.getTrackCount();
   });
   ipcMain.handle("local:get-lyric", async (_event, filePath) => {
+    if (!isPathSafe(filePath)) { console.warn('[ipc] blocked get-lyric path:', filePath); return null; }
+    if (!fs.existsSync(filePath)) return null;
     const base = path.dirname(filePath);
     const name = path.basename(filePath, path.extname(filePath));
     for (const ext of [".lrc", ".yrc", ".ttml"]) {
@@ -91,9 +110,11 @@ function registerLocalMusicIpc(scanner, db) {
     return null;
   });
   ipcMain.handle("local:get-cover", async (_event, filePath) => {
+    if (!isPathSafe(filePath)) { console.warn('[ipc] blocked get-cover path:', filePath); return null; }
     return coverCache.getCover(filePath);
   });
   ipcMain.handle("local:read-file", async (_event, filePath) => {
+    if (!isPathSafe(filePath)) { console.warn('[ipc] blocked read-file path:', filePath); return null; }
     if (!fs.existsSync(filePath)) return null;
     return fs.readFileSync(filePath).buffer;
   });

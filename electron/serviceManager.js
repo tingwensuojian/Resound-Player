@@ -36,60 +36,107 @@ function isFile(p) {
   try { return fs.statSync(p).isFile(); } catch { return false; }
 }
 
-// ── asar-unpacked path resolver ──
+function isExists(p) {
+  try { return fs.existsSync(p); } catch { return false; }
+}
+
+// ── asar-aware root resolver ──
+
+/** 检测是否运行在打包后的应用中 */
+const isPackaged = () => __dirname.includes('app.asar');
 
 /**
- * 在打包后的应用中，spawn() 的子进程无法访问 app.asar 内的文件。
- * 需要优先从 app.asar.unpacked 目录解析路径，开发模式回退到相对路径。
+ * 返回应用根目录（打包后指向 app.asar.unpacked 同级目录，开发模式使用 __dirname 相对路径）。
+ * spawn() 的 cwd 和所有子进程脚本路径都必须基于此 root，避免指向 app.asar 内部。
  */
-function resolveUnpackedPath(relativeFileModules: string): string {
-  // 打包模式：优先检查 app.asar.unpacked
-  if (process.resourcesPath) {
-    const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', relativeFileModules);
-    if (isFile(unpackedPath)) return unpackedPath;
-    // asarUnpack 可能展开为文件系统目录结构而非单文件路径
-    const unpackedDir = path.join(process.resourcesPath, 'app.asar.unpacked');
-    const fullPath = path.join(unpackedDir, relativeFileModules);
-    // recursive check for directory-based asar unpack
-    try {
-      const stat = fs.statSync(fullPath);
-      if (stat.isFile()) return fullPath;
-      // 也可能是目录：尝试解析为脚本入口
-      const nodeModulesPath = path.join(unpackedDir, relativeFileModules.replace(/\/[^/]+$/, ''), 'package.json');
-      if (isFile(nodeModulesPath)) {
-        const dir = path.dirname(nodeModulesPath);
-        const entry = findEntry(dir);
-        if (entry) return entry;
-      }
-    } catch { /* fall through */ }
+function getAppRoot() {
+  if (isPackaged() && process.resourcesPath) {
+    // 打包后：Resources/app.asar.unpacked/ 的上级 = Resources/
+    return path.join(process.resourcesPath, 'app.asar.unpacked');
   }
-  // 开发模式：使用 __dirname 相对路径
-  const abs = path.join(__dirname, '..', relativeFileModules);
-  if (isFile(abs)) return abs;
-  // 尝试作为 node_modules 包路径解析
-  const pkgDir = path.join(__dirname, '..', 'node_modules', relativeFileModules.replace(/\/[^/]+$/, ''), 'package.json');
-  if (isFile(pkgDir)) {
-    const entry = findEntry(path.dirname(pkgDir));
-    if (entry) return entry;
+  return path.join(__dirname, '..');
+}
+
+/**
+ * 解析 spawn 子进程可访问的脚本路径。
+ * 打包后优先从 app.asar.unpacked 解析，开发模式使用 __dirname 相对路径。
+ */
+function resolveSpawnPath(relativeFilePath) {
+  const root = getAppRoot();
+  const fullPath = path.join(root, relativeFilePath);
+  if (isFile(fullPath)) return fullPath;
+  // 尝试解析为 node_modules 包入口
+  const parts = relativeFilePath.split('/');
+  const pkgIndex = parts.indexOf('node_modules');
+  if (pkgIndex !== -1) {
+    const pkgRoot = path.join(root, ...parts.slice(0, pkgIndex + 2));
+    const pkgJson = path.join(pkgRoot, 'package.json');
+    if (isFile(pkgJson)) {
+      const entry = findEntry(pkgRoot);
+      if (entry) return entry;
+    }
   }
-  return abs;
+  return fullPath;
+}
+
+/**
+ * 解析 api-enhanced 包入口文件路径。
+ * 需要处理 pnpm 的 symlink：@neteasecloudmusicapienhanced/api 可能在
+ * node_modules 中是一个指向 pnpm store 的符号链接，打包后需通过 realpath 解析。
+ */
+function resolveApiEntrypath(pkgRoot) {
+  // 尝试直接检查
+  if (isFile(path.join(pkgRoot, 'package.json'))) return pkgRoot;
+  // 尝试解析 symlink (pnpm)
+  try {
+    const stat = fs.lstatSync(pkgRoot);
+    if (stat.isSymbolicLink()) {
+      const real = fs.realpathSync(pkgRoot);
+      if (real !== pkgRoot && isFile(path.join(real, 'package.json'))) return real;
+    }
+  } catch { /* ignore */ }
+  // 尝试上级 node_modules/.pnpm 目录（electron-builder 打包后可能保留实际文件）
+  const parent = path.dirname(pkgRoot);
+  const grandParent = path.dirname(parent);
+  if (path.basename(grandParent) === 'node_modules') {
+    const pnpmDir = path.join(grandParent, '.pnpm');
+    if (isExists(pnpmDir)) {
+      try {
+        const entries = fs.readdirSync(pnpmDir);
+        // 查找匹配 @neteasecloudmusicapienhanced+api 的目录
+        const match = entries.find(e => e.startsWith('@neteasecloudmusicapienhanced+api'));
+        if (match) {
+          const candidate = path.join(pnpmDir, match, 'node_modules', path.basename(parent), path.basename(pkgRoot));
+          if (isFile(path.join(candidate, 'package.json'))) return candidate;
+        }
+      } catch { /* ignore */ }
+    }
+  }
+  return null;
 }
 
 function resolveApiEntrypoint() {
-  const root = path.join(__dirname, '..');
-  const unpackedPath = path.join(process.resourcesPath || '', 'app.asar.unpacked', 'node_modules', '@neteasecloudmusicapienhanced', 'api');
+  const root = getAppRoot();
+  const basePath = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
 
-  if (isFile(path.join(unpackedPath, 'package.json'))) {
-    const entry = findEntry(unpackedPath);
+  // 先检查根路径
+  const pkgRoot = resolveApiEntrypath(basePath);
+  if (pkgRoot) {
+    const entry = findEntry(pkgRoot);
     if (entry) return entry;
   }
 
-  const devPaths = [
-    path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api'),
-  ];
-  for (const p of devPaths) {
-    const entry = findEntry(p);
-    if (entry) return entry;
+  // 打包后：也检查 app.asar.unpacked（与 root 不同时）
+  if (isPackaged() && process.resourcesPath) {
+    const unpackedRoot = path.join(process.resourcesPath, 'app.asar.unpacked');
+    if (unpackedRoot !== root) {
+      const up = path.join(unpackedRoot, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
+      const upPkgRoot = resolveApiEntrypath(up);
+      if (upPkgRoot) {
+        const entry = findEntry(upPkgRoot);
+        if (entry) return entry;
+      }
+    }
   }
 
   throw new Error('Cannot resolve api-enhanced entrypoint');
@@ -113,8 +160,9 @@ function findEntry(pkgRoot) {
 
 function spawnNeteaseApi(port) {
   const apiEntrypoint = resolveApiEntrypoint();
+  const appRoot = getAppRoot();
   const child = spawn(process.execPath, [apiEntrypoint], {
-    cwd: path.join(__dirname, '..'),
+    cwd: appRoot,
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
@@ -139,16 +187,18 @@ function spawnNeteaseApi(port) {
 }
 
 function spawnUnblockProxy(port) {
-  const appScript = resolveUnpackedPath('node_modules/@unblockneteasemusic/server/app.js');
+  const appScript = resolveSpawnPath('node_modules/@unblockneteasemusic/server/app.js');
+  const appRoot = getAppRoot();
   const child = spawn(process.execPath, [
     appScript,
     '-p', String(port),
     '-o', 'bodian', 'kugou', 'migu', 'qq', 'bilibili',
     '-s',
   ], {
-    cwd: path.join(__dirname, '..'),
+    cwd: appRoot,
     env: {
       ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
       ENABLE_FLAC: 'true',
       NODE_ENV: 'production',
     },
@@ -170,11 +220,13 @@ function spawnUnblockProxy(port) {
 }
 
 function spawnUnblockMatch(port, unblockProxyPort) {
-  const appScript = resolveUnpackedPath('server/unblock-match-server.mjs');
+  const appScript = resolveSpawnPath('server/unblock-match-server.mjs');
+  const appRoot = getAppRoot();
   const child = spawn(process.execPath, [appScript], {
-    cwd: path.join(__dirname, '..'),
+    cwd: appRoot,
     env: {
       ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
       PORT: String(port),
       UNBLOCK_PROXY_URL: `http://127.0.0.1:${unblockProxyPort}`,
       UNBLOCK_SOURCES: 'bodian,kugou,migu,qq,bilibili',

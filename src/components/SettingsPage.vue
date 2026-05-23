@@ -131,6 +131,20 @@
               </div>
             </template>
 
+            <template v-else-if="item.key === 'desktopLyricHighlightColor'">
+              <div class="color-picker-wrap">
+                <input class="color-picker" type="color" v-model="desktopLyricHighlightColor" aria-label="选择高亮颜色" />
+                <span class="color-hex">{{ desktopLyricHighlightColor }}</span>
+              </div>
+            </template>
+
+            <template v-else-if="item.key === 'desktopLyricTextColor'">
+              <div class="color-picker-wrap">
+                <input class="color-picker" type="color" v-model="desktopLyricTextColor" aria-label="选择未播放颜色" />
+                <span class="color-hex">{{ desktopLyricTextColor }}</span>
+              </div>
+            </template>
+
             <div v-else-if="item.type === 'input'" class="input-action-wrap">
               <input
                 v-model="inputState[item.key]"
@@ -435,7 +449,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
 type SettingsTabKey = 'playback' | 'appearance' | 'account' | 'about';
 
@@ -519,6 +533,23 @@ const groupsMap: Record<string, SettingGroup[]> = {
         { key: 'barLyric', label: '底部栏歌词', desc: '播放时底部栏显示歌词', type: 'switch' },
         { key: 'showIntelligenceIndicator', label: '控制中心心动图标', desc: '在播放器控制栏显示心动模式图标', type: 'switch' },
         { key: 'autoHidePlayerUI', label: '全屏播放页自动隐藏 UI', desc: '在全屏播放页中，无操作时自动隐藏顶部栏、右侧按钮和底部控制台', type: 'switch' },
+      ],
+    },
+    {
+      title: '系统托盘（macOS）',
+      items: [
+        { key: 'trayLyricEnabled', label: '启用状态栏歌词', desc: '在 macOS 菜单栏显示当前播放的歌词信息', type: 'switch' },
+      ],
+    },
+    {
+      title: '桌面歌词',
+      items: [
+        { key: 'desktopLyricEnabled', label: '启用桌面歌词', desc: '在桌面上显示一个可拖拽的歌词浮窗', type: 'switch' },
+        { key: 'desktopLyricMode', label: '显示模式', desc: '选择歌词展示方式', type: 'select', options: ['滚动列表', '单行', '双行'] },
+        { key: 'desktopLyricFontSize', label: '字体大小', desc: '歌词文字大小', type: 'select', options: ['小', '中', '大', '特大'] },
+        { key: 'desktopLyricHighlightColor', label: '高亮颜色', desc: '当前播放歌词的颜色', type: 'action' },
+        { key: 'desktopLyricTextColor', label: '未播放颜色', desc: '未播放歌词的文字颜色', type: 'action' },
+        { key: 'desktopLyricAlwaysShowBg', label: '始终显示背景', desc: '开启后桌面歌词始终显示毛玻璃背景（锁定状态除外）', type: 'switch' },
       ],
     },
   ],
@@ -657,6 +688,18 @@ const currentGroups = computed(() => {
         if (['localAddDir', 'localScan'].includes(item.key) && !platform.isDesktop) {
           return false;
         }
+        // 系统托盘功能仅桌面端可用
+        if (['trayLyricEnabled'].includes(item.key) && !platform.isDesktop) {
+          return false;
+        }
+        // 桌面歌词：仅桌面端可见
+        if (['desktopLyricEnabled', 'desktopLyricMode', 'desktopLyricFontSize', 'desktopLyricHighlightColor', 'desktopLyricTextColor', 'desktopLyricAlwaysShowBg'].includes(item.key) && !platform.isDesktop) {
+          return false;
+        }
+        // 桌面歌词子选项仅在启用时可见
+        if (['desktopLyricMode', 'desktopLyricFontSize', 'desktopLyricHighlightColor', 'desktopLyricTextColor', 'desktopLyricAlwaysShowBg'].includes(item.key) && !switchState.desktopLyricEnabled) {
+          return false;
+        }
         return true;
       }),
     }))
@@ -671,6 +714,9 @@ const switchState = reactive<Record<string, boolean>>({
   showIntelligenceIndicator: uiStore.showIntelligenceIndicator,
   autoHidePlayerUI: uiStore.autoHidePlayerUI,
   paidContentSkip: playerStore.paidContentSkip,
+  trayLyricEnabled: false, // 实际值从主进程加载
+  desktopLyricEnabled: false, // 实际值从主进程加载
+  desktopLyricAlwaysShowBg: false, // 实际值从主进程加载
 });
 
 const selectState = reactive<Record<string, string>>({
@@ -679,10 +725,13 @@ const selectState = reactive<Record<string, string>>({
   playbackRate: `${playerStore.defaultPlaybackRate.toFixed(2).replace(/\.00$/, '.0')}x`,
   theme: uiStore.themeMode,
   accent: uiStore.accentMode,
+  desktopLyricMode: '滚动列表', // 实际值从主进程加载
+  desktopLyricFontSize: '中', // 实际值从主进程加载
 });
 
-
 const accentCustomColor = ref(uiStore.accentCustomColor);
+const desktopLyricHighlightColor = ref('#ff6b81');
+const desktopLyricTextColor = ref('#ffffff');
 
 watch(
   () => uiStore.themeMode,
@@ -902,6 +951,165 @@ watch(
   },
   { immediate: true },
 );
+
+// ═══════════════════════════════════════════════════════════════════
+// 系统托盘歌词设置（仅桌面端，通过 IPC 与主进程通信）
+// ═══════════════════════════════════════════════════════════════════
+
+// 用于卸载 IPC 监听
+let cleanupTrayConfigListener: (() => void) | null = null;
+
+onMounted(async () => {
+  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
+
+  // 加载主进程持久化的配置
+  try {
+    const config = await window.appEnv.trayLyric.getConfig();
+    console.log('[settings] 托盘配置已加载:', config);
+    switchState.trayLyricEnabled = config.enabled;
+  } catch (e) {
+    console.warn('[settings] 加载托盘配置失败:', e);
+  }
+
+  // 监听主进程配置变更（其他实例可能修改）
+  cleanupTrayConfigListener = window.appEnv.trayLyric.onConfigChanged((config) => {
+    switchState.trayLyricEnabled = config.enabled;
+  });
+});
+
+onUnmounted(() => {
+  if (cleanupTrayConfigListener) {
+    cleanupTrayConfigListener();
+    cleanupTrayConfigListener = null;
+  }
+});
+
+// 同步 switch → 主进程
+watch(
+  () => switchState.trayLyricEnabled,
+  (enabled) => {
+    if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
+    console.log('[settings] 发送托盘配置:', { enabled: Boolean(enabled) });
+    window.appEnv.trayLyric.setConfig({ enabled: Boolean(enabled) }).catch((e) => {
+      console.warn('[settings] 发送托盘配置失败:', e);
+    });
+  },
+);
+
+// ═══════════════════════════════════════════════════════════════════
+// 桌面歌词设置（仅桌面端）
+// ═══════════════════════════════════════════════════════════════════
+
+let cleanupDesktopLyricListener: (() => void) | null = null;
+
+onMounted(async () => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  try {
+    const config = await window.appEnv.desktopLyric.getConfig();
+    switchState.desktopLyricEnabled = config.enabled;
+    selectState.desktopLyricMode = config.displayMode === 'scroll' ? '滚动列表' : config.displayMode === 'single' ? '单行' : '双行';
+    selectState.desktopLyricFontSize = config.fontSize <= 28 ? '小' : config.fontSize <= 42 ? '中' : config.fontSize <= 56 ? '大' : '特大';
+    desktopLyricHighlightColor.value = config.highlightColor || '#ff6b81';
+    desktopLyricTextColor.value = config.textColor || '#ffffff';
+    switchState.desktopLyricAlwaysShowBg = config.alwaysShowBg ?? false;
+  } catch (e) {
+    console.warn('[settings] 加载桌面歌词配置失败:', e);
+  }
+
+  cleanupDesktopLyricListener = window.appEnv.desktopLyric.onConfigChanged((config) => {
+    switchState.desktopLyricEnabled = config.enabled;
+    selectState.desktopLyricMode = config.displayMode === 'scroll' ? '滚动列表' : config.displayMode === 'single' ? '单行' : '双行';
+    selectState.desktopLyricFontSize = config.fontSize <= 28 ? '小' : config.fontSize <= 42 ? '中' : config.fontSize <= 56 ? '大' : '特大';
+    desktopLyricHighlightColor.value = config.highlightColor || '#ff6b81';
+    desktopLyricTextColor.value = config.textColor || '#ffffff';
+    switchState.desktopLyricAlwaysShowBg = config.alwaysShowBg ?? false;
+  });
+});
+
+const DESKTOP_FONT_SIZE_MAP: Record<string, number> = { '小': 24, '中': 36, '大': 48, '特大': 64 };
+const DESKTOP_MODE_MAP: Record<string, string> = { '滚动列表': 'scroll', '单行': 'single', '双行': 'double' };
+
+// 同步 switch → 主进程
+watch(() => switchState.desktopLyricEnabled, (enabled) => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  window.appEnv.desktopLyric.setConfig({
+    enabled: Boolean(enabled),
+    displayMode: DESKTOP_MODE_MAP[selectState.desktopLyricMode] || 'scroll',
+    fontSize: DESKTOP_FONT_SIZE_MAP[selectState.desktopLyricFontSize] || 36,
+    highlightColor: desktopLyricHighlightColor.value,
+    textColor: desktopLyricTextColor.value,
+    alwaysShowBg: switchState.desktopLyricAlwaysShowBg,
+  }).catch((e) => console.warn('[settings] 桌面歌词配置失败:', e));
+});
+
+// 同步 select → 主进程
+watch(() => selectState.desktopLyricMode, (modeStr) => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  window.appEnv.desktopLyric.setConfig({
+    enabled: switchState.desktopLyricEnabled,
+    displayMode: DESKTOP_MODE_MAP[modeStr] || 'scroll',
+    fontSize: DESKTOP_FONT_SIZE_MAP[selectState.desktopLyricFontSize] || 36,
+    highlightColor: desktopLyricHighlightColor.value,
+    textColor: desktopLyricTextColor.value,
+    alwaysShowBg: switchState.desktopLyricAlwaysShowBg,
+  }).catch((e) => console.warn('[settings] 桌面歌词配置失败:', e));
+});
+
+// 同步字体大小 → 主进程
+watch(() => selectState.desktopLyricFontSize, (sizeStr) => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  window.appEnv.desktopLyric.setConfig({
+    enabled: switchState.desktopLyricEnabled,
+    displayMode: DESKTOP_MODE_MAP[selectState.desktopLyricMode] || 'scroll',
+    fontSize: DESKTOP_FONT_SIZE_MAP[sizeStr] || 36,
+    highlightColor: desktopLyricHighlightColor.value,
+    textColor: desktopLyricTextColor.value,
+    alwaysShowBg: switchState.desktopLyricAlwaysShowBg,
+  }).catch((e) => console.warn('[settings] 桌面歌词配置失败:', e));
+});
+
+// 同步高亮色 → 主进程
+watch(desktopLyricHighlightColor, (color) => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  window.appEnv.desktopLyric.setConfig({
+    enabled: switchState.desktopLyricEnabled,
+    displayMode: DESKTOP_MODE_MAP[selectState.desktopLyricMode] || 'scroll',
+    fontSize: DESKTOP_FONT_SIZE_MAP[selectState.desktopLyricFontSize] || 36,
+    highlightColor: color,
+    textColor: desktopLyricTextColor.value,
+    alwaysShowBg: switchState.desktopLyricAlwaysShowBg,
+  }).catch((e) => console.warn('[settings] 桌面歌词配置失败:', e));
+});
+
+// 同步未播放颜色 → 主进程
+watch(desktopLyricTextColor, (color) => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  window.appEnv.desktopLyric.setConfig({
+    enabled: switchState.desktopLyricEnabled,
+    displayMode: DESKTOP_MODE_MAP[selectState.desktopLyricMode] || 'scroll',
+    fontSize: DESKTOP_FONT_SIZE_MAP[selectState.desktopLyricFontSize] || 36,
+    highlightColor: desktopLyricHighlightColor.value,
+    textColor: color,
+    alwaysShowBg: switchState.desktopLyricAlwaysShowBg,
+  }).catch((e) => console.warn('[settings] 桌面歌词配置失败:', e));
+});
+
+// 同步始终显示背景 → 主进程
+watch(() => switchState.desktopLyricAlwaysShowBg, (alwaysShowBg) => {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  window.appEnv.desktopLyric.setConfig({
+    enabled: switchState.desktopLyricEnabled,
+    displayMode: DESKTOP_MODE_MAP[selectState.desktopLyricMode] || 'scroll',
+    fontSize: DESKTOP_FONT_SIZE_MAP[selectState.desktopLyricFontSize] || 36,
+    highlightColor: desktopLyricHighlightColor.value,
+    textColor: desktopLyricTextColor.value,
+    alwaysShowBg,
+  }).catch((e) => console.warn('[settings] 桌面歌词配置失败:', e));
+});
+
+onUnmounted(() => {
+  cleanupDesktopLyricListener?.();
+});
 
 function showLogoutMessage(message: string) {
   logoutMessage.value = message;

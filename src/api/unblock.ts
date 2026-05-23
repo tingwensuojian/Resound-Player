@@ -1,7 +1,12 @@
 // 音源替换 API 封装 + 异常降级
 // 自动检测服务器健康状态，不可用时跳过匹配
 
-const MATCH_SERVER = '/unblock-api';
+import { platform } from '../utils/platform';
+
+function getMatchServerBaseUrl(): string {
+  return platform.unblockMatchUrl.replace(/\/+$/, '');
+}
+
 const HEALTH_TIMEOUT = 3000;       // 健康检查超时 3s
 const HEALTH_COOLDOWN = 60_000;    // 标记不可用后 60s 重试
 const MAX_FAILURES = 3;            // 连续 3 次失败标记不可用
@@ -35,7 +40,7 @@ export async function checkUnblockHealth(): Promise<boolean> {
   _lastCheck = now;
 
   try {
-    const res = await fetch(`${MATCH_SERVER}/health`, {
+    const res = await fetch(`${getMatchServerBaseUrl()}/health`, {
       signal: AbortSignal.timeout(HEALTH_TIMEOUT),
     });
     const ok = res.ok;
@@ -79,7 +84,7 @@ export async function tryUnblockMatch(id: number, sources: string[]): Promise<Un
 
   try {
     const res = await fetch(
-      `${MATCH_SERVER}/match?id=${id}&sources=${sources.join(',')}`,
+      `${getMatchServerBaseUrl()}/match?id=${id}&sources=${sources.join(',')}`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (!res.ok) {

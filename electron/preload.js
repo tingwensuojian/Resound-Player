@@ -26,6 +26,32 @@ contextBridge.exposeInMainWorld('appEnv', {
     setItem: (data) => ipcRenderer.invoke('cache:set', data),
     clear: () => ipcRenderer.invoke('cache:clear'),
   },
+  // ── 系统托盘歌词 API ──
+  trayLyric: {
+    getConfig: () => ipcRenderer.invoke('tray-lyric:get-config'),
+    setConfig: (config) => ipcRenderer.invoke('tray-lyric:set-config', config),
+    updateLyric: (data) => ipcRenderer.send('lyric:update', data),
+    syncState: (payload) => ipcRenderer.send('tray-lyric:sync-state', payload),
+    syncTick: (payload) => ipcRenderer.send('tray-lyric:sync-tick', payload),
+    notifyLikeStatus: (liked) => ipcRenderer.send('like-status-change', liked),
+    onConfigChanged: (cb) => {
+      const handler = (_e, config) => cb(config);
+      ipcRenderer.on('tray-lyric:config-changed', handler);
+      return () => ipcRenderer.removeListener('tray-lyric:config-changed', handler);
+    },
+  },
+  // ── 桌面歌词 API ──
+  desktopLyric: {
+    getConfig: () => ipcRenderer.invoke('desktop-lyric:get-config'),
+    setConfig: (config) => ipcRenderer.invoke('desktop-lyric:set-config', config),
+    updateData: (data) => ipcRenderer.send('desktop-lyric:update-data', data),
+    sendAction: (action) => ipcRenderer.send('desktop-lyric:action', action),
+    onConfigChanged: (cb) => {
+      const handler = (_e, config) => cb(config);
+      ipcRenderer.on('desktop-lyric:config-changed', handler);
+      return () => ipcRenderer.removeListener('desktop-lyric:config-changed', handler);
+    },
+  },
 });
 
 // ── 本地音乐 IPC ──
@@ -78,6 +104,22 @@ ipcRenderer.on('win-state-change', (_event, maximized) => {
   } else {
     delete document.documentElement.dataset.winMaximized;
   }
+});
+
+// ── 系统托盘动作 → 自定义 DOM 事件 ──
+// 渲染进程通过 document.addEventListener('tray-action', handler) 监听
+ipcRenderer.on('tray:play-pause', () => {
+  document.dispatchEvent(new CustomEvent('tray-action', { detail: 'togglePlay' }));
+});
+ipcRenderer.on('tray:next', () => {
+  document.dispatchEvent(new CustomEvent('tray-action', { detail: 'next' }));
+});
+ipcRenderer.on('tray:prev', () => {
+  document.dispatchEvent(new CustomEvent('tray-action', { detail: 'prev' }));
+});
+// Generic tray action dispatcher (toggleLike, openSettings, toggleDesktopLyric, mode changes, etc.)
+ipcRenderer.on('tray-action', (_event, action) => {
+  document.dispatchEvent(new CustomEvent('tray-action', { detail: action }));
 });
 
 // 标记桌面端，供 CSS 选择器控制平台专属 UI 显隐

@@ -84,8 +84,9 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "node_modules/**/*",
+      "server/**/*",
       "package.json",
+      "node_modules/**/*",
       "!**/.vscode/**",
       "!**/.github/**",
       "!**/test/**",
@@ -93,11 +94,12 @@
     ],
     "asar": true,
     "asarUnpack": [
-      "node_modules/@neteasecloudmusicapienhanced/**/*",
-      "node_modules/@unblockneteasemusic/**/*",
-      "server/**/*"
+      "node_modules/.pnpm/@neteasecloudmusicapienhanced+api@*/**/*",
+      "node_modules/.pnpm/@unblockneteasemusic+server@*/**/*",
+      "node_modules/.pnpm/@neteasecloudmusicapienhanced+unblockmusic-utils@*/**/*",
+      "node_modules/@neteasecloudmusicapienhanced/**/*"
     ],
-    "npmRebuild": false,
+    "npmRebuild": true,
     "linux": {
       "icon": "build/icon.png",
       "target": [
@@ -126,7 +128,10 @@
       ],
       "category": "public.app-category.music",
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSQuitAlwaysKeepsWindows": false
+      }
     }
   }
 }
