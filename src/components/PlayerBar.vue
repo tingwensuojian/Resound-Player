@@ -104,7 +104,32 @@
         </AnimatedAppear>
         <EqPanel :visible="showEqPanel" @close="showEqPanel = false" />
       </div>
-      <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="2" class-name="icon" :class="{ active: lyricsSettings.showBarLyric }" data-tooltip="歌词" aria-label="歌词" @click.stop="lyricsSettings.showBarLyric = !lyricsSettings.showBarLyric; lyricsSettings.save()"><Captions :size="14" /></AnimatedAppear>
+      <div class="lyric-wrap" ref="lyricWrapRef">
+        <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="2" class-name="icon" :class="{ active: isAnyLyricActive }" data-tooltip="歌词" aria-label="歌词" @click.stop="handleLyricClick"><Captions :size="14" /></AnimatedAppear>
+        <Teleport to="body">
+          <transition name="quality-fade">
+            <div v-if="showLyricPopover" class="lyric-popover-backdrop" @click.self="showLyricPopover = false" @wheel.passive @touchmove.passive>
+              <div class="lyric-popover" :style="lyricPopoverStyle">
+                <div class="lyric-popover__header">歌词显示</div>
+                <div class="lyric-popover__list">
+                  <button v-if="platform.isMacOS" type="button" class="lyric-popover__item" :class="{ active: trayLyricEnabled }" @click="toggleTrayLyric">
+                    <span class="lyric-popover__item-label">状态栏歌词</span>
+                    <span class="lyric-popover__item-check" :class="{ on: trayLyricEnabled }"><span class="dot"></span></span>
+                  </button>
+                  <button type="button" class="lyric-popover__item" :class="{ active: desktopLyricEnabled }" @click="toggleDesktopLyric">
+                    <span class="lyric-popover__item-label">桌面歌词</span>
+                    <span class="lyric-popover__item-check" :class="{ on: desktopLyricEnabled }"><span class="dot"></span></span>
+                  </button>
+                  <button type="button" class="lyric-popover__item" :class="{ active: lyricsSettings.showBarLyric }" @click="toggleBarLyric">
+                    <span class="lyric-popover__item-label">控制中心歌词</span>
+                    <span class="lyric-popover__item-check" :class="{ on: lyricsSettings.showBarLyric }"><span class="dot"></span></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </transition>
+        </Teleport>
+      </div>
       <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="3" class-name="icon" :class="{ saved: isCurrentLiked, loading: likeLoading }" :aria-pressed="isCurrentLiked" :data-tooltip="isCurrentLiked ? '取消收藏' : '收藏'" :aria-label="isCurrentLiked ? '取消收藏' : '收藏'" :disabled="likeLoading || !canToggleCurrentLike" @click="toggleCurrentLike"><Heart :size="14" /></AnimatedAppear>
       <div class="settings-wrap" ref="settingsWrapRef">
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="4" class-name="icon" :class="{ active: showSettings }" data-tooltip="设置" aria-label="设置" @click.stop="toggleSettings"><Settings :size="14" /></AnimatedAppear>
@@ -377,6 +402,105 @@ watch(isCurrentLiked, (liked) => {
   }
 }, { immediate: true });
 
+// ── 桌面端歌词控制上拉栏 ──
+const lyricWrapRef = ref<HTMLElement | null>(null);
+const showLyricPopover = ref(false);
+const lyricPopoverStyle = ref<Record<string, string>>({});
+const trayLyricEnabled = ref(false);
+const desktopLyricEnabled = ref(false);
+let _lyricCleanupFns: (() => void)[] = [];
+
+const isAnyLyricActive = computed(() =>
+  lyricsSettings.showBarLyric || trayLyricEnabled.value || desktopLyricEnabled.value
+);
+
+function updateLyricPopoverPosition() {
+  if (!lyricWrapRef.value) return;
+  const rect = lyricWrapRef.value.getBoundingClientRect();
+  const gap = 8;
+  lyricPopoverStyle.value = {
+    position: 'fixed',
+    bottom: `${window.innerHeight - rect.top + gap}px`,
+    right: `${window.innerWidth - rect.right}px`,
+    width: '200px',
+  };
+}
+
+function handleLyricClick() {
+  if (platform.isDesktop) {
+    showLyricPopover.value = !showLyricPopover.value;
+    if (showLyricPopover.value) {
+      updateLyricPopoverPosition();
+      initLyricStates();
+    }
+  } else {
+    lyricsSettings.showBarLyric = !lyricsSettings.showBarLyric;
+    lyricsSettings.save();
+  }
+}
+
+async function initLyricStates() {
+  if (platform.isDesktop && window.appEnv?.trayLyric) {
+    try {
+      const cfg = await window.appEnv.trayLyric.getConfig();
+      trayLyricEnabled.value = cfg.enabled;
+    } catch { /* ignore */ }
+  }
+  if (platform.isDesktop && window.appEnv?.desktopLyric) {
+    try {
+      const cfg = await window.appEnv.desktopLyric.getConfig();
+      desktopLyricEnabled.value = cfg.enabled;
+    } catch { /* ignore */ }
+  }
+}
+
+function toggleTrayLyric() {
+  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
+  const next = !trayLyricEnabled.value;
+  trayLyricEnabled.value = next;
+  window.appEnv.trayLyric.setConfig({ enabled: next });
+  showLyricPopover.value = false;
+}
+
+function toggleDesktopLyric() {
+  if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
+  const next = !desktopLyricEnabled.value;
+  desktopLyricEnabled.value = next;
+  window.appEnv.desktopLyric.setConfig({ enabled: next });
+  showLyricPopover.value = false;
+}
+
+function toggleBarLyric() {
+  lyricsSettings.showBarLyric = !lyricsSettings.showBarLyric;
+  lyricsSettings.save();
+  showLyricPopover.value = false;
+}
+
+onMounted(() => {
+  if (platform.isDesktop) {
+    initLyricStates();
+    if (window.appEnv?.trayLyric) {
+      _lyricCleanupFns.push(
+        window.appEnv.trayLyric.onConfigChanged((cfg) => {
+          trayLyricEnabled.value = cfg.enabled;
+        }),
+      );
+    }
+    if (window.appEnv?.desktopLyric) {
+      _lyricCleanupFns.push(
+        window.appEnv.desktopLyric.onConfigChanged((cfg) => {
+          desktopLyricEnabled.value = cfg.enabled;
+        }),
+      );
+    }
+  }
+});
+
+onUnmounted(() => {
+  _lyricCleanupFns.forEach((fn) => fn());
+  _lyricCleanupFns = [];
+});
+
 /* 播放时显示当前歌词行 */
 const { lyricLines, currentLyricIndex, effectiveTime, startTick, isLoading, loadLyrics } = useLyrics();
 
@@ -575,7 +699,7 @@ function handleTrayAction(e: CustomEvent) {
   else if (action === 'shuffleMode') playerStore.setPlayMode('shuffle');
   else if (action === 'toggleLike') toggleCurrentLike();
   else if (action === 'openSettings') {
-    document.dispatchEvent(new CustomEvent('open-tray-settings'));
+    window.dispatchEvent(new CustomEvent('open-tray-settings'));
   }
 }
 onMounted(() => {
@@ -706,5 +830,19 @@ function onSeek(e: Event) {
   animation: an-spin 5s linear infinite;
   color: var(--accent);
 }
+
+/* ── 歌词控制上拉栏 ── */
+.lyric-popover-backdrop { position: fixed; inset: 0; z-index: 9999; }
+.lyric-popover { position: fixed; background: var(--bg-solid); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18); overflow: hidden; display: flex; flex-direction: column; z-index: 10000; }
+.lyric-popover__header { padding: 12px 16px 4px; font-size: var(--text-label-xs); font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.06em; }
+.lyric-popover__list { padding: 0 6px 6px; display: grid; gap: 2px; }
+.lyric-popover__item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 12px; border: none; border-radius: 10px; background: transparent; color: var(--text-main); font-size: 13px; cursor: pointer; transition: background 0.12s ease; text-align: left; }
+.lyric-popover__item:hover { background: color-mix(in srgb, var(--accent) 6%, var(--bg-solid)); }
+.lyric-popover__item.active { color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 10%, var(--bg-solid)); }
+.lyric-popover__item-label { line-height: 1.3; }
+.lyric-popover__item-check { width: 18px; height: 18px; border-radius: 999px; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: border-color 0.18s ease, background 0.18s ease; }
+.lyric-popover__item-check.on { border-color: var(--accent); background: var(--accent); }
+.lyric-popover__item-check .dot { width: 6px; height: 6px; border-radius: 999px; background: transparent; transition: background 0.18s ease; }
+.lyric-popover__item-check.on .dot { background: #fff; }
 
 </style>

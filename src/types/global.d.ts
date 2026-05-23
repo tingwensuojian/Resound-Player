@@ -44,6 +44,12 @@ interface Window {
       notifyLikeStatus: (liked: boolean) => void
       onConfigChanged: (cb: (config: { enabled: boolean; mode: 'title' | 'popup'; bgColor?: string }) => void) => () => void
     }
+    desktopLyric?: {
+      getConfig: () => Promise<{ enabled: boolean; highlightColor: string; textColor: string; fontSize: number; displayMode: string; isLocked: boolean }>
+      setConfig: (config: { enabled?: boolean; highlightColor?: string; textColor?: string; fontSize?: number; displayMode?: string; isLocked?: boolean }) => Promise<void>
+      sendAction: (action: string) => void
+      onConfigChanged: (cb: (config: any) => void) => () => void
+    }
   }
   localApi?: LocalApi
 }

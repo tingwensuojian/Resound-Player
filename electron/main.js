@@ -614,7 +614,6 @@ function setTrayMenu(win) {
   const menu = buildTrayMenu(win);
   try {
     if (mainTray) mainTray.setContextMenu(menu);
-    if (lyricTray) lyricTray.setContextMenu(menu);
   } catch (err) {
     console.error('[tray] 设置菜单失败:', err);
   }
@@ -627,7 +626,7 @@ function updateTrayState(win) {
   setTrayMenu(win);
 }
 
-const LOGO_ICON_PATH = path.join(__dirname, '..', 'public', 'screen.png');
+const LOGO_ICON_PATH = path.join(__dirname, '..', 'public', 'logo.png');
 
 const TRAY_ICONS = {
   logo: LOGO_ICON_PATH,
@@ -689,9 +688,6 @@ function initializeMainTray(win) {
       mainTray = new Tray(icon);
     }
     mainTray.setToolTip('Resound-Player');
-    mainTray.on('click', () => {
-      if (win) { win.show(); win.focus(); }
-    });
     setTrayMenu(win);
     return mainTray;
   } catch (err) {
@@ -1914,6 +1910,9 @@ ipcMain.on('tray-lyric:sync-state', (_event, payload) => {
     }
     case 'playback-state': {
       engineIsPlaying = !!payload.data?.isPlaying;
+      trayCurrentPlaying = engineIsPlaying;
+      const w = BrowserWindow.getAllWindows()[0];
+      if (w) setTrayMenu(w);
       if (engineIsPlaying) {
         engineStartInterpolation();
       } else {
