@@ -2,13 +2,11 @@ import { defineStore } from 'pinia';
 import { reactive } from 'vue';
 import { getIntelligenceList, getPlaylistTrackAll, getSongDetail, trashPersonalFm } from '../api/music';
 import { useUserStore } from './user';
-const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 import { hydrateCache, getCache, setCache } from './unblock-cache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { platform } from '../utils/platform';
 import { useEqSettingsStore } from './eqSettings';
-const eqSettings = useEqSettingsStore();
 import { setupMediaSession } from '../composables/useMediaSession';
 import { createAudioEngine } from '../player/audioEngine';
 import { resolvePlayUrl } from '../player/playbackResolver';
@@ -72,6 +70,7 @@ const audioEngine = createAudioEngine(audioEl);
 export const usePlayerStore = defineStore('player', () => {
   const userStore = useUserStore();
   const loginModalStore = useLoginModalStore();
+  const eqSettings = useEqSettingsStore();
 
   const state = reactive({
 

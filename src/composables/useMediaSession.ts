@@ -1,6 +1,5 @@
 import { watch } from 'vue'
 import { usePlayerStore } from '../stores/player'
-const playerStore = usePlayerStore()
 
 /** 应用 badge 尺寸占封面总尺寸的比例 */
 const BADGE_SCALE = 0.49
@@ -104,9 +103,9 @@ async function resolveArtwork(picUrl?: string): Promise<MediaImage[]> {
  */
 export function setupMediaSession(): void {
   if (typeof navigator === 'undefined' || !navigator.mediaSession) {
-    // 非浏览器环境或不支持 Media Session 时静默跳过
     return
   }
+  const playerStore = usePlayerStore()
 
   // ── 注册 action handlers（只需注册一次） ──
   const actions: MediaSessionAction[] = ['play', 'pause', 'previoustrack', 'nexttrack', 'seekto']

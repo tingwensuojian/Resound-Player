@@ -5,7 +5,6 @@ import { getDjSublist, getAlbumSublist, getArtistSublist, getUserFollows } from 
 import { clearCache } from './unblock-cache';
 import { apiCache } from './apiCache';
 import { usePlayerStore } from './player'
-const playerStore = usePlayerStore();
 import { storageSetItem, storageGetItem, storageRemoveItem } from '../utils/storage';
 import { LOCAL_HISTORY_KEY } from '../utils/localHistory';
 
@@ -77,6 +76,8 @@ export const useUserStore = defineStore('user', () => {
     loginVerified: false,
     authRequestSeq: 0,
   });
+
+  const playerStore = usePlayerStore();
 
   async function hydrate() {
     state.loginCookie = localStorage.getItem(LOGIN_COOKIE_KEY) || '';
