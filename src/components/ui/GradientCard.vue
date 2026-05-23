@@ -3,17 +3,37 @@
     :is="tag"
     class="gradient-card"
     :class="[`gradient-card--${hoverPlaySize || 'sm'}`, { 'hover-play-button-trigger': !!hoverPlaySize }]"
-    :style="coverStyle"
     v-bind="$attrs"
   >
     <div class="gradient-card__media">
-      <img
-        v-if="cover"
-        class="gradient-card__cover-img"
-        :src="cover"
-        :alt="name || ''"
-        loading="lazy"
-      />
+      <div class="progressive-cover" :class="loadedClasses">
+        <!-- 第 1 层：LQIP 模糊占位 -->
+        <span
+          v-if="cover"
+          class="progressive-cover__lqip"
+          :style="{ backgroundImage: `url(${lqipUrl})` }"
+        ></span>
+        <!-- 第 2 层：缩略图 -->
+        <img
+          v-if="cover"
+          class="progressive-cover__thumb"
+          :class="{ loaded: thumbLoaded }"
+          :src="thumbUrl"
+          :alt="name || ''"
+          decoding="async"
+        />
+        <!-- 第 3 层：全尺寸高清图 -->
+        <img
+          v-if="cover"
+          class="progressive-cover__full gradient-card__cover-img"
+          :class="{ loaded: targetLoaded }"
+          :src="targetUrl"
+          :srcset="srcset"
+          sizes="(max-width: 640px) 100px, (max-width: 1280px) 200px, 300px"
+          :alt="name || ''"
+          decoding="async"
+        />
+      </div>
       <HoverPlayButton
         v-if="hoverPlaySize"
         :size="hoverPlaySize"
@@ -30,8 +50,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import HoverPlayButton from '../HoverPlayButton.vue';
+import { useProgressiveCover } from '../../composables/useProgressiveCover';
 
 const props = withDefaults(
   defineProps<{
@@ -56,10 +76,15 @@ defineSlots<{
   subtitle?: (props: Record<string, never>) => any;
 }>();
 
-const coverStyle = computed(() => {
-  const url = props.cover?.trim();
-  return url ? { '--card-cover': `url(${url})` } : {};
-});
+const {
+  lqipUrl,
+  thumbUrl,
+  targetUrl,
+  thumbLoaded,
+  targetLoaded,
+  loadedClasses,
+  srcset,
+} = useProgressiveCover(() => props.cover, { targetSize: 'large' });
 </script>
 
 <style scoped>
@@ -82,17 +107,14 @@ const coverStyle = computed(() => {
   background: color-mix(in srgb, var(--bg-surface) 86%, rgba(15, 23, 42, 0.16));
 }
 
+/* 移除 ::before 中的 background-image 双重加载 — 现由三层渐进系统覆盖 */
 .gradient-card::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: var(--card-cover);
-  background-size: cover;
-  background-position: center;
-  opacity: 0.92;
-  filter: saturate(0.9) contrast(0.96);
+  background: transparent;
 }
 
 .gradient-card::after {
@@ -152,6 +174,14 @@ const coverStyle = computed(() => {
   --hover-play-button-offset: 9px;
 }
 
+/* 三层封面在 .gradient-card__media 中定位在 z-index: 1 以下 */
+.gradient-card__media :deep(.progressive-cover) {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* 全尺寸图保留 hover 缩放能力 */
 .gradient-card__cover-img {
   display: block;
   width: 100%;

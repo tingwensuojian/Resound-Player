@@ -389,6 +389,120 @@ img.entity-cover.cover-image,
   opacity: 1;
 }
 
+/* ════════════════════════════════════════
+ * 三层渐进式封面加载系统
+ * 配合 useProgressiveCover composable 使用
+ *
+ * 层级：
+ *   1. .progressive-cover__lqip   — 100px 模糊占位（background-image）
+ *   2. .progressive-cover__thumb  — 300px 缩略图（<img>）
+ *   3. .progressive-cover__full   — 全尺寸高清图（<img>）
+ * ════════════════════════════════════════ */
+
+/* 容器 */
+.progressive-cover {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: var(--bg-surface, #1c1917);
+}
+
+/* 第 1 层：LQIP 模糊占位 */
+.progressive-cover__lqip {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px);
+  transform: scale(1.06);
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* 第 2 层：缩略图 */
+.progressive-cover__thumb {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--an-duration-fast, 320ms) ease;
+  pointer-events: none;
+}
+.progressive-cover__thumb.loaded {
+  opacity: 1;
+}
+/* thumb 显示后淡出 LQIP */
+.progressive-cover--show-final .progressive-cover__lqip,
+.progressive-cover__thumb.loaded ~ .progressive-cover__lqip {
+  opacity: 0;
+}
+
+/* 第 3 层：全尺寸高清图 */
+.progressive-cover__full {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--an-duration-base, 380ms) ease;
+}
+.progressive-cover__full.loaded {
+  opacity: 1;
+}
+/* full 显示后淡出 thumb */
+.progressive-cover__full.loaded ~ .progressive-cover__thumb {
+  opacity: 0;
+}
+
+/* 低端设备：跳过渐入动画，直接显示 */
+.progressive--skip-animation .progressive-cover__thumb,
+.progressive--skip-animation .progressive-cover__full {
+  transition: none !important;
+}
+.progressive--skip-animation .progressive-cover__thumb.loaded {
+  opacity: 1;
+}
+.progressive--skip-animation .progressive-cover__full.loaded {
+  opacity: 1;
+}
+
+/* 用户开启"减少动态" → 跳过渐入 */
+@media (prefers-reduced-motion: reduce) {
+  .progressive-cover__thumb,
+  .progressive-cover__full {
+    transition: none !important;
+  }
+  .progressive-cover__lqip {
+    transition: none !important;
+  }
+  .progressive-cover__thumb.loaded,
+  .progressive-cover__full.loaded {
+    opacity: 1 !important;
+  }
+  .progressive--show-final .progressive-cover__lqip,
+  .progressive-cover__thumb.loaded ~ .progressive-cover__lqip {
+    opacity: 0 !important;
+  }
+}
+
+/* 用户开启"低数据模式" → 只显示 LQIP，不加载缩略图和全尺寸 */
+@media (prefers-reduced-data: reduce) {
+  .progressive-cover__thumb,
+  .progressive-cover__full {
+    display: none !important;
+  }
+  .progressive-cover__lqip {
+    filter: none;
+  }
+}
+
 /* 通用旋转动画 — 跨组件共享，避免各组件私有定义 */
 @keyframes an-spin {
   from { transform: rotate(0deg); }
