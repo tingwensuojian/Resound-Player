@@ -318,7 +318,7 @@ import * as api from '../api/music';
 import { openSelection } from '../stores/lyricsSelection';
 import FancySwitch from './ui/FancySwitch.vue';
 import EqPanel from './EqPanel.vue';
-import { useBgLoaded } from '../composables/useBgLoaded';
+import { useProgressiveCover } from '../composables/useProgressiveCover';
 import { useAutoHideUI } from '../composables/useAutoHideUI';
 import { formatTime } from '../utils/formatTime';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
@@ -332,7 +332,7 @@ function openAlbum(albumId: number | undefined | null) {
   if (id > 0) emit('open-album', id);
 }
 const coverStyle = computed(() => { const url = playerStore.currentTrack?.al?.picUrl; return url ? { backgroundImage: `url(${url})` } : {}; });
-const coverLoaded = useBgLoaded(() => playerStore.currentTrack?.al?.picUrl || '');
+const { showFinal: coverLoaded } = useProgressiveCover(() => playerStore.currentTrack?.al?.picUrl || '', { targetSize: 'large' });
 const { uiRevealed, onActivity, onLeave, freeze, unfreeze } = useAutoHideUI(() => uiStore.autoHidePlayerUI, { idleTimeout: 3000 });
 function openUser(userId: number) { if (userId > 0) emit('open-user', userId); }
 function openPodcastDetail() {
