@@ -42,6 +42,8 @@ export const localMusicStore = reactive({
   playlists: [] as any[],
   activePlaylistId: '',
   activePlaylistDetail: null as any,
+  /** 定位到目录时高亮的目标 track id */
+  locatedTrackId: '',
 
   get hasLocalSupport() {
     return platform.hasLocalMusicSupport
@@ -205,6 +207,31 @@ export const localMusicStore = reactive({
     } else {
       this.collapsedFolders.add(path)
     }
+  },
+
+  /** 展开指定路径的所有祖先节点，确保该路径在目录树中可见 */
+  expandFolderAncestors(path: string) {
+    const parts = path.replace(/\\/g, '/').split('/').filter(Boolean)
+    let acc = ''
+    for (const part of parts) {
+      acc = acc ? `${acc}/${part}` : part
+      // 根级节点不在 collapsedFolders 中（默认展开），跳过
+      if (acc === path) break
+      this.collapsedFolders.delete(acc)
+    }
+  },
+
+  /** 将文件路径对应的目录转换为树路径（相对扫描目录） */
+  getTreePath(filePath: string): string {
+    const dirMap = new Map<string, string>()
+    for (const d of this.directories) {
+      const normalized = d.replace(/\/$/g, '')
+      const baseName = normalized.split('/').filter(Boolean).pop() || normalized
+      dirMap.set(baseName, normalized)
+    }
+    const absDir = this.getDirPath(filePath)
+    if (!absDir) return ''
+    return this._toTreePath(absDir, dirMap)
   },
 
   get selectedFolderTracks(): LocalTrack[] {

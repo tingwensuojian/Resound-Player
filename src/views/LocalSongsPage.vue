@@ -322,12 +322,15 @@ function cancelPlaylistPicker() {
   pendingTrackForPlaylist.value = null
 }
 
-/** 定位到目录：设置 selectedFolderPath 并通过事件导航到文件夹视图 */
+/** 定位到目录：将绝对路径转换为树路径，展开祖先节点，记录高亮 track，切换到目录标签页 */
 function showInFolder(track: LocalTrack) {
-  const dir = localMusicStore.getDirPath(track.path)
-  if (!dir) return
-  localMusicStore.selectedFolderPath = dir
-  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-folders' } }))
+  const treePath = localMusicStore.getTreePath(track.path)
+  if (!treePath) return
+  localMusicStore.expandFolderAncestors(treePath)
+  localMusicStore.selectedFolderPath = treePath
+  localMusicStore.locatedTrackId = track.id
+  localMusicStore.activeView = 'folders'
+  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
 }
 
 function sortBy(field: SortField) {

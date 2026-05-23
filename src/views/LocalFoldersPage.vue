@@ -4,6 +4,7 @@
       v-if="tracks.length"
       :tracks="tracks"
       :now-playing-id="nowPlayingId"
+      :highlighted-id="localMusicStore.locatedTrackId"
       @play="playTrack"
     />
     <div v-if="!tracks.length" class="local-empty">暂无目录数据</div>
@@ -20,6 +21,8 @@ const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
 const tracks = computed(() => localMusicStore.selectedFolderTracks)
 
 function playTrack(track: any, index: number) {
+  // 清除定位高亮
+  localMusicStore.locatedTrackId = ''
   const playlist = tracks.value.map((t: any) => ({
     id: t.id, name: t.title,
     ar: [{ name: t.artist }],

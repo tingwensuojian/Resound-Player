@@ -21,6 +21,7 @@
         class="local-song-row"
         :class="{
           playing: nowPlayingId === vi.track.id,
+          highlighted: highlightedId === vi.track.id,
           'row-selected': selectionMode && selectedIdsSet.has(vi.track.id),
           'has-checkbox': selectionMode,
         }"
@@ -62,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { playerStore } from '../stores/player'
 import ScrollToTopFab from './ui/ScrollToTopFab.vue'
 
@@ -81,10 +82,11 @@ const props = withDefaults(
     selectionMode?: boolean
     selectedIds?: string[] | Set<string>
     nowPlayingId: string | number | null
+    highlightedId?: string
     showHeader?: boolean
     scrollHostSelector?: string
   }>(),
-  { selectionMode: false, selectedIds: () => [], showHeader: true, scrollHostSelector: '' }
+  { selectionMode: false, selectedIds: () => [], highlightedId: '', showHeader: true, scrollHostSelector: '' }
 )
 
 const emit = defineEmits<{
@@ -151,6 +153,10 @@ onMounted(() => {
     })
     ro.observe(containerRef.value)
   }
+  // 挂载完成后滚动到定位高亮的歌曲
+  if (props.highlightedId) {
+    nextTick(() => scrollToHighlighted())
+  }
 })
 
 onUnmounted(() => {
@@ -159,6 +165,44 @@ onUnmounted(() => {
     parentScrollHost.removeEventListener('scroll', onParentScroll)
     parentScrollHost = null
   }
+})
+
+// ── 定位高亮自动滚动 ──
+/** 找到最近的可滚动祖先 */
+function findScrollParent(el: HTMLElement): HTMLElement | null {
+  let current: HTMLElement | null = el.parentElement
+  while (current) {
+    const overflowY = getComputedStyle(current).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll') return current
+    current = current.parentElement
+  }
+  return null
+}
+
+async function scrollToHighlighted() {
+  const id = props.highlightedId
+  if (!id || !containerRef.value) return
+  await nextTick()
+  const idx = props.tracks.findIndex(t => t.id === id)
+  if (idx < 0) return
+  const targetScroll = idx * ROW_HEIGHT
+  const halfHeight = containerHeight.value / 2
+  const offset = Math.max(0, targetScroll - halfHeight + ROW_HEIGHT / 2)
+  // 使用 requestAnimationFrame 确保布局已计算完毕
+  requestAnimationFrame(() => {
+    const el = parentScrollHost || containerRef.value
+    if (!el) return
+    // 检查 el 本身是否可滚动，否则找最近的可滚动祖先
+    const style = getComputedStyle(el)
+    const canScroll = style.overflowY === 'auto' || style.overflowY === 'scroll'
+    const target = canScroll ? el : findScrollParent(el)
+    if (target) target.scrollTop = offset
+  })
+}
+
+// 监听 highlightedId 变化（后续切换）
+watch(() => props.highlightedId, (id) => {
+  if (id) scrollToHighlighted()
 })
 
 function onScroll(e: Event) {
@@ -288,6 +332,11 @@ function handlePPClick(track: LocalTrack, index: number) {
 }
 .local-song-row:hover { background: var(--bg-muted); }
 .local-song-row.playing { background: var(--accent-soft); }
+.local-song-row.highlighted {
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface));
+  outline: 1.5px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  outline-offset: -1.5px;
+}
 .local-song-row.row-selected { background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface)); }
 .local-song-row:last-child { border-bottom: 0; }
 
