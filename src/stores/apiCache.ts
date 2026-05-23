@@ -14,7 +14,6 @@
  */
 import { computed, reactive } from 'vue';
 import { useUserStore } from './user';
-const userStore = useUserStore();
 import { platform } from '../utils/platform';
 
 // ---- 类型定义 ----
@@ -231,6 +230,7 @@ function needsUserScope(key: string): boolean {
 /** 构造完整缓存 key，追加用户 ID 隔离 */
 export function buildCacheKey(baseKey: string): string {
   if (!needsUserScope(baseKey)) return baseKey;
+  const userStore = useUserStore();
   const uid = userStore.state.isLogin ? userStore.state.profile?.userId : undefined;
   return uid ? `${baseKey}@${uid}` : baseKey;
 }
@@ -322,6 +322,7 @@ export const apiCache = reactive({
 
   /** 清除当前用户作用域的缓存（含 @${userId} 的 key） */
   clearUserScoped(): void {
+    const userStore = useUserStore();
     const uid = userStore.state.isLogin ? userStore.state.profile?.userId : undefined;
     if (!uid) return;
     const suffix = `@${uid}`;

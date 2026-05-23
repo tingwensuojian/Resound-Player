@@ -21,7 +21,6 @@ import { ref, watch, readonly, type Ref, type UnwrapRef } from 'vue';
 import { apiCache, CACHE_TTL, type CacheEntry } from '../stores/apiCache';
 import { dedup } from '../utils/requestDedup';
 import { useUserStore } from '../stores/user';
-const userStore = useUserStore();
 
 export interface UseApiDataOptions<T> {
   /** 缓存 TTL（毫秒），默认使用缓存分组的默认 TTL */
@@ -56,6 +55,7 @@ export function useApiData<T>(
   fetcher: () => Promise<T>,
   options?: UseApiDataOptions<T>,
 ): UseApiDataReturn<T> {
+  const userStore = useUserStore();
   const {
     ttl,
     immutable = false,

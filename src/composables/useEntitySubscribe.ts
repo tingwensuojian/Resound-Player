@@ -1,6 +1,5 @@
 import { ref, watch, type Ref, type ComputedRef } from 'vue';
 import { useUserStore } from '../stores/user';
-const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 import {
   togglePlaylistSubscribe,
@@ -19,6 +18,8 @@ export interface UseEntitySubscribeOptions {
 }
 
 export function useEntitySubscribe(options: UseEntitySubscribeOptions) {
+  const userStore = useUserStore();
+  const loginModalStore = useLoginModalStore();
   const { type, id, initialSubscribed } = options;
 
   const isSubscribed = ref(false);

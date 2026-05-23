@@ -1,8 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import { usePlayerStore } from '../stores/player'
-const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
-const userStore = useUserStore();
 import { toggleDjSubscribe, toggleSongLike } from '../api/music';
 
 /**
@@ -12,6 +10,8 @@ import { toggleDjSubscribe, toggleSongLike } from '../api/music';
  * 支持歌曲喜欢和播客 DJ 订阅两种模式。
  */
 export function useCurrentTrackLike() {
+  const playerStore = usePlayerStore();
+  const userStore = useUserStore();
   const currentTrackId = computed(() => Number(playerStore.state.currentTrack?.id || 0));
   const currentPodcastRid = computed(() => Number(playerStore.state.currentTrack?.podcast?.rid || 0));
   const isCurrentPodcast = computed(() => playerStore.state.currentTrack?.source === 'podcast' && currentPodcastRid.value > 0);

@@ -1,5 +1,4 @@
 import { usePlayerStore } from '../stores/player'
-const playerStore = usePlayerStore();
 import { isCurrentTrack as isCurrentTrackUtil } from '../utils/trackHelpers';
 
 /**
@@ -8,6 +7,7 @@ import { isCurrentTrack as isCurrentTrackUtil } from '../utils/trackHelpers';
  * @param playFn - 歌曲播放回调，由各页面提供自己的播放实现
  */
 export function useSongRowConfig(playFn: (index: number) => Promise<void> | void) {
+  const playerStore = usePlayerStore();
   function isCurrentTrack(song: any): boolean {
     return isCurrentTrackUtil(Number(song?.id || 0), Number(playerStore.state.currentSongId || 0));
   }

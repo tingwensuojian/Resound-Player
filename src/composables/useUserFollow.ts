@@ -1,12 +1,12 @@
 import { ref, watch, type Ref, type ComputedRef } from 'vue';
 import { useUserStore } from '../stores/user';
-const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 import { toggleUserFollow, getUserMutualFollow } from '../api/music';
 
 export type FollowStatus = 'none' | 'following' | 'mutual';
 
 async function checkMutual(rawId: number): Promise<'mutual' | 'following' | 'none'> {
+  const userStore = useUserStore();
   // 1. 先查是否已关注（store 数组）
   if (!userStore.state.subscribedUserIds.includes(rawId)) {
     return 'none';
@@ -26,6 +26,8 @@ async function checkMutual(rawId: number): Promise<'mutual' | 'following' | 'non
 export function useUserFollow(options: {
   id: Ref<number | undefined> | ComputedRef<number | undefined>;
 }) {
+  const userStore = useUserStore();
+  const loginModalStore = useLoginModalStore();
   const { id } = options;
 
   const status = ref<FollowStatus>('none');

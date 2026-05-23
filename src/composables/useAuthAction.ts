@@ -1,5 +1,4 @@
 import { useUserStore } from '../stores/user';
-const userStore = useUserStore();
 import { useLoginModalStore } from '../stores/loginModal';
 
 /**
@@ -13,6 +12,7 @@ import { useLoginModalStore } from '../stores/loginModal';
  * @param loginIntent  未登录时弹窗的 intent 标识
  */
 export function useAuthAction(toastMsg: string, loginIntent: 'like' | 'playlist' = 'like') {
+  const userStore = useUserStore();
   const loginModalStore = useLoginModalStore();
 
   function showToast(msg: string, type: 'warning' | 'success' | 'error' = 'warning', duration = 3000) {

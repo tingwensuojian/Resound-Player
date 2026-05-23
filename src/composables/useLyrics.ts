@@ -1,7 +1,6 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { getCloudLyric, getSongLyric, getSongLyricNew } from '../api/music';
 import { usePlayerStore } from '../stores/player'
-const playerStore = usePlayerStore();
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -233,7 +232,6 @@ export function parseLyricsNew(payload: any): LyricLine[] {
 /* ------------------------------------------------------------------ */
 
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
-const lyricsSettings = useLyricsSettingsStore();
 const LYRIC_ANCHOR_RATIO = 0.30;
 const LYRIC_BASE_COLOR = 'rgba(255,255,255,0.35)';
 
@@ -339,6 +337,7 @@ function trimTrailingEmptyLines(lines: LyricLine[]): LyricLine[] {
 
 export function scrollToLyricLine(container: HTMLElement | null, lineEls: HTMLElement[], index: number, behavior: ScrollBehavior = 'smooth') {
   if (index < 0 || !container) return;
+  const lyricsSettings = useLyricsSettingsStore();
   const lineEl = lineEls[index];
   if (!lineEl) return;
   const anchorRatio = getAnchorRatio(lyricsSettings.state.anchorPos);
@@ -352,6 +351,8 @@ export function scrollToLyricLine(container: HTMLElement | null, lineEls: HTMLEl
 /* ------------------------------------------------------------------ */
 
 export function useLyrics() {
+  const playerStore = usePlayerStore();
+  const lyricsSettings = useLyricsSettingsStore();
   const lyricLines = ref<LyricLine[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
