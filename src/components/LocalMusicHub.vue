@@ -56,8 +56,8 @@
               v-for="artist in localMusicStore.artistList"
               :key="artist.name"
               class="left-index-item"
-              :class="{ active: localMusicStore.selectedArtist === artist.name }"
-              @click="localMusicStore.selectedArtist = artist.name"
+              :class="{ active: localMusicStore.state.selectedArtist === artist.name }"
+              @click="localMusicStore.state.selectedArtist = artist.name"
             >
               <span class="left-index-name">{{ artist.name }}</span>
               <span class="left-index-count">{{ artist.count }}</span>
@@ -74,8 +74,8 @@
               v-for="album in localMusicStore.albumList"
               :key="album.name"
               class="left-index-item"
-              :class="{ active: localMusicStore.selectedAlbum === album.name }"
-              @click="localMusicStore.selectedAlbum = album.name"
+              :class="{ active: localMusicStore.state.selectedAlbum === album.name }"
+              @click="localMusicStore.state.selectedAlbum = album.name"
             >
               <span class="left-index-name">{{ album.name }}</span>
               <span class="left-index-count">{{ album.count }}</span>
@@ -92,7 +92,7 @@
               v-for="(node, idx) in localMusicStore.folderTree"
               :key="node.path"
               :node="node"
-              :selected="localMusicStore.selectedFolderPath"
+              :selected="localMusicStore.state.selectedFolderPath"
               :depth="0"
               :is-last="idx === localMusicStore.folderTree.length - 1"
               @select="(path) => localMusicStore.setSelectedFolder(path)"
@@ -120,7 +120,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { localMusicStore, type LocalView } from '../stores/localMusic'
+import { useLocalMusicStore, type LocalView } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import LocalStatsPage from '../views/LocalStatsPage.vue'
 import LocalSongsPage from '../views/LocalSongsPage.vue'
 import LocalArtistsPage from '../views/LocalArtistsPage.vue'
@@ -140,7 +141,7 @@ const tabs = [
   { key: 'playlists' as LocalView, label: '歌单' },
 ]
 
-const activeView = computed(() => localMusicStore.activeView)
+const activeView = computed(() => localMusicStore.state.activeView)
 
 const stats = ref<{ totalTracks: number; totalArtists: number; totalAlbums: number; totalDuration: number; totalSize: number } | null>(null)
 
@@ -154,13 +155,13 @@ onMounted(async () => {
 })
 
 // 曲目变化时重新加载统计数据
-watch(() => localMusicStore.tracks.length, () => {
+watch(() => localMusicStore.state.tracks.length, () => {
   if (!platform.localApi) return
   platform.localApi.getStats().then(s => { stats.value = s }).catch(() => {})
 })
 
 // clearAll 后强制刷新概况栏
-watch(() => localMusicStore._statsRefresh, () => {
+watch(() => localMusicStore.state._statsRefresh, () => {
   if (!platform.localApi) return
   platform.localApi.getStats().then(s => { stats.value = s }).catch(() => {})
 })
@@ -183,7 +184,7 @@ function formatSize(bytes: number): string {
 }
 
 function switchTab(key: LocalView) {
-  localMusicStore.activeView = key
+  localMusicStore.state.activeView = key
 }
 </script>
 

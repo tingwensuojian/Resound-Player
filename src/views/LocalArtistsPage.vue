@@ -12,7 +12,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { localMusicStore } from '../stores/localMusic'
+import { useLocalMusicStore } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import { playerStore } from '../stores/player'
 import VirtualSongList from '../components/VirtualSongList.vue'
 

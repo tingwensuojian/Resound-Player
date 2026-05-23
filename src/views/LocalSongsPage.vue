@@ -2,13 +2,13 @@
   <section class="local-page">
     <div class="local-page-actions ui-safe-group">
       <input
-        v-model="localMusicStore.searchKeyword"
+        v-model="localMusicStore.state.searchKeyword"
         class="search-input local-search"
         type="text"
         placeholder="搜索歌曲、歌手、专辑…"
       />
       <DropdownSelect
-        v-if="localMusicStore.directories.length"
+        v-if="localMusicStore.state.directories.length"
         :model-value="activeDirLabel"
         :options="['所有目录', ...dirLabels]"
         @update:model-value="onDirSelect"
@@ -18,8 +18,8 @@
         :options="['标题', '歌手', '专辑', '时长']"
         @update:model-value="onSortSelect"
       />
-      <button class="button-surface" @click="handleScan" :disabled="localMusicStore.scanning">
-        {{ localMusicStore.scanning ? '扫描中…' : '扫描' }}
+      <button class="button-surface" @click="handleScan" :disabled="localMusicStore.state.scanning">
+        {{ localMusicStore.state.scanning ? '扫描中…' : '扫描' }}
       </button>
       <button class="button-surface" @click="handlePlayAll">
         播放全部
@@ -41,12 +41,12 @@
       </button>
     </div>
 
-    <div v-if="!list.length && !localMusicStore.scanning" class="local-empty">
+    <div v-if="!list.length && !localMusicStore.state.scanning" class="local-empty">
       <p>还没有本地歌曲，点击"扫描"添加</p>
     </div>
 
-    <div v-if="localMusicStore.scanning" class="local-scanning">
-      正在扫描… {{ localMusicStore.progress.current }} / {{ localMusicStore.progress.total }}
+    <div v-if="localMusicStore.state.scanning" class="local-scanning">
+      正在扫描… {{ localMusicStore.state.progress.current }} / {{ localMusicStore.state.progress.total }}
     </div>
 
     <VirtualSongList
@@ -84,7 +84,7 @@
           <h3 class="dialog-title">选择歌单</h3>
           <div class="playlist-picker-list">
             <button
-              v-for="pl in localMusicStore.playlists"
+              v-for="pl in localMusicStore.state.playlists"
               :key="pl.id"
               class="playlist-picker-item"
               @click="confirmPlaylistPicker(pl.id)"
@@ -104,7 +104,8 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
-import { localMusicStore, type LocalTrack, type SortField } from '../stores/localMusic'
+import { useLocalMusicStore, type LocalTrack, type SortField } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import { playerStore } from '../stores/player'
 import { platform } from '../utils/platform'
 import { useLoginModalStore } from '../stores/loginModal'
@@ -183,7 +184,7 @@ const labelToField: Record<string, SortField> = {
 
 const currentSortLabel = computed(() => {
   const map: Record<SortField, string> = { title: '标题', artist: '歌手', album: '专辑', duration: '时长' }
-  return map[localMusicStore.sortField]
+  return map[localMusicStore.state.sortField]
 })
 
 function onSortSelect(label: string) {
@@ -191,7 +192,7 @@ function onSortSelect(label: string) {
   if (field) localMusicStore.toggleSort(field)
 }
 
-const dirLabels = computed(() => localMusicStore.directories.map(d => getDirLabel(d)))
+const dirLabels = computed(() => localMusicStore.state.directories.map(d => getDirLabel(d)))
 
 const activeDirLabel = computed(() => {
   if (!activeDirFilter.value) return '所有目录'
@@ -203,13 +204,13 @@ function onDirSelect(label: string) {
     activeDirFilter.value = ''
   } else {
     const idx = dirLabels.value.indexOf(label)
-    if (idx >= 0) activeDirFilter.value = localMusicStore.directories[idx]
+    if (idx >= 0) activeDirFilter.value = localMusicStore.state.directories[idx]
   }
 }
 
 const list = computed(() => {
   const tracks = localMusicStore.filteredTracks
-  console.log('[LocalSongsPage] filteredTracks count=', tracks.length, 'total in store=', localMusicStore.tracks.length, 'directories=', localMusicStore.directories.length)
+  console.log('[LocalSongsPage] filteredTracks count=', tracks.length, 'total in store=', localMusicStore.state.tracks.length, 'directories=', localMusicStore.state.directories.length)
   return tracks
 })
 
@@ -225,12 +226,12 @@ const filteredList = computed(() => {
 
 onMounted(async () => {
   if (!localMusicStore.hasLocalSupport) return
-  if (!localMusicStore.tracks.length) {
+  if (!localMusicStore.state.tracks.length) {
     await localMusicStore.loadTracks()
   }
   // 如果数据库为空但存了目录，自动触发扫描
-  if (!localMusicStore.tracks.length && localMusicStore.directories.length && !localMusicStore.scanning) {
-    console.log('[LocalSongsPage] 数据库为空，自动扫描', localMusicStore.directories.length, '个目录')
+  if (!localMusicStore.state.tracks.length && localMusicStore.state.directories.length && !localMusicStore.state.scanning) {
+    console.log('[LocalSongsPage] 数据库为空，自动扫描', localMusicStore.state.directories.length, '个目录')
     localMusicStore.scanAll()
   }
 })
@@ -307,10 +308,10 @@ const pendingTrackForPlaylist = ref<LocalTrack | null>(null)
 
 async function addToPlaylist(track: LocalTrack) {
   // 确保歌单列表已加载
-  if (!localMusicStore.playlists.length) {
+  if (!localMusicStore.state.playlists.length) {
     await localMusicStore.loadPlaylists()
   }
-  if (!localMusicStore.playlists.length) {
+  if (!localMusicStore.state.playlists.length) {
     const create = confirm('还没有本地歌单，是否创建一个？')
     if (!create) return
     const pl = await localMusicStore.createPlaylist('新歌单')
@@ -343,17 +344,17 @@ function showInFolder(track: LocalTrack) {
   const treePath = localMusicStore.getTreePath(track.path)
   if (!treePath) return
   localMusicStore.expandFolderAncestors(treePath)
-  localMusicStore.selectedFolderPath = treePath
-  localMusicStore.locatedTrackId = track.id
-  localMusicStore.activeView = 'folders'
+  localMusicStore.state.selectedFolderPath = treePath
+  localMusicStore.state.locatedTrackId = track.id
+  localMusicStore.state.activeView = 'folders'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
 }
 
 /** 查看本地专辑：切换到专辑标签页，选中该专辑并高亮当前歌曲 */
 function showLocalAlbum(track: LocalTrack) {
-  localMusicStore.selectedAlbum = track.album
-  localMusicStore.locatedTrackId = track.id
-  localMusicStore.activeView = 'albums'
+  localMusicStore.state.selectedAlbum = track.album
+  localMusicStore.state.locatedTrackId = track.id
+  localMusicStore.state.activeView = 'albums'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
 }
 
@@ -423,7 +424,7 @@ function sortBy(field: SortField) {
 }
 
 function handleScan() {
-  if (!localMusicStore.directories.length) {
+  if (!localMusicStore.state.directories.length) {
     localMusicStore.addDirectory()
   } else {
     localMusicStore.scanAll()

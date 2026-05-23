@@ -4,7 +4,7 @@
       v-if="tracks.length"
       :tracks="tracks"
       :now-playing-id="nowPlayingId"
-      :highlighted-id="localMusicStore.locatedTrackId"
+      :highlighted-id="localMusicStore.state.locatedTrackId"
       @play="playTrack"
     />
     <div v-if="!tracks.length" class="local-empty">暂无专辑数据</div>
@@ -13,7 +13,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { localMusicStore } from '../stores/localMusic'
+import { useLocalMusicStore } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import { playerStore } from '../stores/player'
 import VirtualSongList from '../components/VirtualSongList.vue'
 

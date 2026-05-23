@@ -4,7 +4,7 @@
       v-if="tracks.length"
       :tracks="tracks"
       :now-playing-id="nowPlayingId"
-      :highlighted-id="localMusicStore.locatedTrackId"
+      :highlighted-id="localMusicStore.state.locatedTrackId"
       @play="playTrack"
       @play-next="playNext"
       @add-to-playlist="addToPlaylist"
@@ -21,7 +21,7 @@
           <h3 class="dialog-title">选择歌单</h3>
           <div class="playlist-picker-list">
             <button
-              v-for="pl in localMusicStore.playlists"
+              v-for="pl in localMusicStore.state.playlists"
               :key="pl.id"
               class="playlist-picker-item"
               @click="confirmPlaylistPicker(pl.id)"
@@ -41,7 +41,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { localMusicStore } from '../stores/localMusic'
+import { useLocalMusicStore } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import { playerStore } from '../stores/player'
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
@@ -55,7 +56,7 @@ const tracks = computed(() => localMusicStore.selectedFolderTracks)
 
 function playTrack(track: any, index: number) {
   // 清除定位高亮
-  localMusicStore.locatedTrackId = ''
+  localMusicStore.state.locatedTrackId = ''
   const playlist = tracks.value.map((t: any) => ({
     id: t.id, name: t.title,
     ar: [{ name: t.artist }],
@@ -84,10 +85,10 @@ const showPlaylistPicker = ref(false)
 const pendingTrackForPlaylist = ref<any>(null)
 
 async function addToPlaylist(track: any) {
-  if (!localMusicStore.playlists.length) {
+  if (!localMusicStore.state.playlists.length) {
     await localMusicStore.loadPlaylists()
   }
-  if (!localMusicStore.playlists.length) {
+  if (!localMusicStore.state.playlists.length) {
     const create = confirm('还没有本地歌单，是否创建一个？')
     if (!create) return
     const pl = await localMusicStore.createPlaylist('新歌单')
@@ -117,9 +118,9 @@ function cancelPlaylistPicker() {
 
 /** 查看本地专辑：切换到专辑标签页，选中该专辑并高亮当前歌曲 */
 function showLocalAlbum(track: any) {
-  localMusicStore.selectedAlbum = track.album
-  localMusicStore.locatedTrackId = track.id
-  localMusicStore.activeView = 'albums'
+  localMusicStore.state.selectedAlbum = track.album
+  localMusicStore.state.locatedTrackId = track.id
+  localMusicStore.state.activeView = 'albums'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
 }
 

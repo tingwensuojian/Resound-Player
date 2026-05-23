@@ -6,7 +6,7 @@
 
     <DetailStickyHeroHeader
       :loading="false"
-      :ready="!!localMusicStore.activePlaylistDetail"
+      :ready="!!localMusicStore.state.activePlaylistDetail"
     >
       <template #media>
         <template v-if="hasCustomCover">
@@ -102,7 +102,7 @@
       :open="showRenameModal"
       title="重命名歌单"
       placeholder="请输入新名称"
-      :default-value="localMusicStore.activePlaylistDetail?.name || ''"
+      :default-value="localMusicStore.state.activePlaylistDetail?.name || ''"
       @confirm="onRenameConfirm"
       @cancel="showRenameModal = false"
       @update:open="showRenameModal = $event"
@@ -124,7 +124,7 @@
         <h3 class="dialog-title">选择歌单</h3>
         <div class="playlist-picker-list">
           <button
-            v-for="pl in localMusicStore.playlists"
+            v-for="pl in localMusicStore.state.playlists"
             :key="pl.id"
             class="playlist-picker-item"
             @click="confirmPlaylistPicker(pl.id)"
@@ -143,7 +143,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { localMusicStore, type LocalTrack } from '../stores/localMusic'
+import { useLocalMusicStore, type LocalTrack } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import { playerStore } from '../stores/player'
 import { platform } from '../utils/platform'
 import { useDetailStickyState } from '../composables/useDetailStickyState'
@@ -160,12 +161,12 @@ import { searchMusic, importToCloud } from '../api/music'
 
 // ── Data ──
 const nowPlayingId = computed(() => playerStore.currentTrack?.id ?? null)
-const tracks = computed(() => localMusicStore.activePlaylistDetail?.tracks || [])
+const tracks = computed(() => localMusicStore.state.activePlaylistDetail?.tracks || [])
 
-const playlistName = computed(() => localMusicStore.activePlaylistDetail?.name || '本地歌单')
+const playlistName = computed(() => localMusicStore.state.activePlaylistDetail?.name || '本地歌单')
 
 const coverUrl = computed(() => {
-  const pl = localMusicStore.activePlaylistDetail
+  const pl = localMusicStore.state.activePlaylistDetail
   if (!pl) return ''
   return pl.customCoverUrl?.trim()
     || pl.coverPath?.trim()
@@ -174,7 +175,7 @@ const coverUrl = computed(() => {
 
 // 封面马赛克：最多取前 6 首有封面的歌曲
 const coverUrls = computed(() => {
-  const pl = localMusicStore.activePlaylistDetail
+  const pl = localMusicStore.state.activePlaylistDetail
   if (!pl) return []
   const urls: string[] = []
   for (const t of (pl.tracks || [])) {
@@ -187,7 +188,7 @@ const coverUrls = computed(() => {
 })
 
 const hasCustomCover = computed(() =>
-  !!localMusicStore.activePlaylistDetail?.customCoverUrl?.trim()
+  !!localMusicStore.state.activePlaylistDetail?.customCoverUrl?.trim()
 )
 
 const error = ref('')
@@ -257,9 +258,9 @@ function handleCtxAction(key: string) {
 // ── 业务逻辑 ──
 
 function goBack() {
-  localMusicStore.activeView = 'playlists'
-  localMusicStore.activePlaylistDetail = null
-  localMusicStore.activePlaylistId = ''
+  localMusicStore.state.activeView = 'playlists'
+  localMusicStore.state.activePlaylistDetail = null
+  localMusicStore.state.activePlaylistId = ''
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
 }
 
@@ -268,7 +269,7 @@ function handleRename() {
 }
 
 async function onRenameConfirm(name: string) {
-  const pl = localMusicStore.activePlaylistDetail
+  const pl = localMusicStore.state.activePlaylistDetail
   if (!pl) return
   await localMusicStore.renamePlaylist(pl.id, name.trim())
 }
@@ -278,7 +279,7 @@ function handleAddTrack() {
 }
 
 async function onAddTrackConfirm(kw: string) {
-  const pl = localMusicStore.activePlaylistDetail
+  const pl = localMusicStore.state.activePlaylistDetail
   if (!pl) return
   if (!platform.localApi) return
 
@@ -307,7 +308,7 @@ async function onAddTrackConfirm(kw: string) {
 }
 
 async function handleRemoveTrack(track: LocalTrack) {
-  const pl = localMusicStore.activePlaylistDetail
+  const pl = localMusicStore.state.activePlaylistDetail
   if (!pl || !track) return
   if (!confirm(`确定从歌单移除「${track.title}」？`)) return
   await localMusicStore.removeTrackFromPlaylist(pl.id, track.id)
@@ -347,10 +348,10 @@ const showPlaylistPicker = ref(false)
 const pendingTrackForPlaylist = ref<LocalTrack | null>(null)
 
 async function addToPlaylist(track: LocalTrack) {
-  if (!localMusicStore.playlists.length) {
+  if (!localMusicStore.state.playlists.length) {
     await localMusicStore.loadPlaylists()
   }
-  if (!localMusicStore.playlists.length) {
+  if (!localMusicStore.state.playlists.length) {
     const create = confirm('还没有本地歌单，是否创建一个？')
     if (!create) return
     const pl = await localMusicStore.createPlaylist('新歌单')
@@ -383,17 +384,17 @@ function showInFolder(track: LocalTrack) {
   const treePath = localMusicStore.getTreePath(track.path)
   if (!treePath) return
   localMusicStore.expandFolderAncestors(treePath)
-  localMusicStore.selectedFolderPath = treePath
-  localMusicStore.locatedTrackId = track.id
-  localMusicStore.activeView = 'folders'
+  localMusicStore.state.selectedFolderPath = treePath
+  localMusicStore.state.locatedTrackId = track.id
+  localMusicStore.state.activeView = 'folders'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
 }
 
 /** 查看本地专辑 */
 function showLocalAlbum(track: LocalTrack) {
-  localMusicStore.selectedAlbum = track.album
-  localMusicStore.locatedTrackId = track.id
-  localMusicStore.activeView = 'albums'
+  localMusicStore.state.selectedAlbum = track.album
+  localMusicStore.state.locatedTrackId = track.id
+  localMusicStore.state.activeView = 'albums'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
 }
 

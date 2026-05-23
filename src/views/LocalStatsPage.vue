@@ -4,25 +4,25 @@
     <div class="section-header">
       <h3 class="section-title">扫描目录</h3>
     </div>
-    <div v-if="!localMusicStore.directories.length" class="local-empty">
+    <div v-if="!localMusicStore.state.directories.length" class="local-empty">
       <p>还没有添加扫描目录</p>
     </div>
     <div v-else class="dir-list">
-      <div v-for="dir in localMusicStore.directories" :key="dir" class="dir-item">
+      <div v-for="dir in localMusicStore.state.directories" :key="dir" class="dir-item">
         <span class="dir-path" :title="dir">{{ dir }}</span>
         <button class="dir-remove" @click="removeDir(dir)" title="移除目录">✕</button>
       </div>
     </div>
     <div class="dir-actions">
       <button class="button-surface" @click="addDir">+ 添加目录</button>
-      <button class="button-surface" @click="handleScan" :disabled="localMusicStore.scanning">
-        {{ localMusicStore.scanning ? '扫描中…' : '扫描' }}
+      <button class="button-surface" @click="handleScan" :disabled="localMusicStore.state.scanning">
+        {{ localMusicStore.state.scanning ? '扫描中…' : '扫描' }}
       </button>
       <button class="button-danger" @click="clearAllData">清除所有数据</button>
     </div>
 
-    <div v-if="localMusicStore.scanning" class="local-scanning">
-      正在扫描… {{ localMusicStore.progress.current }} / {{ localMusicStore.progress.total }}
+    <div v-if="localMusicStore.state.scanning" class="local-scanning">
+      正在扫描… {{ localMusicStore.state.progress.current }} / {{ localMusicStore.state.progress.total }}
     </div>
 
     <!-- 最近添加 -->
@@ -48,7 +48,8 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { localMusicStore } from '../stores/localMusic'
+import { useLocalMusicStore } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import { playerStore } from '../stores/player'
 import { platform } from '../utils/platform'
 
@@ -56,7 +57,7 @@ const recent = ref<any[]>([])
 
 onMounted(async () => {
   // 从 localStorage 恢复已保存的扫描目录
-  if (!localMusicStore.directories.length) localMusicStore.loadDirectories()
+  if (!localMusicStore.state.directories.length) localMusicStore.loadDirectories()
 
   if (!platform.localApi) return
   try {
@@ -73,7 +74,7 @@ onMounted(async () => {
 })
 
 // 曲目变化时重新加载最近添加列表
-watch(() => localMusicStore.tracks.length, () => {
+watch(() => localMusicStore.state.tracks.length, () => {
   if (!platform.localApi) return
   platform.localApi.getRecent(10).then(list => {
     recent.value = list || []
@@ -90,7 +91,7 @@ function addDir() {
 }
 
 function handleScan() {
-  if (!localMusicStore.directories.length) {
+  if (!localMusicStore.state.directories.length) {
     localMusicStore.addDirectory()
   } else {
     localMusicStore.scanAll()

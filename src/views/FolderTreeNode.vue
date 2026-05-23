@@ -56,7 +56,8 @@
 import { computed } from 'vue'
 import { ChevronRight, Folder, FolderOpen, File } from 'lucide-vue-next'
 import type { FolderNode } from '../stores/localMusic'
-import { localMusicStore } from '../stores/localMusic'
+import { useLocalMusicStore } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 
 const props = defineProps<{
   node: FolderNode
@@ -70,7 +71,7 @@ defineEmits<{
   toggle: [path: string]
 }>()
 
-const isCollapsed = computed(() => localMusicStore.collapsedFolders.has(props.node.path))
+const isCollapsed = computed(() => localMusicStore.state.collapsedFolders.has(props.node.path))
 </script>
 
 <style scoped>

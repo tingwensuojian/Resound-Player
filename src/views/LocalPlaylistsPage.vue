@@ -13,13 +13,13 @@
       @update:open="showSettingsModal = $event"
     />
 
-    <div v-if="!localMusicStore.playlists.length" class="local-empty">
+    <div v-if="!localMusicStore.state.playlists.length" class="local-empty">
       <p>还没有本地歌单，点击"新建歌单"创建</p>
     </div>
 
-    <div v-if="localMusicStore.playlists.length" class="playlist-grid">
+    <div v-if="localMusicStore.state.playlists.length" class="playlist-grid">
       <div
-        v-for="pl in localMusicStore.playlists"
+        v-for="pl in localMusicStore.state.playlists"
         :key="pl.id"
         class="playlist-card"
         @click="openPlaylist(pl.id)"
@@ -74,7 +74,8 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted } from 'vue'
-import { localMusicStore } from '../stores/localMusic'
+import { useLocalMusicStore } from '../stores/localMusic'
+const localMusicStore = useLocalMusicStore()
 import PlaylistSettingsModal from '../components/ui/PlaylistSettingsModal.vue'
 
 const showCreateDialog = ref(false)

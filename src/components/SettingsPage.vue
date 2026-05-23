@@ -476,6 +476,7 @@ import { userStore } from '../stores/user';
 import { getSourceMeta } from '../config/musicSources';
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
+import { useLocalMusicStore } from '../stores/localMusic';
 import { platform } from '../utils/platform';
 
 type SettingItem = {
@@ -1149,7 +1150,7 @@ async function handleAction(key: string) {
   }
 
   if (key === 'localAddDir') {
-    const { localMusicStore } = await import('../stores/localMusic')
+    const localMusicStore = useLocalMusicStore()
     if (!localMusicStore.hasLocalSupport) {
       console.warn('[settings] hasLocalSupport=false, isDesktop=', platform.isDesktop, 'localApi=', !!(window as any).localApi)
       showLogoutMessage(platform.isDesktop ? '正在扫描…' : '本地音乐功能仅支持桌面端')
@@ -1164,7 +1165,7 @@ async function handleAction(key: string) {
   }
 
   if (key === 'localScan') {
-    const { localMusicStore } = await import('../stores/localMusic')
+    const localMusicStore = useLocalMusicStore()
     if (!localMusicStore.hasLocalSupport) {
       console.warn('[settings] hasLocalSupport=false, isDesktop=', platform.isDesktop, 'localApi=', !!(window as any).localApi)
       showLogoutMessage(platform.isDesktop ? '正在扫描…' : '本地音乐功能仅支持桌面端')
