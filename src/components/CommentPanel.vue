@@ -134,7 +134,8 @@
 import { computed, ref, watch } from 'vue';
 import { getCommentHot } from '../api/music';
 import { userStore } from '../stores/user';
-import { showLoginModal } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
+const loginModalStore = useLoginModalStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 
 const props = defineProps<{
@@ -196,7 +197,7 @@ function normalizeComment(c: any) {
 
 function requireAuth(): boolean {
   if (!userStore.isLogin) {
-    showLoginModal();
+    loginModalStore.showLoginModal();
     return false;
   }
   return true;

@@ -131,7 +131,8 @@ import AnimatedAppear from './AnimatedAppear.vue';
 import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
 import HeroCoverMedia from './HeroCoverMedia.vue';
 import { playerStore } from '../stores/player';
-import { showGlobalToast } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
+const loginModalStore = useLoginModalStore();
 import PlayPauseButton from './ui/PlayPauseButton.vue';
 import EntitySubscribeButton from './ui/EntitySubscribeButton.vue';
 import DetailTabBar from './ui/DetailTabBar.vue';
@@ -383,7 +384,7 @@ function addAllToQueue() {
   if (!tracks.length) return;
   const added = playerStore.appendToQueue(tracks);
   if (added > 0) {
-    showGlobalToast(`已添加 ${added} 条至播放列表`, 'success', 3000);
+    loginModalStore.showGlobalToast(`已添加 ${added} 条至播放列表`, 'success', 3000);
   }
 }
 

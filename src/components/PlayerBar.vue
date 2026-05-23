@@ -202,7 +202,9 @@ import { clearCacheEntry } from '../stores/unblock-cache';
 import AnimatedAppear from './AnimatedAppear.vue';
 import EqPanel from './EqPanel.vue';
 import { useLyrics } from '../composables/useLyrics';
-import { showGlobalToast } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
+const loginModalStore = useLoginModalStore();
+import { useLyricsSelectionStore } from '../stores/lyricsSelection';
 import { useBgLoaded } from '../composables/useBgLoaded';
 import { formatTime } from '../utils/formatTime';
 import { platform } from '../utils/platform';
@@ -333,7 +335,7 @@ function selectQuality(quality: string) {
   // 免费用户不可选择 VIP 音质
   const qOpt = qualityOptions.find(function (q) { return q.label === quality; });
   if (qOpt && !isQualityAvailable(qOpt.level)) {
-    showGlobalToast(quality + ' 需要 VIP，已自动切换为 极高(HQ)', 'warning');
+    loginModalStore.showGlobalToast(quality + ' 需要 VIP，已自动切换为 极高(HQ)', 'warning');
     playerStore.setDefaultQuality('极高(HQ)');
     showQualityPopup.value = false;
     return;
@@ -359,10 +361,10 @@ function selectQuality(quality: string) {
       const di = playerStore.qualityDowngradeInfo;
       if (!ok) {
         console.log('[quality-switch] ❌ 切换失败，当前账号可能不支持此音质');
-        showGlobalToast('当前账号不支持 ' + quality + ' 音质', 'warning');
+        loginModalStore.showGlobalToast('当前账号不支持 ' + quality + ' 音质', 'warning');
       } else if (di) {
         console.log(`[quality-switch] ⚠️ ${di.from} 不可用，已自动切换为 ${di.to}`);
-        showGlobalToast(di.from + ' 不可用，已自动切换为 ' + di.to, 'warning');
+        loginModalStore.showGlobalToast(di.from + ' 不可用，已自动切换为 ' + di.to, 'warning');
         playerStore.qualityDowngradeInfo = null;
       }
     });

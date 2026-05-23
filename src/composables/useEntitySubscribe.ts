@@ -1,6 +1,6 @@
 import { ref, watch, type Ref, type ComputedRef } from 'vue';
 import { userStore } from '../stores/user';
-import { showLoginModal, showGlobalToast } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
 import {
   togglePlaylistSubscribe,
   toggleAlbumSubscribe,
@@ -87,12 +87,13 @@ export function useEntitySubscribe(options: UseEntitySubscribeOptions) {
     if (!rawId || isLoading.value) return;
 
     // 鉴权检查
+    const loginModalStore = useLoginModalStore();
     if (!userStore.isLogin) {
-      showLoginModal('subscribe');
+      loginModalStore.showLoginModal('subscribe');
       return;
     }
     if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
-      showGlobalToast('当前登录方式不支持此操作，请使用扫码或 Cookie 登录', 'warning', 5000);
+      loginModalStore.showGlobalToast('当前登录方式不支持此操作，请使用扫码或 Cookie 登录', 'warning', 5000);
       return;
     }
 
@@ -128,7 +129,7 @@ export function useEntitySubscribe(options: UseEntitySubscribeOptions) {
       updateStoreArray(rawId, nextState);
     } catch (error) {
       console.error('[useEntitySubscribe] toggle failed', error);
-      showGlobalToast('操作失败，请稍后重试', 'error', 3000);
+      loginModalStore.showGlobalToast('操作失败，请稍后重试', 'error', 3000);
     } finally {
       isLoading.value = false;
     }

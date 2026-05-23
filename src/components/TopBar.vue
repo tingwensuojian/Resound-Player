@@ -152,7 +152,8 @@ import { uiStore } from '../stores/ui';
 import { userStore } from '../stores/user';
 import { playerStore } from '../stores/player';
 import { useAuthAction } from '../composables/useAuthAction';
-import { showGlobalToast } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
+const loginModalStore = useLoginModalStore();
 import HeartbeatActivateEffect from './effects/HeartbeatActivateEffect.vue';
 
 const RECENT_KEY = 'tm_search_history';
@@ -217,7 +218,7 @@ async function handleIntelligencePlay() {
   if (playerStore.isIntelligenceActive) {
     playerStore.isIntelligenceActive = false;
     playerStore.clearPlaylist();
-    showGlobalToast('已退出心动模式', 'success');
+    loginModalStore.showGlobalToast('已退出心动模式', 'success');
     showHeartbeatEffect.value = true;
     return;
   }
@@ -227,17 +228,17 @@ async function handleIntelligencePlay() {
   // 从用户歌单列表中找一个有曲目的作为 pid
   const validPlaylist = userStore.playlists.find(p => p.trackCount && p.trackCount > 0);
   if (!validPlaylist) {
-    showGlobalToast('您的歌单列表暂无心动推荐', 'warning');
+    loginModalStore.showGlobalToast('您的歌单列表暂无心动推荐', 'warning');
     return;
   }
   playerStore.currentPlaylistId = validPlaylist.id;
 
   const err = await playerStore.playIntelligenceList();
   if (err) {
-    showGlobalToast(err, 'warning');
+    loginModalStore.showGlobalToast(err, 'warning');
   } else {
     playerStore.isIntelligenceActive = true;
-    showGlobalToast('已开启心动模式', 'success');
+    loginModalStore.showGlobalToast('已开启心动模式', 'success');
     showHeartbeatEffect.value = true;
   }
 }
@@ -246,7 +247,7 @@ async function handleIntelligencePlay() {
 watch(() => playerStore.currentPlaylistId, () => {
   if (playerStore.isIntelligenceActive) {
     playerStore.isIntelligenceActive = false;
-    showGlobalToast('已退出心动模式', 'success');
+    loginModalStore.showGlobalToast('已退出心动模式', 'success');
     showHeartbeatEffect.value = true;
   }
 });

@@ -315,7 +315,7 @@ import LyricsSettingsPanel from './LyricsSettingsPanel.vue';
 import LyricsSelectionModal from './LyricsSelectionModal.vue';
 import CommentPanel from './CommentPanel.vue';
 import * as api from '../api/music';
-import { openSelection } from '../stores/lyricsSelection';
+import { useLyricsSelectionStore } from '../stores/lyricsSelection';
 import FancySwitch from './ui/FancySwitch.vue';
 import EqPanel from './EqPanel.vue';
 import { useProgressiveCover } from '../composables/useProgressiveCover';
@@ -630,7 +630,7 @@ function commitOffset(e: Event) {
 }
 
 function copyTrackInfo() { const t = playerStore.currentTrack; if (!t?.name) return; navigator.clipboard.writeText(`${t.name} - ${(t.ar||[]).map(a=>a.name).join('/')}`); }
-function onOpenLyricsSelection() { openSelection(playerStore.currentTrack?.id ?? null); }
+function onOpenLyricsSelection() { useLyricsSelectionStore().openSelection(playerStore.currentTrack?.id ?? null); }
 function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 ? '+' : ''; return `${sign}${v.toFixed(1)}s`; }
 </script>
 

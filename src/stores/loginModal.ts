@@ -1,33 +1,43 @@
-import { reactive } from 'vue';
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
 
 export type LoginIntent = 'like' | 'playlist' | 'subscribe' | 'none';
-
 export type ToastType = 'warning' | 'success' | 'error';
 
-export const loginModalState = reactive({
-  visible: false,
-  intent: 'none' as LoginIntent,
-  globalToast: '',
-  toastType: 'warning' as ToastType,
-  toastTimer: undefined as ReturnType<typeof setTimeout> | undefined,
+export const useLoginModalStore = defineStore('loginModal', () => {
+  const visible = ref(false);
+  const intent = ref<LoginIntent>('none');
+  const globalToast = ref('');
+  const toastType = ref<ToastType>('warning');
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function showLoginModal(modalIntent: LoginIntent = 'none') {
+    visible.value = true;
+    intent.value = modalIntent;
+  }
+
+  function hideLoginModal() {
+    visible.value = false;
+    intent.value = 'none';
+  }
+
+  function showGlobalToast(msg: string, type: ToastType = 'warning', duration = 4000) {
+    if (toastTimer) clearTimeout(toastTimer);
+    globalToast.value = msg;
+    toastType.value = type;
+    toastTimer = setTimeout(() => {
+      globalToast.value = '';
+      toastTimer = undefined;
+    }, duration);
+  }
+
+  return {
+    visible,
+    intent,
+    globalToast,
+    toastType,
+    showLoginModal,
+    hideLoginModal,
+    showGlobalToast,
+  };
 });
-
-export function showLoginModal(intent: LoginIntent = 'none') {
-  loginModalState.visible = true;
-  loginModalState.intent = intent;
-}
-
-export function hideLoginModal() {
-  loginModalState.visible = false;
-  loginModalState.intent = 'none';
-}
-
-export function showGlobalToast(msg: string, type: ToastType = 'warning', duration = 4000) {
-  if (loginModalState.toastTimer) clearTimeout(loginModalState.toastTimer);
-  loginModalState.globalToast = msg;
-  loginModalState.toastType = type;
-  loginModalState.toastTimer = setTimeout(() => {
-    loginModalState.globalToast = '';
-    loginModalState.toastTimer = undefined;
-  }, duration);
-}

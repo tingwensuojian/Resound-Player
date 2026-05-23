@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <transition name="modal-fade">
-      <div v-if="lyricsSelection.isOpen" class="sel-backdrop" @click.self="closeSelection" @keydown.esc="closeSelection" tabindex="-1" ref="backdropRef">
+      <div v-if="lyricsSelection.isOpen" class="sel-backdrop" @click.self="lyricsSelection.closeSelection" @keydown.esc="lyricsSelection.closeSelection" tabindex="-1" ref="backdropRef">
         <div class="sel-modal" :class="{ 'an-enter-card': true }" :style="{ '--rhythm-offset': 1, '--i': 0 }">
           <!-- header -->
           <div class="sel-head">
@@ -9,7 +9,7 @@
               <h3 class="sel-title">{{ playerStore.currentTrack?.name || '选择歌词' }}</h3>
               <p class="sel-artist">{{ artistText }}</p>
             </div>
-            <button class="sel-close" type="button" aria-label="关闭" @click="closeSelection"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <button class="sel-close" type="button" aria-label="关闭" @click="lyricsSelection.closeSelection"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <!-- 未加载 -->
           <div v-if="isLoading" class="sel-status">歌词加载中...</div>
@@ -18,7 +18,7 @@
           <!-- 歌词列表 -->
           <template v-else>
             <div class="sel-body">
-              <div v-for="(line, idx) in displayLines" :key="idx" class="sel-row" @click="toggleLine(idx)">
+              <div v-for="(line, idx) in displayLines" :key="idx" class="sel-row" @click="lyricsSelection.toggleLine(idx)">
                 <span class="sel-check" :class="{ checked: lyricsSelection.selectedIndices.has(idx) }">
                   <svg v-if="lyricsSelection.selectedIndices.has(idx)" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </span>
@@ -32,7 +32,7 @@
             <!-- footer -->
             <div class="sel-foot">
               <div class="sel-foot-left">
-                <button class="sel-btn" :class="{ active: lyricsSelection.showTranslation }" @click="toggleSelectionTranslation">译</button>
+                <button class="sel-btn" :class="{ active: lyricsSelection.showTranslation }" @click="lyricsSelection.toggleSelectionTranslation">译</button>
                 <button class="sel-btn" @click="onSelectAll">{{ allSelected ? '取消全选' : '全选' }}</button>
               </div>
               <div class="sel-foot-right">
@@ -54,8 +54,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useLyrics } from '../composables/useLyrics';
-import { lyricsSelection, closeSelection, toggleLine, toggleSelectionTranslation } from '../stores/lyricsSelection';
+import { useLyricsSelectionStore } from '../stores/lyricsSelection';
 import { playerStore } from '../stores/player';
+const lyricsSelection = useLyricsSelectionStore();
 
 const { lyricLines, isLoading, loadLyrics } = useLyrics();
 const backdropRef = ref<HTMLElement | null>(null);
@@ -69,7 +70,7 @@ watch(() => playerStore.currentTrack?.id, async (id) => {
 
 /* ESC 关闭 */
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && lyricsSelection.isOpen) closeSelection();
+  if (e.key === 'Escape' && lyricsSelection.isOpen) lyricsSelection.closeSelection();
 }
 watch(() => lyricsSelection.isOpen, (open) => {
   if (open) nextTick(() => backdropRef.value?.focus());

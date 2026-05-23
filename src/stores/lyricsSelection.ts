@@ -1,47 +1,49 @@
-import { reactive } from 'vue';
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
 
-export type LyricsSelectionState = {
-  isOpen: boolean;
-  selectedIndices: Set<number>;
-  showTranslation: boolean;
-  currentTrackId: number | string | null;
-};
+export const useLyricsSelectionStore = defineStore('lyricsSelection', () => {
+  const isOpen = ref(false);
+  const selectedIndices = ref<Set<number>>(new Set());
+  const showTranslation = ref(false);
+  const currentTrackId = ref<number | string | null>(null);
 
-const state = reactive<LyricsSelectionState>({
-  isOpen: false,
-  selectedIndices: new Set(),
-  showTranslation: false,
-  currentTrackId: null,
-});
-
-export function openSelection(trackId: number | string | null) {
-  if (state.currentTrackId !== trackId) {
-    // 切歌时重置
-    state.selectedIndices = new Set();
-    state.showTranslation = false;
-    state.currentTrackId = trackId;
+  function openSelection(trackId: number | string | null) {
+    if (currentTrackId.value !== trackId) {
+      selectedIndices.value = new Set();
+      showTranslation.value = false;
+      currentTrackId.value = trackId;
+    }
+    isOpen.value = true;
   }
-  state.isOpen = true;
-}
 
-export function closeSelection() {
-  state.isOpen = false;
-  // 不重置 selectedIndices，同首歌再次打开保留勾选
-}
+  function closeSelection() {
+    isOpen.value = false;
+  }
 
-export function toggleLine(idx: number) {
-  const set = new Set(state.selectedIndices);
-  if (set.has(idx)) set.delete(idx);
-  else set.add(idx);
-  state.selectedIndices = set;
-}
+  function toggleLine(idx: number) {
+    const set = new Set(selectedIndices.value);
+    if (set.has(idx)) set.delete(idx);
+    else set.add(idx);
+    selectedIndices.value = set;
+  }
 
-export function toggleSelectionTranslation() {
-  state.showTranslation = !state.showTranslation;
-}
+  function toggleSelectionTranslation() {
+    showTranslation.value = !showTranslation.value;
+  }
 
-export function getSelectedLines(lines: any[]) {
-  return lines.filter((_, i) => state.selectedIndices.has(i));
-}
+  function getSelectedLines(lines: any[]) {
+    return lines.filter((_, i) => selectedIndices.value.has(i));
+  }
 
-export const lyricsSelection = state;
+  return {
+    isOpen,
+    selectedIndices,
+    showTranslation,
+    currentTrackId,
+    openSelection,
+    closeSelection,
+    toggleLine,
+    toggleSelectionTranslation,
+    getSelectedLines,
+  };
+});

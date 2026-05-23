@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <transition name="modal-fade">
-      <div v-if="loginModalState.visible" class="lm-mask" @click.self="close" @keydown.esc="close" tabindex="-1" ref="backdropRef">
+      <div v-if="loginModalStore.visible" class="lm-mask" @click.self="close" @keydown.esc="close" tabindex="-1" ref="backdropRef">
         <div class="lm-wrapper">
           <button class="lm-close" type="button" aria-label="关闭" @click="close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -11,28 +11,29 @@
       </div>
     </transition>
     <transition name="toast-fade">
-      <div v-if="loginModalState.globalToast" class="lm-toast" :class="loginModalState.toastType">{{ loginModalState.globalToast }}</div>
+      <div v-if="loginModalStore.globalToast" class="lm-toast" :class="loginModalStore.toastType">{{ loginModalStore.globalToast }}</div>
     </transition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
-import { loginModalState, hideLoginModal } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
 import { userStore } from '../stores/user';
 import LoginPanel from './LoginPanel.vue';
+const loginModalStore = useLoginModalStore();
 
 const backdropRef = ref<HTMLElement | null>(null);
 
 function close() {
-  hideLoginModal();
+  loginModalStore.hideLoginModal();
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && loginModalState.visible) close();
+  if (e.key === 'Escape' && loginModalStore.visible) close();
 }
 
-watch(() => loginModalState.visible, (open) => {
+watch(() => loginModalStore.visible, (open) => {
   if (open) nextTick(() => backdropRef.value?.focus());
 });
 

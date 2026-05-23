@@ -1,5 +1,5 @@
 import { userStore } from '../stores/user';
-import { showLoginModal, showGlobalToast } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
 
 /**
  * 需要完整登录态的操作（收藏、收藏至歌单等）的鉴权检查。
@@ -12,18 +12,19 @@ import { showLoginModal, showGlobalToast } from '../stores/loginModal';
  * @param loginIntent  未登录时弹窗的 intent 标识
  */
 export function useAuthAction(toastMsg: string, loginIntent: 'like' | 'playlist' = 'like') {
+  const loginModalStore = useLoginModalStore();
 
   function showToast(msg: string, type: 'warning' | 'success' | 'error' = 'warning', duration = 3000) {
-    showGlobalToast(msg, type, duration);
+    loginModalStore.showGlobalToast(msg, type, duration);
   }
 
   function checkAuth(): boolean {
     if (!userStore.isLogin) {
-      showLoginModal(loginIntent);
+      loginModalStore.showLoginModal(loginIntent);
       return false;
     }
     if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
-      showGlobalToast(toastMsg, 'warning', 5000);
+      loginModalStore.showGlobalToast(toastMsg, 'warning', 5000);
       return false;
     }
     return true;

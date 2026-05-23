@@ -43,7 +43,8 @@
 import { computed, ref } from 'vue'
 import { localMusicStore } from '../stores/localMusic'
 import { playerStore } from '../stores/player'
-import { showGlobalToast, showLoginModal } from '../stores/loginModal'
+import { useLoginModalStore } from '../stores/loginModal'
+const loginModalStore = useLoginModalStore()
 import { userStore } from '../stores/user'
 import { platform } from '../utils/platform'
 import { searchMusic, importToCloud } from '../api/music'
@@ -75,7 +76,7 @@ function playNext(track: any) {
   }
   const idx = playerStore.currentIndex + 1
   playerStore.playlist.splice(idx, 0, song)
-  showGlobalToast('已加入播放队列', 'success', 3000)
+  loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
 }
 
 /** 添加到歌单 */
@@ -92,7 +93,7 @@ async function addToPlaylist(track: any) {
     const pl = await localMusicStore.createPlaylist('新歌单')
     if (pl) {
       await localMusicStore.addTrackToPlaylist(pl.id, track.id)
-      showGlobalToast('已添加到歌单', 'success', 3000)
+      loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
     }
     return
   }
@@ -106,7 +107,7 @@ async function confirmPlaylistPicker(playlistId: string) {
   showPlaylistPicker.value = false
   pendingTrackForPlaylist.value = null
   await localMusicStore.addTrackToPlaylist(playlistId, track.id)
-  showGlobalToast('已添加到歌单', 'success', 3000)
+  loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
 }
 
 function cancelPlaylistPicker() {
@@ -140,26 +141,26 @@ async function showOnlineAlbum(track: any) {
 
     if (albumId) {
       window.dispatchEvent(new CustomEvent('open-album-detail', { detail: { albumId } }))
-      showGlobalToast('已跳转到在线专辑，若信息有误请使用搜索查找', 'warning', 4000)
+      loginModalStore.showGlobalToast('已跳转到在线专辑，若信息有误请使用搜索查找', 'warning', 4000)
     } else {
-      showGlobalToast('未找到在线专辑', 'warning', 3000)
+      loginModalStore.showGlobalToast('未找到在线专辑', 'warning', 3000)
     }
   } catch {
-    showGlobalToast('搜索专辑失败', 'error', 3000)
+    loginModalStore.showGlobalToast('搜索专辑失败', 'error', 3000)
   }
 }
 
 /** 上传至云盘：读取本地文件信息，通过 API 导入云盘 */
 async function uploadToCloud(track: any) {
   if (!platform.localApi) return
-  if (!userStore.isLogin) { showLoginModal('none'); return }
+  if (!userStore.isLogin) { loginModalStore.showLoginModal('none'); return }
   if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
-    showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000)
+    loginModalStore.showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000)
     return
   }
   try {
     const info = await platform.localApi.computeFileMd5(track.path)
-    if (!info) { showGlobalToast('无法读取文件信息', 'error'); return }
+    if (!info) { loginModalStore.showGlobalToast('无法读取文件信息', 'error'); return }
     const ext = track.path.split('.').pop()?.toLowerCase() || 'mp3'
     const fileType = ext === 'flac' ? 'flac' : 'mp3'
     const bitrate = track.duration > 0 ? Math.round((info.size * 8) / track.duration / 1000) : 128
@@ -174,12 +175,12 @@ async function uploadToCloud(track: any) {
       cookie: userStore.loginCookie || undefined,
     })
     if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
-      showGlobalToast('已上传至云盘', 'success', 3000)
+      loginModalStore.showGlobalToast('已上传至云盘', 'success', 3000)
     } else {
-      showGlobalToast('上传失败，请稍后重试', 'warning', 3000)
+      loginModalStore.showGlobalToast('上传失败，请稍后重试', 'warning', 3000)
     }
   } catch {
-    showGlobalToast('上传至云盘失败', 'error', 3000)
+    loginModalStore.showGlobalToast('上传至云盘失败', 'error', 3000)
   }
 }
 </script>

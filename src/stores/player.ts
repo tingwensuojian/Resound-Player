@@ -1,7 +1,7 @@
 import { reactive } from 'vue';
 import { getIntelligenceList, getPlaylistTrackAll, getSongDetail, trashPersonalFm } from '../api/music';
 import { userStore } from './user';
-import { showGlobalToast } from './loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
 import { hydrateCache, getCache, setCache } from './unblock-cache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { platform } from '../utils/platform';
@@ -517,7 +517,7 @@ export const playerStore = reactive({
   async playTrack(track: Track, seekTo?: number) {
     // 付费播客提示
     if (track.source === 'podcast' && track.podcast?.feeTone === 'paid') {
-      showGlobalToast('该节目为付费内容，请前往播客详情页购买后收听', 'warning', 4000);
+      useLoginModalStore().showGlobalToast('该节目为付费内容，请前往播客详情页购买后收听', 'warning', 4000);
       this.loading = false;
       if (this.paidContentSkip) {
         await this.next();

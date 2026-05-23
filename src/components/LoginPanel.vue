@@ -149,7 +149,8 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { checkQrStatus, createQr, getQrKey } from '../api/auth';
 import { searchMusic } from '../api/music';
 import { userStore } from '../stores/user';
-import { hideLoginModal } from '../stores/loginModal';
+import { useLoginModalStore } from '../stores/loginModal';
+const loginModalStore = useLoginModalStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 
 const props = defineProps<{ disabled?: boolean }>();
@@ -325,7 +326,7 @@ async function submitSearchUser(user: SearchUser) {
   try {
     await userStore.loginWithUid(user.userId);
     setFeedback('已选择用户：' + user.nickname, 'success');
-    hideLoginModal();
+    loginModalStore.hideLoginModal();
   } catch (error: any) {
     setFeedback(error?.message || '加载用户失败', 'error');
   } finally {

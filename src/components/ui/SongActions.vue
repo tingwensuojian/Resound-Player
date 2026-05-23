@@ -150,7 +150,8 @@ import TooltipWrapper from './TooltipWrapper.vue';
 import { getSongUrlV1, getSongLyric, getSongLyricNew, importToCloud } from '../../api/music';
 import { userStore } from '../../stores/user';
 import { tryUnblockMatch } from '../../api/unblock';
-import { showGlobalToast, showLoginModal } from '../../stores/loginModal';
+import { useLoginModalStore } from '../../stores/loginModal';
+const loginModalStore = useLoginModalStore();
 import { QUALITY_OPTIONS as qualityOptions, isQualityAvailable as isQualityAvailableRaw } from '../../config/qualityOptions';
 
 const props = defineProps<{
@@ -402,17 +403,17 @@ async function downloadSong(level: string, label: string) {
 async function uploadToCloud() {
   const songId = Number(props.song?.id || 0);
   if (!songId) {
-    showGlobalToast('无法获取歌曲ID', 'error');
+    loginModalStore.showGlobalToast('无法获取歌曲ID', 'error');
     return;
   }
 
   // 检查登录状态
   if (!userStore.isLogin) {
-    showLoginModal('none');
+    loginModalStore.showLoginModal('none');
     return;
   }
   if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
-    showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000);
+    loginModalStore.showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000);
     return;
   }
 
@@ -427,7 +428,7 @@ async function uploadToCloud() {
     const item = Array.isArray(body?.data) ? body.data[0] : null;
 
     if (!item) {
-      showGlobalToast('无法获取歌曲信息', 'error');
+      loginModalStore.showGlobalToast('无法获取歌曲信息', 'error');
       return;
     }
 
@@ -438,7 +439,7 @@ async function uploadToCloud() {
     const md5 = item.md5 || '';
 
     if (!md5) {
-      showGlobalToast('无法获取文件MD5，无法导入云盘', 'error');
+      loginModalStore.showGlobalToast('无法获取文件MD5，无法导入云盘', 'error');
       return;
     }
 
@@ -456,14 +457,14 @@ async function uploadToCloud() {
     });
 
     if (result?.code === 200) {
-      showGlobalToast('已成功上传至云盘', 'success');
+      loginModalStore.showGlobalToast('已成功上传至云盘', 'success');
     } else if (result?.code === 401 || result?.code === 301) {
-      showGlobalToast('登录已过期，请重新登录', 'error');
+      loginModalStore.showGlobalToast('登录已过期，请重新登录', 'error');
     } else {
-      showGlobalToast(result?.message || '上传至云盘失败', 'error');
+      loginModalStore.showGlobalToast(result?.message || '上传至云盘失败', 'error');
     }
   } catch (error: any) {
-    showGlobalToast(error?.message || '上传至云盘失败，请稍后重试', 'error');
+    loginModalStore.showGlobalToast(error?.message || '上传至云盘失败，请稍后重试', 'error');
   }
 }
 

@@ -49,7 +49,8 @@
 import { computed, ref, watch } from 'vue';
 import { Heart } from 'lucide-vue-next';
 import { userStore } from '../../stores/user';
-import { showLoginModal, showGlobalToast } from '../../stores/loginModal';
+import { useLoginModalStore } from '../../stores/loginModal';
+const loginModalStore = useLoginModalStore();
 import { toggleSongLike } from '../../api/music';
 import AnimatedAppear from '../AnimatedAppear.vue';
 
@@ -114,11 +115,11 @@ async function toggleSaved() {
 
   // 鉴权检查
   if (!userStore.isLogin) {
-    showLoginModal('like');
+    loginModalStore.showLoginModal('like');
     return;
   }
   if (userStore.loginMode !== 'cookie' && userStore.loginMode !== 'qr') {
-    showGlobalToast('搜索用户方式登录不支持收藏功能，请使用扫码或 Cookie 登录', 'warning', 5000);
+    loginModalStore.showGlobalToast('搜索用户方式登录不支持收藏功能，请使用扫码或 Cookie 登录', 'warning', 5000);
     return;
   }
 
