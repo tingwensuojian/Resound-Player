@@ -399,18 +399,22 @@ img.entity-cover.cover-image,
  *   3. .progressive-cover__full   — 全尺寸高清图（<img>）
  * ════════════════════════════════════════ */
 
-/* 容器 */
+/* 容器：CSS Grid 单格叠层，让 <img> 保持流内尺寸贡献 */
 .progressive-cover {
-  position: relative;
-  display: block;
+  display: grid;
+  width: 100%;
   overflow: hidden;
   background: var(--bg-surface, #1c1917);
+}
+.progressive-cover > * {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* 第 1 层：LQIP 模糊占位 */
 .progressive-cover__lqip {
-  position: absolute;
-  inset: 0;
   z-index: 1;
   background-size: cover;
   background-position: center;
@@ -423,11 +427,7 @@ img.entity-cover.cover-image,
 
 /* 第 2 层：缩略图 */
 .progressive-cover__thumb {
-  position: absolute;
-  inset: 0;
   z-index: 2;
-  width: 100%;
-  height: 100%;
   object-fit: cover;
   opacity: 0;
   transition: opacity var(--an-duration-fast, 320ms) ease;
@@ -444,11 +444,7 @@ img.entity-cover.cover-image,
 
 /* 第 3 层：全尺寸高清图 */
 .progressive-cover__full {
-  position: absolute;
-  inset: 0;
   z-index: 3;
-  width: 100%;
-  height: 100%;
   object-fit: cover;
   opacity: 0;
   transition: opacity var(--an-duration-base, 380ms) ease;
