@@ -680,8 +680,8 @@ function openMenu() {
 
 ### 6.3 标准接口
 
-- 获取收藏列表：`getUserLikeList(uid)`
-- 切换收藏状态：`toggleSongLike({ id, like, uid? })`
+- 获取收藏列表：`getUserLikeList(uid, cookie?)` — 需传入 cookie 认证，否则刷新后列表为空
+- 切换收藏状态：`toggleSongLike({ id, like, uid?, cookie? })`
 
 ### 6.4 标准组件参数
 

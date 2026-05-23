@@ -410,7 +410,7 @@ export const userStore = reactive({
       .filter((id: number) => Number.isFinite(id) && id > 0);
   },
   async fetchLikedSongs(uid: number) {
-    const { data } = await getUserLikeList(uid);
+    const { data } = await getUserLikeList(uid, this.loginCookie || undefined);
     const ids = data?.ids || data?.data?.ids || data?.songs?.map((song: any) => song?.id) || data?.data?.songs?.map((song: any) => song?.id) || [];
     this.likedSongIds = (Array.isArray(ids) ? ids : [])
       .map((id: any) => Number(id))

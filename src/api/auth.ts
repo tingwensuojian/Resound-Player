@@ -72,9 +72,13 @@ export function getUserPlaylist(uid: number, cookie?: string) {
   });
 }
 
-export function getUserLikeList(uid: number) {
+export function getUserLikeList(uid: number, cookie?: string) {
   return apiClient.get('/likelist', {
-    params: { uid, timestamp: Date.now() },
+    params: {
+      uid,
+      ...(cookie ? { cookie } : {}),
+      timestamp: Date.now(),
+    },
   });
 }
 
