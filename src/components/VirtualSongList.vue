@@ -248,7 +248,7 @@ function isPaused(vi: { track: LocalTrack }) {
   return isTrackPlaying(vi) && !playerStore.state.isPlaying
 }
 
-function showIdx(vi: { track: LocalTrack }) {
+function showIdx(vi: { track: LocalTrack; index: number }) {
   return !isTrackPlaying(vi) && hoveredIdx.value !== vi.index
 }
 

@@ -77,11 +77,12 @@ onMounted(async () => {
 
 // 曲目变化时重新加载最近添加列表
 watch(() => localMusicStore.state.tracks.length, () => {
-  if (!platform.localApi) return
-  platform.localApi.getRecent(10).then(list => {
+  const api = platform.localApi
+  if (!api) return
+  api.getRecent(10).then(list => {
     recent.value = list || []
     for (const t of recent.value) {
-      if (t.path) {
+      if (t.path && platform.localApi) {
         platform.localApi.getCover(t.path).then(url => { if (url) t.coverUrl = url })
       }
     }

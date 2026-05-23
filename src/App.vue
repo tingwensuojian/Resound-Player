@@ -174,7 +174,7 @@
 
     <PlayerBar v-show="!playerStore.state.expanded" />
     <PlayQueuePanel />
-    <PlayerExpanded @open-artist="openArtistFromPlayer" @open-album="(albumId) => { playerStore.closeExpanded(); openAlbumDetail(albumId, activePage.value); }" @open-user="openUserFromComment" @open-podcast-detail="(item) => { playerStore.closeExpanded(); openPodcastDetail(item); }" />
+    <PlayerExpanded @open-artist="openArtistFromPlayer" @open-album="(albumId) => { playerStore.closeExpanded(); openAlbumDetail(albumId, activePage); }" @open-user="openUserFromComment" @open-podcast-detail="(item) => { playerStore.closeExpanded(); openPodcastDetail(item); }" />
     <LoginModal />
   </div>
 </template>
@@ -256,15 +256,15 @@ const podcastSubscribedItems = ref<any[]>([]);
 const podcastCategoryOptions = ref<any[]>([]);
 const activePodcastCategory = ref<number | null>(null);
 const activePodcastCategoryInfo = ref<{ id: number; name: string } | null>(null);
-const podcastSubscribedPageSource = ref<'user' | 'history' | 'podcast-list'>('podcast-list');
+const podcastSubscribedPageSource = ref<'user' | 'history' | 'podcast-list' | 'home'>('podcast-list');
 const podcastDetailInfo = ref<any>(null);
 const podcastDetailItems = ref<any[]>([]);
 const podcastLoading = ref(false);
 const podcastDetailLoading = ref(false);
 const activePodcastTitle = ref('');
-const activePodcastSourcePage = ref<'user' | 'history' | 'podcast-list'>('podcast-list');
-const activePodcastCategorySourcePage = ref<'user' | 'history' | 'podcast-list'>('podcast-list');
-const activePodcastDetailSourcePage = ref<'user' | 'history' | 'podcast-list'>('podcast-list');
+const activePodcastSourcePage = ref<'user' | 'history' | 'podcast-list' | 'home'>('podcast-list');
+const activePodcastCategorySourcePage = ref<'user' | 'history' | 'podcast-list' | 'home'>('podcast-list');
+const activePodcastDetailSourcePage = ref<'user' | 'history' | 'podcast-list' | 'home'>('podcast-list');
 const playlistInitialCategory = ref('');
 const dailyListSongs = ref<any[]>([]);
 const dailyInjectedPlaylist = ref<any>(null);
@@ -288,6 +288,9 @@ const layoutVars = computed<Record<string, string>>(() => {
 
   return {
     '--sidebar-width': sidebarCollapsed.value ? '76px' : '220px',
+    '--layout-gap': '8px',
+    '--content-max-width': '100%',
+    '--content-padding': '14px',
   };
 });
 
@@ -302,7 +305,7 @@ const isHeroStickyPage = computed(() => ['playlist-detail', 'rank-detail', 'arti
 const showBackToTop = computed(() => isHeroStickyPage.value || ['history', 'user', 'mv', 'playlist', 'rank', 'search', 'podcast-list', 'podcast-subscribed', 'podcast-category', 'song-comment'].includes(activePage.value));
 // 详情页（isHeroStickyPage）使用 .playlist-detail-page 作为滚动容器，非详情页使用 .content
 const backToTopScrollHost = computed(() => isHeroStickyPage.value ? '.playlist-detail-page' : '.content');
-const contentStyle = computed<Record<string, string>>(() => (isHeroStickyPage.value ? {} : { '--cover-bg-url': 'none' }));
+const contentStyle = computed<Record<string, string>>(() => (isHeroStickyPage.value ? { '--cover-bg-url': 'none' } : { '--cover-bg-url': 'none' }));
 
 // ── 页面缓存策略（方案二：KeepAlive + include 显式控制）──
 // 核心页面缓存，切换时不销毁重建；详情页每次进入重新加载
@@ -674,7 +677,7 @@ function extractVoiceDetailItems(payload: any): any[] {
   return [];
 }
 
-async function openPodcastDetail(item: any, sourcePage: 'user' | 'history' | 'podcast-list' = activePodcastSourcePage.value) {
+async function openPodcastDetail(item: any, sourcePage: 'user' | 'history' | 'podcast-list' | 'home' = activePodcastSourcePage.value) {
   navHistory.push({ page: 'podcast-detail' });
   activePodcastDetailSourcePage.value = sourcePage;
   const matchedCategory = podcastCategoryOptions.value.find((category: any) => Number(category?.id || 0) === Number(item?.categoryId || item?.radio?.categoryId || item?.program?.radio?.categoryId || 0));

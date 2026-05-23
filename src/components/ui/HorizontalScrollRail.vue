@@ -61,7 +61,7 @@ const emit = defineEmits<{
 
 const railRef = ref<HTMLElement | null>(null);
 const controlsVisible = ref(false);
-let controlsTimer: ReturnType<typeof window.setTimeout> | null = null;
+let controlsTimer: number | null = null;
 
 const leftLabel = computed(() => props.leftLabel || `向左滚动${props.ariaLabel}`);
 const rightLabel = computed(() => props.rightLabel || `向右滚动${props.ariaLabel}`);

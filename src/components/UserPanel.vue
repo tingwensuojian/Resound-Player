@@ -429,7 +429,7 @@ async function loadUserData() {
       albumItems.value = albumRes.status === 'fulfilled' ? normalizeAlbumItems(albumRes.value) : [];
 
       const djData = djRes.status === 'fulfilled'
-        ? djRes.value?.data?.djRadios || djRes.value?.data?.data?.djRadios || djRes.value?.djRadios || []
+        ? djRes.value?.data?.djRadios || djRes.value?.data?.data?.djRadios || (djRes.value as any)?.djRadios || []
         : [];
       djSublist.value = Array.isArray(djData) ? djData : [];
 

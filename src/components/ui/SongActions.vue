@@ -171,6 +171,15 @@ const emit = defineEmits<{
 
 const showEncyclopediaId = ref(0);
 const hasMv = computed(() => Number(props.song?.mv || 0) > 0);
+const artistName = computed(() => {
+  const artists = Array.isArray(props.song?.ar) ? props.song.ar : [];
+  return artists.map((a: any) => a?.name).filter(Boolean).join('、') || '未知歌手';
+});
+
+function handleCoverError(e: Event) {
+  const img = e.target as HTMLImageElement;
+  img.style.display = 'none';
+}
 
 function openAlbum() {
   const albumId = Number(props.song?.al?.id || 0);
@@ -358,16 +367,16 @@ async function downloadSong(level: string, label: string) {
     async function doFetch(): Promise<Response> {
       // 直连：music.126.net 等 CDN 有 CORS 支持，可直接 fetch
       // music.163.com 不支持 CORS，跳过直连避免控制台报错
-      if (!url.includes('music.163.com')) {
+      if (!(url as string).includes('music.163.com')) {
         try {
-          const direct = await fetch(url);
+          const direct = await fetch(url as string);
           if (direct.ok) return direct;
         } catch { /* 直连失败，走回退 */ }
       }
       // 回退：走 Vite 代理（处理 music.163.com/package 等需 Cookie 的 URL）
       const isRealLogin = userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr';
       const c = isRealLogin ? (userStore.state.loginCookie || '') : '';
-      return fetch('/dl-proxy?url=' + encodeURIComponent(url) + '&cookie=' + encodeURIComponent(c));
+      return fetch('/dl-proxy?url=' + encodeURIComponent(url as string) + '&cookie=' + encodeURIComponent(c));
     }
     let resp = await doFetch();
     let blob: Blob | null = null;

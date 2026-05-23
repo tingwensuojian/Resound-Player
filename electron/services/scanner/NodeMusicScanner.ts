@@ -171,7 +171,7 @@ export class NodeMusicScanner implements IMusicScanner {
       genre: (common.genre || []).join(', '),
       year: common.year || 0,
       coverPath: '', fileSize: stat.size, mtime: stat.mtimeMs,
-      hasLyrics: (Boolean(common.lyrics?.length) || hasExternalLyric) ? 1 : 0,
+      hasLyrics: Boolean(common.lyrics?.length) || hasExternalLyric,
       createdAt: '', updatedAt: '',
     }
   }

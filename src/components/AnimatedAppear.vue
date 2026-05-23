@@ -9,7 +9,7 @@ const props = withDefaults(
   defineProps<{
     tag?: string;
     variant?: 'content' | 'title' | 'text' | 'media' | 'control' | 'modal' | 'nav' | 'sidebar';
-    rhythm?: 'shell' | 'head' | 'title' | 'body' | 'actions' | 'list' | 'overlay';
+    rhythm?: 'shell' | 'head' | 'title' | 'body' | 'actions' | 'list' | 'overlay' | 'media';
     index?: number;
     className?: string;
     attrs?: Record<string, any>;

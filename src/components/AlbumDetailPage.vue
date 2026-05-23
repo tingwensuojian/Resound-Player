@@ -67,7 +67,7 @@
         <DetailTabBar
           v-model="activeTab"
           :tabs="tabs"
-          aria-label="专辑详情标签"
+          :ariaLabel="'专辑详情标签'"
           v-model:search-query="searchQuery"
           :show-search="activeTab === 'songs'"
         />
