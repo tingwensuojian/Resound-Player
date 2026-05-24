@@ -375,12 +375,6 @@ async function fetchAllSongs(reset = false) {
   }
 }
 
-function switchAllSongsOrder(order: 'hot' | 'time') {
-  if (allSongsOrder.value === order) return;
-  allSongsOrder.value = order;
-  fetchAllSongs(true);
-}
-
 watch(() => activeTab.value, (tab) => {
   if (tab === 'all-songs' && allSongs.value.length === 0 && !allSongsLoading.value) {
     fetchAllSongs(true);
@@ -720,52 +714,6 @@ const { refresh } = useDetailStickyState(coverUrl);
   white-space: pre-wrap;
 }
 
-/* 全部歌曲工具栏 */
-.all-songs-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 0 var(--space-3) 0;
-}
-
-.all-songs-count {
-  font-size: var(--text-label-sm);
-  color: var(--text-sub);
-}
-
-.all-songs-segment {
-  display: flex;
-  gap: 0;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-
-.all-songs-segment-btn {
-  height: 32px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-sub);
-  font-size: var(--text-label-sm);
-  cursor: pointer;
-  transition: background .18s, color .18s;
-}
-
-.all-songs-segment-btn:first-child {
-  border-right: 1px solid var(--border);
-}
-
-.all-songs-segment-btn:hover:not(.active) {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-
-.all-songs-segment-btn.active {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, #fff), color-mix(in srgb, var(--accent) 68%, #000));
-  color: #fff;
-}
-
 /* 加载更多 */
 .load-more-sentinel {
   display: flex;
@@ -809,10 +757,6 @@ const { refresh } = useDetailStickyState(coverUrl);
   .album-grid,
   .mv-grid {
     grid-template-columns: 1fr;
-  }
-
-  .all-songs-segment-btn {
-    padding: 0 12px;
   }
 }
 
