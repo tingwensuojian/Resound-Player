@@ -106,12 +106,14 @@
       <!-- 右栏：内容区 -->
       <div class="local-hub-right">
         <div class="hub-content">
-          <LocalStatsPage v-if="activeView === 'stats'" />
-          <LocalSongsPage v-else-if="activeView === 'songs'" />
-          <LocalArtistsPage v-else-if="activeView === 'artists'" />
-          <LocalAlbumsPage v-else-if="activeView === 'albums'" />
-          <LocalFoldersPage v-else-if="activeView === 'folders'" />
-          <LocalPlaylistsPage v-else-if="activeView === 'playlists'" />
+          <KeepAlive>
+            <LocalStatsPage v-if="activeView === 'stats'" />
+            <LocalSongsPage v-else-if="activeView === 'songs'" />
+            <LocalArtistsPage v-else-if="activeView === 'artists'" />
+            <LocalAlbumsPage v-else-if="activeView === 'albums'" />
+            <LocalFoldersPage v-else-if="activeView === 'folders'" />
+            <LocalPlaylistsPage v-else-if="activeView === 'playlists'" />
+          </KeepAlive>
         </div>
       </div>
     </div>
@@ -129,7 +131,7 @@ import LocalAlbumsPage from '../views/LocalAlbumsPage.vue'
 import LocalFoldersPage from '../views/LocalFoldersPage.vue'
 import LocalPlaylistsPage from '../views/LocalPlaylistsPage.vue'
 import FolderTreeNode from '../views/FolderTreeNode.vue'
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, KeepAlive } from 'vue'
 import { platform } from '../utils/platform'
 
 const tabs = [
@@ -147,6 +149,17 @@ const stats = ref<{ totalTracks: number; totalArtists: number; totalAlbums: numb
 
 onMounted(async () => {
   if (!platform.localApi) return
+  // 从 localStorage 恢复扫描目录
+  localMusicStore.loadDirectories()
+  // 先加载歌曲列表，确保所有子页面共享同一份数据
+  if (!localMusicStore.state.tracks.length) {
+    await localMusicStore.loadTracks()
+  }
+  // 加载后仍为空且有已保存的目录 → 自动触发扫描
+  if (!localMusicStore.state.tracks.length && localMusicStore.state.directories.length && !localMusicStore.state.scanning) {
+    console.log('[LocalMusicHub] 数据库为空，自动扫描', localMusicStore.state.directories.length, '个目录')
+    localMusicStore.scanAll()
+  }
   try {
     stats.value = await platform.localApi.getStats()
   } catch (e) {

@@ -17,15 +17,16 @@
       <p>还没有本地歌单，点击"新建歌单"创建</p>
     </div>
 
-    <div v-if="localMusicStore.state.playlists.length" class="playlist-grid">
+    <div v-if="localMusicStore.state.playlists.length" class="playlist-grid an-stagger-media">
       <div
-        v-for="pl in localMusicStore.state.playlists"
+        v-for="(pl, idx) in localMusicStore.state.playlists"
         :key="pl.id"
         class="playlist-card"
+        :style="{ '--i': idx }"
         @click="openPlaylist(pl.id)"
       >
         <div class="playlist-card-cover">
-          <img v-if="pl.customCoverUrl" :src="pl.customCoverUrl" class="playlist-card-single-cover" alt="" loading="lazy" />
+          <img v-if="pl.customCoverUrl" :src="pl.customCoverUrl" class="playlist-card-single-cover hover-scale-image" alt="" loading="lazy" />
           <div v-else class="cover-mosaic" :class="'mosaic-' + Math.min(pl.coverUrls?.length || 0, 6)">
             <img
               v-for="(url, i) in (pl.coverUrls || []).slice(0, 6)"

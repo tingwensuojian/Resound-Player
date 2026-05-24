@@ -296,7 +296,7 @@ class LocalMusicDB {
 
   getAllTracks() {
     const rows = this.#queryAll(
-      "SELECT * FROM tracks ORDER BY title COLLATE NOCASE"
+      "SELECT id, path, title, artist, album, albumArtist, duration, hasLyrics, createdAt FROM tracks ORDER BY title COLLATE NOCASE"
     );
     return Promise.resolve(rows.map((r) => this.#trackRow(r)));
   }

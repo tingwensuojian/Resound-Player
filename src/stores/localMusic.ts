@@ -42,6 +42,8 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     selectedFolderPath: '',
     collapsedFolders: new Set<string>(),
     playlists: [] as any[],
+    _coverVersion: 0,
+    loadingTracks: false,
     activePlaylistId: '',
     activePlaylistDetail: null as any,
     locatedTrackId: '',
@@ -51,6 +53,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   const hasLocalSupport = computed(() => platform.hasLocalMusicSupport);
 
   const filteredTracks = computed(() => {
+    state._coverVersion  // 依赖版本号，封面加载后重新求值
     let list = state.tracks
     if (state.searchKeyword) {
       const kw = state.searchKeyword.toLowerCase()
@@ -75,6 +78,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   });
 
   const artistList = computed(() => {
+    state._coverVersion
     const map = new Map<string, LocalTrack[]>()
     for (const t of state.tracks) {
       const artists = t.artist.replace(/\s*\/\s*/g, '/').split('/')
@@ -91,6 +95,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   });
 
   const albumList = computed(() => {
+    state._coverVersion
     const map = new Map<string, LocalTrack[]>()
     for (const t of state.tracks) {
       const key = t.album || '未知专辑'
@@ -133,34 +138,68 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
 
   // ── 文件夹树 ──
   const folderTree = computed((): FolderNode[] => {
+    state._coverVersion
     if (!state.directories.length) loadDirectories()
 
-    const dirMap = new Map<string, string>()
+    // 规范化目录列表
+    const dirList: { path: string; name: string }[] = []
     for (const d of state.directories) {
       if (!d) continue
-      const parts = d.replace(/\\/g, '/').replace(/\/+$/, '').split('/')
-      const baseName = parts[parts.length - 1] || d
-      dirMap.set(baseName, d)
+      const clean = d.replace(/\\/g, '/').replace(/\/+$/, '')
+      const name = clean.split('/').pop() || clean
+      dirList.push({ path: clean, name })
     }
 
+    // 收集 tracks 中所有出现的目录路径（用于构建层级）
+    const allDirs = new Set<string>()
     const trackCount = new Map<string, number>()
     for (const t of state.tracks) {
       if (!t.path) continue
-      const dir = t.path.replace(/\\/g, '/').replace(/\/[^/]*$/, '')
-      trackCount.set(dir, (trackCount.get(dir) || 0) + 1)
+      const normalized = t.path.replace(/\\/g, '/')
+      const parentDir = normalized.replace(/\/[^/]*$/, '')
+      trackCount.set(parentDir, (trackCount.get(parentDir) || 0) + 1)
+
+      // 逐级向上注册目录
+      let current = parentDir
+      while (current) {
+        allDirs.add(current)
+        const next = current.replace(/\/[^/]*$/, '')
+        if (next === current) break
+        current = next
+      }
     }
 
-    const root: FolderNode[] = []
-    const map = new Map<string, FolderNode>()
+    /** 递归构建树节点 */
+    function buildNode(dirPath: string): FolderNode {
+      const name = dirPath.split('/').pop() || dirPath
+      const directCount = trackCount.get(dirPath) || 0
 
-    // 为每个扫描的目录创建节点
-    for (const [baseName, fullPath] of dirMap) {
-      const node: FolderNode = { name: baseName, path: fullPath, children: [], count: trackCount.get(fullPath) || 0 }
-      map.set(fullPath, node)
-      root.push(node)
+      // 收集直接子目录
+      const prefix = dirPath + '/'
+      const childPaths = new Set<string>()
+      for (const d of allDirs) {
+        if (d.startsWith(prefix)) {
+          const relative = d.slice(prefix.length)
+          const childPart = relative.split('/')[0]
+          if (childPart) {
+            childPaths.add(prefix + childPart)
+          }
+        }
+      }
+
+      const children: FolderNode[] = []
+      const sortedChildPaths = Array.from(childPaths).sort((a, b) =>
+        (a.split('/').pop() || '').localeCompare(b.split('/').pop() || '', 'zh-CN')
+      )
+      for (const cp of sortedChildPaths) {
+        children.push(buildNode(cp))
+      }
+
+      const childTotal = children.reduce((sum, c) => sum + c.count, 0)
+      return { name, path: dirPath, children, count: directCount + childTotal }
     }
 
-    return root
+    return dirList.map(({ path: fullPath }) => buildNode(fullPath))
   });
 
   function loadDirectories() {
@@ -194,13 +233,23 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     saveDirectories()
   }
 
-  function clearAll() {
+  async function clearAll() {
+    // 先通过 IPC 清除 SQLite 数据库（主进程端负责清 covers/mosaic-covers 缓存）
+    try {
+      if (platform.localApi) {
+        await platform.localApi.clearAllData()
+      }
+    } catch (e) {
+      console.warn('[localMusic] clearAll IPC failed:', e)
+    }
+
     state.tracks = []
     state.directories = []
     state.playlists = []
     state.scanning = false
     state.progress = { current: 0, total: 0 }
     try { localStorage.setItem('local_music_dirs', '[]') } catch {}
+    try { localStorage.setItem('local_music_playlists', '[]') } catch {}
     saveDirectories()
   }
 
@@ -213,13 +262,33 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       if (!platform.localApi) return
       const uncached = state.tracks.filter(t => !t.coverUrl)
       if (!uncached.length) return
-      await Promise.all(uncached.map(async (track) => {
-        try {
-          const cover = await platform.localApi.getCover(track.path)
-          if (cover) track.coverUrl = cover
-        } catch { /* ignore single failure */ }
-      }))
-    } finally { _coversLoading = false }
+      if (typeof (platform.localApi as any).getCoversBatch === 'function') {
+        const CHUNK = 50
+        for (let start = 0; start < uncached.length; start += CHUNK) {
+          const chunk = uncached.slice(start, start + CHUNK)
+          const paths = chunk.map(t => t.path)
+          const covers = await platform.localApi.getCoversBatch(paths)
+          for (let i = 0; i < chunk.length; i++) {
+            if (covers[i]) chunk[i].coverUrl = covers[i]
+          }
+          // 每片完成立即递增版本号，触发 UI 逐批刷新
+          state._coverVersion++
+        }
+      } else {
+        for (const track of uncached) {
+          try {
+            const cover = await platform.localApi.getCover(track.path)
+            if (cover) track.coverUrl = cover
+          } catch { /* ignore single failure */ }
+        }
+        // 递增版本号，触发 filteredTracks / artistList / albumList 等 computed 重新求值
+        state._coverVersion++
+      }
+    } catch (e) {
+      console.warn('[localMusic] lazyLoadCovers failed:', e)
+    } finally {
+      _coversLoading = false
+    }
   }
 
   async function lazyLoadPlaylistCovers() {
@@ -266,6 +335,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   }
 
   const selectedFolderTracks = computed(() => {
+    state._coverVersion
     if (!state.selectedFolderPath) return state.tracks
     return state.tracks.filter(t => t.path.startsWith(state.selectedFolderPath))
   });
@@ -339,6 +409,8 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
 
   async function loadTracks() {
     if (!platform.localApi) return
+    if (state.loadingTracks) return // 防止并发调用覆盖已加载数据
+    state.loadingTracks = true
     try {
       const tracks = await platform.localApi.getAll()
       state.tracks = (tracks || []).map((t: any) => ({
@@ -351,6 +423,8 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       lazyLoadCovers()
     } catch (e) {
       console.warn('[localMusic] loadTracks failed:', e)
+    } finally {
+      state.loadingTracks = false
     }
   }
 
@@ -375,14 +449,16 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     try {
       for (const dir of state.directories) {
         if (!dir) continue
-        await platform.localApi.scan(dir)
+        try {
+          await platform.localApi.scan(dir)
+        } catch (e) {
+          console.warn('[localMusic] scan dir failed:', dir, e)
+        }
       }
       // 扫描完成后从 DB 重新加载全部歌曲
       await loadTracks()
       // 异步加载封面（不阻塞）
       lazyLoadCovers()
-    } catch (e) {
-      console.warn('[localMusic] scanAll failed:', e)
     } finally {
       state.scanning = false
       platform.localApi.removeScanListeners()

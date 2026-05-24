@@ -63,6 +63,7 @@ contextBridge.exposeInMainWorld('localApi', {
   trackCount: () => ipcRenderer.invoke('local:track-count'),
   getLyric: (filePath) => ipcRenderer.invoke('local:get-lyric', filePath),
   getCover: (filePath) => ipcRenderer.invoke('local:get-cover', filePath),
+  getCoversBatch: (filePaths) => ipcRenderer.invoke('local:get-covers-batch', filePaths),
   readFile: (filePath) => ipcRenderer.invoke('local:read-file', filePath),
   computeFileMd5: (filePath) => ipcRenderer.invoke('local:compute-file-md5', filePath),
   onScanProgress: (cb) => {

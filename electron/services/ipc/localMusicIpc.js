@@ -68,6 +68,14 @@ function registerLocalMusicIpc(scanner, db) {
     console.log("[local:clear-all] \u5F00\u59CB\u6E05\u9664\u6240\u6709\u6B4C\u66F2\u6570\u636E");
     try {
       const deleted = await db.clearAllTracks();
+
+      // 清除封面缓存
+      coverCache.clearCache();
+      const { app: electronApp } = await import("electron");
+      const mosaicDir = path.join(electronApp.getPath("userData"), "mosaic-covers");
+      if (fs.existsSync(mosaicDir)) {
+        fs.rmSync(mosaicDir, { recursive: true, force: true });
+      }
       console.log("[local:clear-all] \u6E05\u9664\u5B8C\u6210, \u5171\u5220\u9664", deleted, "\u6761");
       return { success: true, deleted };
     } catch (e) {
@@ -113,6 +121,21 @@ function registerLocalMusicIpc(scanner, db) {
   ipcMain.handle("local:get-cover", async (_event, filePath) => {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked get-cover path:', filePath); return null; }
     return coverCache.getCover(filePath);
+  });
+  // 批量获取封面：单次 IPC 调用替代 N 次独立调用，大幅减少 IPC 开销
+  ipcMain.handle("local:get-covers-batch", async (_event, filePaths) => {
+    if (!filePaths || !filePaths.length) return []
+    const BATCH = 16
+    const results = []
+    for (let i = 0; i < filePaths.length; i += BATCH) {
+      const batch = filePaths.slice(i, i + BATCH)
+      const batchResults = await Promise.all(batch.map(fp => {
+        if (!isPathSafe(fp)) return null
+        return coverCache.getCover(fp)
+      }))
+      results.push(...batchResults)
+    }
+    return results
   });
   ipcMain.handle("local:read-file", async (_event, filePath) => {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked read-file path:', filePath); return null; }

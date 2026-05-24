@@ -14,6 +14,7 @@ export interface LocalApi {
   trackCount(): Promise<number>
   getLyric(filePath: string): Promise<{ text: string; format: string } | null>
   getCover(filePath: string): Promise<string | null>
+  getCoversBatch(filePaths: string[]): Promise<(string | null)[]>
   readFile(filePath: string): Promise<ArrayBuffer | null>
   computeFileMd5(filePath: string): Promise<{ md5: string; size: number } | null>
   onScanProgress(cb: (data: any) => void): void

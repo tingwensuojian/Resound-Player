@@ -41,7 +41,11 @@
       </button>
     </div>
 
-    <div v-if="!list.length && !localMusicStore.state.scanning" class="local-empty">
+    <div v-if="localMusicStore.state.loadingTracks" class="local-loading">
+      <p>正在加载歌曲列表…</p>
+    </div>
+
+    <div v-else-if="!list.length && !localMusicStore.state.scanning" class="local-empty">
       <p>还没有本地歌曲，点击"扫描"添加</p>
     </div>
 
@@ -213,7 +217,6 @@ function onDirSelect(label: string) {
 
 const list = computed(() => {
   const tracks = localMusicStore.filteredTracks
-  console.log('[LocalSongsPage] filteredTracks count=', tracks.length, 'total in store=', localMusicStore.state.tracks.length, 'directories=', localMusicStore.state.directories.length)
   return tracks
 })
 
@@ -229,10 +232,7 @@ const filteredList = computed(() => {
 
 onMounted(async () => {
   if (!localMusicStore.hasLocalSupport) return
-  if (!localMusicStore.state.tracks.length) {
-    await localMusicStore.loadTracks()
-  }
-  // 如果数据库为空但存了目录，自动触发扫描
+  // 数据由 LocalMusicHub 统一加载，此处仅做兜底扫描
   if (!localMusicStore.state.tracks.length && localMusicStore.state.directories.length && !localMusicStore.state.scanning) {
     console.log('[LocalSongsPage] 数据库为空，自动扫描', localMusicStore.state.directories.length, '个目录')
     localMusicStore.scanAll()
@@ -472,6 +472,7 @@ function handlePlayAll() {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent) inset, var(--glass-highlight) !important;
 }
+.local-loading { text-align: center; padding: var(--space-8); color: var(--text-soft); }
 .local-empty { text-align: center; padding: var(--space-8); color: var(--text-soft); }
 .local-scanning { padding: var(--space-3); background: var(--accent-soft); border-radius: var(--radius-sm); color: var(--accent); font-size: var(--text-label-sm); }
 

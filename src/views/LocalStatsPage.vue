@@ -35,7 +35,7 @@
     <div v-else class="recent-list">
       <div v-for="track in recent" :key="track.id" class="recent-row" @dblclick="playTrack(track)">
         <span class="recent-cover">
-          <img v-if="track.coverUrl" :src="track.coverUrl" class="recent-img" alt="" />
+          <img v-if="track.coverUrl" :src="track.coverUrl" class="recent-img hover-scale-image" alt="" loading="lazy" />
           <span v-else class="recent-placeholder"><svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M844.743872 64.641229l-483.775168 80.814584c-1.567705 0.25071-3.031033 0.710175-4.453429 1.254573l-17.475 0c-11.915377 0-21.38403 9.532097-21.38403 21.280676l0 553.029462c-18.875906-10.912537-40.825824-17.140379-64.216557-17.140379-70.927399 0-128.433114 57.359382-128.433114 128.139425S182.512289 960.15695 253.439688 960.15695c70.926376 0 128.433114-57.359382 128.433114-128.139425 0-5.184069-0.314155-10.285251-0.899486-15.259542 0.585331-1.964748 0.899486-4.013407 0.899486-6.187933l0-449.764564 449.513854-79.267345 0 311.298955c-18.875906-10.870582-40.825824-17.142425-64.216557-17.142425-70.927399 0-128.433114 57.401338-128.433114 128.183428 0 70.738088 57.505715 128.139425 128.433114 128.139425 70.926376 0 128.432091-57.401338 128.432091-128.139425 0-5.184069-0.313132-10.285251-0.898463-15.301498 0.585331-1.966795 0.898463-4.015454 0.898463-6.187933l0-597.97307c0-10.45205-7.587815-19.190061-17.579377-20.946055-3.491521-2.173502-7.881504-3.051499-12.710486-2.257413l-11.370978 1.922792-1.170662 0C849.927941 63.135946 847.21004 63.679321 844.743872 64.641229z" fill="currentColor"/></svg></span>
         </span>
         <span class="recent-title" :title="track.title">{{ track.title }}</span>
@@ -119,21 +119,26 @@ async function removeDir(dir: string) {
   if (!dir) return
   const label = getDirLabel(dir)
   if (!confirm(`确定移除扫描目录「${label}」？该目录下的歌曲将从数据库同步删除。`)) return
+
+  let deleted = false
   try {
     if (platform.localApi) {
-      await platform.localApi.deleteTracksByDirectory(dir)
+      const result = await platform.localApi.deleteTracksByDirectory(dir)
+      deleted = true
+    } else {
+      deleted = true
     }
   } catch (e) {
     console.error('[localStats] delete tracks failed:', e)
   }
+
+  if (!deleted) {
+    alert('删除失败，请稍后重试')
+    return
+  }
+
   localMusicStore.removeDirectoryPath(dir)
-  // 先更新 localStorage 中的目录列表，防止 saveDirectories 合并旧数据加回来
-  try {
-    const saved: string[] = JSON.parse(localStorage.getItem('local_music_dirs') || '[]')
-    localStorage.setItem('local_music_dirs', JSON.stringify(saved.filter((d: string) => d !== dir)))
-  } catch { /* ignore */ }
   await localMusicStore.loadTracks()
-  localMusicStore.saveDirectories()
   // 重新加载最近添加列表
   if (platform.localApi) {
     try {

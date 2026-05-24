@@ -1182,7 +1182,6 @@ onBeforeUnmount(() => {
 .content {
   position: relative;
   width: 100%;
-  height: var(--content-height);
   min-height: 0;
   padding: var(--content-padding);
   padding-bottom: var(--content-padding);
@@ -1237,7 +1236,6 @@ onBeforeUnmount(() => {
 
 .content.content--user-page,
 .content:has(.history-page-host) {
-  overflow: hidden;
   padding-bottom: 16px;
 }
 
