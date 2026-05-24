@@ -1,5 +1,6 @@
 <template>
-  <div class="layout" :style="layoutVars">
+  <MiniPlayBar v-if="uiStore.state.isMiniMode" />
+  <div v-else class="layout" :style="layoutVars">
     <Sidebar
       v-show="!isNarrow || sidebarOpen"
       :active-key="sidebarActiveKey"
@@ -184,6 +185,7 @@ import { computed, KeepAlive, onBeforeUnmount, onMounted, watch, ref, defineAsyn
 import { platform } from './utils/platform';
 import HomePanel from './components/HomePanel.vue';
 import PlayerBar from './components/PlayerBar.vue';
+import MiniPlayBar from './components/MiniPlayBar.vue';
 import PlayQueuePanel from './components/PlayQueuePanel.vue';
 import PlayerExpanded from './components/PlayerExpanded.vue';
 import PlaceholderPanel from './components/PlaceholderPanel.vue';
@@ -1086,6 +1088,10 @@ watch(
 );
 
 /** 处理本地页面间导航事件 */
+function handleMiniModeState(e: Event) {
+  uiStore.state.isMiniMode = !!(e as CustomEvent).detail;
+}
+
 function handleLocalNavigate(e: Event) {
   const detail = (e as CustomEvent).detail
   if (detail?.page && ['local-music', 'local-songs', 'local-artists', 'local-albums', 'local-folders', 'local-playlists', 'local-playlist-detail'].includes(detail.page)) {
@@ -1109,6 +1115,7 @@ onMounted(async () => {
   window.addEventListener('local-navigate', handleLocalNavigate);
   window.addEventListener('open-tray-settings', openTraySettings);
   window.addEventListener('open-album-detail', handleOpenAlbumDetail);
+  document.addEventListener('mini-mode-state', handleMiniModeState);
 
   await userStore.hydrate();
   playerStore.init();
@@ -1140,6 +1147,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('local-navigate', handleLocalNavigate);
   window.removeEventListener('open-tray-settings', openTraySettings);
   window.removeEventListener('open-album-detail', handleOpenAlbumDetail);
+  document.removeEventListener('mini-mode-state', handleMiniModeState);
 });
 </script>
 

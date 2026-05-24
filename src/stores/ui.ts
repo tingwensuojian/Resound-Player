@@ -16,6 +16,7 @@ const ACCENT_COLOR_KEY = 'tm_accent_custom_color';
 const RESUME_AFTER_MV_KEY = 'tm_resume_after_mv';
 const SHOW_INTEL_KEY = 'tm_show_intel_indicator';
 const AUTO_HIDE_UI_KEY = 'tm_auto_hide_player_ui';
+const MINI_ALWAYS_ON_TOP_KEY = 'tm_mini_always_on_top';
 
 export type UiState = {
   themeMode: ThemeMode;
@@ -33,6 +34,8 @@ export type UiState = {
   defaultSearchHint: string;
   defaultSearchKeyword: string;
   defaultSearchLoading: boolean;
+  isMiniMode: boolean;
+  miniAlwaysOnTop: boolean;
 };
 
 let mediaQuery: MediaQueryList | null = null;
@@ -108,6 +111,8 @@ export const useUiStore = defineStore('ui', () => {
     defaultSearchHint: '',
     defaultSearchKeyword: '',
     defaultSearchLoading: false,
+    isMiniMode: false,
+    miniAlwaysOnTop: false,
   });
 
   function init() {
@@ -129,6 +134,12 @@ export const useUiStore = defineStore('ui', () => {
     state.showIntelligenceIndicator = savedIntel === null ? true : savedIntel === '1';
     const savedAutoHide = localStorage.getItem(AUTO_HIDE_UI_KEY);
     state.autoHidePlayerUI = savedAutoHide === null ? true : savedAutoHide === '1';
+
+    // 迷你模式置顶偏好
+    const savedMiniTop = sessionStorage.getItem(MINI_ALWAYS_ON_TOP_KEY);
+    if (savedMiniTop !== null) {
+      state.miniAlwaysOnTop = savedMiniTop === '1';
+    }
 
     state.resolvedTheme = resolveTheme(state.themeMode);
     applyThemeToDom(state.resolvedTheme);
@@ -197,6 +208,26 @@ export const useUiStore = defineStore('ui', () => {
     localStorage.setItem(AUTO_HIDE_UI_KEY, enabled ? '1' : '0');
   }
 
+  function enterMiniMode() {
+    if (!state.isMiniMode) {
+      window.appEnv?.miniMode?.enter(state.miniAlwaysOnTop);
+    }
+  }
+
+  function exitMiniMode() {
+    if (state.isMiniMode) {
+      window.appEnv?.miniMode?.exit();
+    }
+  }
+
+  function setMiniAlwaysOnTop(enabled: boolean) {
+    state.miniAlwaysOnTop = enabled;
+    sessionStorage.setItem(MINI_ALWAYS_ON_TOP_KEY, enabled ? '1' : '0');
+    if (state.isMiniMode) {
+      window.appEnv?.miniMode?.setAlwaysOnTop(enabled);
+    }
+  }
+
   function togglePlayQueue() {
     state.showPlayQueue = !state.showPlayQueue;
   }
@@ -237,6 +268,9 @@ export const useUiStore = defineStore('ui', () => {
     setResumeAfterMv,
     setShowIntelligenceIndicator,
     setAutoHidePlayerUI,
+    enterMiniMode,
+    exitMiniMode,
+    setMiniAlwaysOnTop,
     togglePlayQueue,
     loadDefaultSearchKeyword,
     dispose,

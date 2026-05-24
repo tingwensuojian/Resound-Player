@@ -28,6 +28,14 @@ declare global {
         }) => void;
         onConfigChanged: (cb: (config: { enabled: boolean; mode: 'title' | 'popup'; bgColor?: string }) => void) => () => void;
       };
+      /** 迷你播放器 API（仅桌面端） */
+      miniMode?: {
+        enter: (alwaysOnTop?: boolean) => void;
+        exit: () => void;
+        setAlwaysOnTop: (enabled: boolean) => void;
+        resize: (height: number) => void;
+        onStateChange: (cb: (isMini: boolean) => void) => () => void;
+      };
       /** 桌面歌词 API（仅桌面端） */
       desktopLyric?: {
         getConfig: () => Promise<{

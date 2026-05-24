@@ -119,6 +119,9 @@
           </div>
         </transition>
       </div>
+      <button v-if="platform.isDesktop" class="topbar-btn" title="迷你模式" @click="uiStore.enterMiniMode()">
+        <PictureInPicture2 :size="16" />
+      </button>
       <div v-if="platform.isDesktop" class="win-controls">
         <button class="win-btn" type="button" title="最小化" @click="minimizeWindow">
           <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1" fill="currentColor"/></svg>
@@ -144,7 +147,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Sparkles, Search } from 'lucide-vue-next';
+import { Sparkles, Search, PictureInPicture2 } from 'lucide-vue-next';
 import AnimatedAppear from './AnimatedAppear.vue';
 import { platform } from '../utils/platform';
 
@@ -968,6 +971,23 @@ onBeforeUnmount(() => {
   margin-left: 6px;
   -webkit-app-region: no-drag;
 }
+.topbar-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-sub);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.topbar-btn:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-muted));
+  color: var(--text-main);
+}
+
 .win-btn {
   width: 36px;
   height: 36px;

@@ -522,6 +522,7 @@ const groupsMap: Record<string, SettingGroup[]> = {
         { key: 'unblock', label: '音源替换', desc: '非会员用户，建议打开。可享受所有会员歌曲播放。仅对播放音乐有限制，下载不受该选项的管理。启用后自动从波点/酷狗/咪咕等源替换无法播放的歌曲', type: 'switch' },
         { key: 'unblockSources', label: '音源优先级', desc: '按从上到下的顺序逐个尝试，第一个匹配成功的使用，全部失败则使用官方音源', type: 'source-order' },
         { key: 'paidContentSkip', label: '付费内容自动跳过', desc: '遇到未购买的付费播客时自动跳过到下一首，关闭则停止播放', type: 'switch' },
+        { key: 'miniAlwaysOnTop', label: '迷你模式窗口置顶', desc: '迷你模式下将播放器置于所有窗口之上', type: 'switch' },
         { key: 'playMode', label: '默认播放模式', desc: '循环/单曲/随机播放策略', type: 'select', options: ['列表循环', '单曲循环', '随机播放'] },
         { key: 'playbackRate', label: '播放速度', desc: '设置全局默认播放速度，各歌曲可在底部栏单独调整', type: 'select', options: ['0.5x', '0.75x', '1.0x', '1.25x', '1.5x', '2.0x', '2.5x', '3.0x'] },
         { key: 'crossfade', label: '淡入淡出时长', desc: '控制切歌时过渡顺滑程度', type: 'range', min: 0, max: 12 },
@@ -714,6 +715,7 @@ const switchState = reactive<Record<string, boolean>>({
   showIntelligenceIndicator: uiStore.state.showIntelligenceIndicator,
   autoHidePlayerUI: uiStore.state.autoHidePlayerUI,
   paidContentSkip: playerStore.state.paidContentSkip,
+  miniAlwaysOnTop: uiStore.state.miniAlwaysOnTop,
   trayLyricEnabled: false, // 实际值从主进程加载
   desktopLyricEnabled: false, // 实际值从主进程加载
   desktopLyricAlwaysShowBg: false, // 实际值从主进程加载
@@ -888,6 +890,13 @@ watch(
   (enabled) => {
     playerStore.state.paidContentSkip = Boolean(enabled);
     playerStore.persist();
+  },
+);
+
+watch(
+  () => switchState.miniAlwaysOnTop,
+  (enabled) => {
+    uiStore.setMiniAlwaysOnTop(Boolean(enabled));
   },
 );
 

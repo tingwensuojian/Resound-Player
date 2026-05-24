@@ -215,10 +215,11 @@ async function createMainWindow(ports) {
     show: false,
     backgroundColor: '#1a1a2e',
     icon: iconPath,
-    // macOS: titleBarStyle hidden → 红绿灯 hover 显示、无原生标题栏边条
+    // macOS: frame: false + customButtonsOnHover → 无边框 + 原生红绿灯 hover 显示
+    // SPlayer-dev 验证：此组合为 Electron 官方支持的 frameless 窗口正确用法
     // 其他平台：frame: false → 无边框，依赖自定义控件
     ...(isMac
-      ? { titleBarStyle: 'customButtonsOnHover' }
+      ? { frame: false, titleBarStyle: 'customButtonsOnHover' }
       : { frame: false }
     ),
     webPreferences: {
@@ -449,6 +450,79 @@ ipcMain.handle('window-is-maximized', (event) => {
 ipcMain.handle('window-close', (event) => {
   const bw = BrowserWindow.fromWebContents(event.sender);
   bw?.close();
+});
+
+// ── 迷你模式 IPC ──
+let preMiniState = null;
+
+ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
+  if (!win || preMiniState) return;
+
+  preMiniState = {
+    x: win.getPosition()[0],
+    y: win.getPosition()[1],
+    width: win.getSize()[0],
+    height: win.getSize()[1],
+    isMaximized: win.isMaximized(),
+    wasFullScreen: win.isFullScreen(),
+  };
+
+  function applyMiniSize() {
+    const display = screen.getPrimaryDisplay();
+    const { width: screenWidth } = display.workAreaSize;
+    const miniWidth = 340;
+    const miniHeight = 70;
+    const margin = 20;
+
+    win.setResizable(false);
+    win.setMinimumSize(miniWidth, miniHeight);
+    win.setMaximumSize(miniWidth, 500);
+    win.setSize(miniWidth, miniHeight);
+    win.setPosition(screenWidth - miniWidth - margin, margin);
+    win.setAlwaysOnTop(!!alwaysOnTop);
+    win.webContents.send('mini-mode:state-change', true);
+  }
+
+  if (win.isFullScreen()) {
+    win.once('leave-full-screen', () => {
+      applyMiniSize();
+    });
+    win.setFullScreen(false);
+  } else {
+    applyMiniSize();
+  }
+});
+
+ipcMain.on('mini-mode:exit', () => {
+  if (!win || !preMiniState) return;
+
+  win.setAlwaysOnTop(false);
+  win.setResizable(true);
+  win.setMinimumSize(1100, 700);
+  win.setMaximumSize(0, 0);
+
+  const { x, y, width, height, isMaximized, wasFullScreen } = preMiniState;
+  preMiniState = null;
+
+  win.setSize(width, height);
+  win.setPosition(x, y);
+  if (wasFullScreen) {
+    win.setFullScreen(true);
+  } else if (isMaximized) {
+    win.maximize();
+  }
+  win.webContents.send('mini-mode:state-change', false);
+});
+
+ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
+  if (!win || !preMiniState) return;
+  win.setAlwaysOnTop(!!enabled);
+});
+
+ipcMain.on('mini-mode:resize', (_event, height) => {
+  if (!win || !preMiniState) return;
+  const clampedHeight = Math.max(70, Math.min(height, 500));
+  win.setSize(340, clampedHeight);
 });
 
 // ── 缓存持久化 IPC ──

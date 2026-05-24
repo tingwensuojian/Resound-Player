@@ -52,6 +52,18 @@ contextBridge.exposeInMainWorld('appEnv', {
       return () => ipcRenderer.removeListener('desktop-lyric:config-changed', handler);
     },
   },
+  // ── 迷你模式 API ──
+  miniMode: {
+    enter: (alwaysOnTop) => ipcRenderer.send('mini-mode:enter', alwaysOnTop),
+    exit: () => ipcRenderer.send('mini-mode:exit'),
+    setAlwaysOnTop: (enabled) => ipcRenderer.send('mini-mode:set-always-on-top', enabled),
+    resize: (height) => ipcRenderer.send('mini-mode:resize', height),
+    onStateChange: (cb) => {
+      const handler = (_e, isMini) => cb(isMini);
+      ipcRenderer.on('mini-mode:state-change', handler);
+      return () => ipcRenderer.removeListener('mini-mode:state-change', handler);
+    },
+  },
 });
 
 // ── 本地音乐 IPC ──
@@ -124,7 +136,13 @@ ipcRenderer.on('tray-action', (_event, action) => {
   document.dispatchEvent(new CustomEvent('tray-action', { detail: action }));
 });
 
-// 标记桌面端，供 CSS 选择器控制平台专属 UI 显隐
+// ── 迷你模式状态变更 → 自定义 DOM 事件 ──
+ipcRenderer.on('mini-mode:state-change', (_event, isMini) => {
+  document.dispatchEvent(new CustomEvent('mini-mode-state', { detail: isMini, bubbles: true }));
+});
+
+// 标记桌面端及平台，供 CSS 选择器控制平台专属 UI 显隐
 document.addEventListener('DOMContentLoaded', () => {
   document.documentElement.classList.add('resound-desktop');
+  document.documentElement.dataset.platform = process.platform;
 });
