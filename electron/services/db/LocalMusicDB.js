@@ -302,6 +302,7 @@ class LocalMusicDB {
   }
 
   getTrackByPath(filePath) {
+    if (!filePath) return Promise.resolve(null)
     const norm = filePath.replace(/\\\\/g, "/");
     const row = this.#queryOne(
       "SELECT * FROM tracks WHERE REPLACE(path, '\\\\', '/') = ?",
@@ -361,10 +362,12 @@ class LocalMusicDB {
   }
 
   removeTracks(paths) {
-    if (!paths.length) return Promise.resolve();
+    if (!paths || !paths.length) return Promise.resolve();
+    const validPaths = paths.filter(p => p)
+    if (!validPaths.length) return Promise.resolve();
     return this.#enqueueWrite(() => {
-      const placeholders = paths.map(() => "?").join(",");
-      const normalized = paths.map((p) => p.replace(/\\\\/g, "/").toLowerCase());
+      const placeholders = validPaths.map(() => "?").join(",");
+      const normalized = validPaths.map((p) => p.replace(/\\\\/g, "/").toLowerCase());
 
       // 先获取要删除的 track IDs（用于清理 playlist_tracks）
       const toRemove = this.#queryAll(
@@ -400,6 +403,7 @@ class LocalMusicDB {
   }
 
   removeTracksByDirectory(dirPath) {
+    if (!dirPath) return this.#enqueueWrite(() => 0)
     const prefix = dirPath.replace(/\/$/g, "").replace(/\\\\/g, "/").toLowerCase() + "/";
     return this.#enqueueWrite(() => {
       const toRemove = this.#queryAll(

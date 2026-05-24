@@ -159,6 +159,7 @@ async function removeSelected() {
   const paths = filteredList.value
     .filter(t => selectedIds.value.has(t.id))
     .map(t => t.path)
+    .filter(Boolean)
 
   if (!paths.length) return
 
@@ -194,7 +195,7 @@ function onSortSelect(label: string) {
   if (field) localMusicStore.toggleSort(field)
 }
 
-const dirLabels = computed(() => localMusicStore.state.directories.map(d => getDirLabel(d)))
+const dirLabels = computed(() => localMusicStore.state.directories.map(d => getDirLabel(d)).filter(Boolean))
 
 const activeDirLabel = computed(() => {
   if (!activeDirFilter.value) return '所有目录'
@@ -240,6 +241,7 @@ onMounted(async () => {
 
 // 目录标签：提取最后一级目录名
 function getDirLabel(dirPath: string): string {
+  if (!dirPath) return ''
   const parts = dirPath.replace(/\\/g, '/').split('/').filter(Boolean)
   return parts[parts.length - 1] || dirPath
 }
@@ -425,9 +427,13 @@ function sortBy(field: string) {
   localMusicStore.toggleSort(field)
 }
 
-function handleScan() {
+async function handleScan() {
   if (!localMusicStore.state.directories.length) {
-    localMusicStore.addDirectory()
+    if (!platform.localApi) return
+    const dir = await platform.localApi.selectDirectory()
+    if (!dir) return
+    localMusicStore.addDirectory(dir)
+    localMusicStore.scanAll()
   } else {
     localMusicStore.scanAll()
   }

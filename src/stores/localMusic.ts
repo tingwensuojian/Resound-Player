@@ -137,6 +137,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
 
     const dirMap = new Map<string, string>()
     for (const d of state.directories) {
+      if (!d) continue
       const parts = d.replace(/\\/g, '/').replace(/\/+$/, '').split('/')
       const baseName = parts[parts.length - 1] || d
       dirMap.set(baseName, d)
@@ -167,18 +168,21 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       const raw = localStorage.getItem('local_music_dirs')
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) state.directories = parsed
+        if (Array.isArray(parsed)) state.directories = parsed.filter(d => d)
       }
     } catch { /* ignore */ }
   }
 
   function saveDirectories() {
     try {
+      const clean = state.directories.filter(d => d)
+      if (clean.length !== state.directories.length) state.directories = clean
       localStorage.setItem('local_music_dirs', JSON.stringify(state.directories))
     } catch { /* silently fail */ }
   }
 
   function addDirectory(dir: string) {
+    if (!dir) return
     if (!state.directories.includes(dir)) {
       state.directories.push(dir)
       saveDirectories()
@@ -211,7 +215,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       if (!uncached.length) return
       await Promise.all(uncached.map(async (track) => {
         try {
-          const cover = await (platform.localApi as any).readCover(track.path)
+          const cover = await platform.localApi.getCover(track.path)
           if (cover) track.coverUrl = cover
         } catch { /* ignore single failure */ }
       }))
@@ -333,16 +337,56 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     if (pl) { pl.tracks = pl.tracks.filter((t: any) => t.id !== trackId); savePlaylists() }
   }
 
-  async function loadTracks() {}
+  async function loadTracks() {
+    if (!platform.localApi) return
+    try {
+      const tracks = await platform.localApi.getAll()
+      state.tracks = (tracks || []).map((t: any) => ({
+        ...t,
+        coverUrl: '',
+        source: 'local' as const,
+        hasLyrics: Boolean(t.hasLyrics),
+      }))
+      // 异步加载封面（不阻塞）
+      lazyLoadCovers()
+    } catch (e) {
+      console.warn('[localMusic] loadTracks failed:', e)
+    }
+  }
 
   async function scanAll() {
     if (state.scanning) return
+    if (!platform.localApi) return
+    if (!state.directories.length) return
+
     state.scanning = true
     state.progress = { current: 0, total: 0 }
+
+    // 注册扫描进度监听
+    const progressHandler = (data: any) => {
+      if (data.type === 'progress') {
+        state.progress = { current: data.current || 0, total: data.total || 0 }
+      } else if (data.type === 'error') {
+        console.warn('[localMusic] scan error:', data.message)
+      }
+    }
+    platform.localApi.onScanProgress(progressHandler)
+
     try {
-      if ((platform.localApi as any)?.startScan) await (platform.localApi as any).startScan()
-    } catch (e) { console.warn('[localMusic] scanAll failed:', e) }
-    finally { state.scanning = false }
+      for (const dir of state.directories) {
+        if (!dir) continue
+        await platform.localApi.scan(dir)
+      }
+      // 扫描完成后从 DB 重新加载全部歌曲
+      await loadTracks()
+      // 异步加载封面（不阻塞）
+      lazyLoadCovers()
+    } catch (e) {
+      console.warn('[localMusic] scanAll failed:', e)
+    } finally {
+      state.scanning = false
+      platform.localApi.removeScanListeners()
+    }
   }
 
   function removeDirectoryPath(path: string) {

@@ -35,12 +35,10 @@ TS2322: Type 'string | number' is not assignable to type 'number | undefined'
 
 **风险**：API 响应的 id 字段可能是字符串。直接 `Number()` 强转可能导致 NaN。建议逐个确认来源类型，必要时加 `Number()` 或 `String()` 转换。
 
-### 2. 实参个数不匹配（~6 处）
+### 2. 实参个数不匹配（~3 处）
 
 涉及文件：
 - `SettingsPage.vue` lines 1160, 1165 — 调用了期望 1 个参数的函数但传了 0 个
-- `LocalStatsPage.vue` lines 93, 98 — 同上
-- `LocalSongsPage.vue` line 430 — 同上
 - `HeartbeatActivateEffect.vue` line 161 — 期望 0-1 参数但传了 2 个
 
 ```
@@ -48,7 +46,11 @@ TS2554: Expected 1 arguments, but got 0
 TS2554: Expected 0-1 arguments, but got 2
 ```
 
-**风险**：**运行时可能抛异常**。函数签名改了但调用方没同步。需要逐行确认函数签名变化。
+**修复状态**：
+- ~~`LocalStatsPage.vue` lines 93, 98~~ — ✅ 已修复：`addDir()`/`handleScan()` 改为先调 `selectDirectory()` 再传参
+- ~~`LocalSongsPage.vue` line 430~~ — ✅ 已修复：同上
+
+**剩余风险**：需要逐行确认函数签名变化。
 
 ### 3. `string` 不能赋值给联合字面量类型（~6 处）
 

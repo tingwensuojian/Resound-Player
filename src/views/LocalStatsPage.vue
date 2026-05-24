@@ -89,13 +89,21 @@ watch(() => localMusicStore.state.tracks.length, () => {
   }).catch(() => {})
 })
 
-function addDir() {
-  localMusicStore.addDirectory()
+async function addDir() {
+  if (!platform.localApi) return
+  const dir = await platform.localApi.selectDirectory()
+  if (!dir) return
+  localMusicStore.addDirectory(dir)
 }
 
-function handleScan() {
+async function handleScan() {
   if (!localMusicStore.state.directories.length) {
-    localMusicStore.addDirectory()
+    if (!platform.localApi) return
+    const dir = await platform.localApi.selectDirectory()
+    if (!dir) return
+    localMusicStore.addDirectory(dir)
+    // 添加目录后自动触发扫描
+    localMusicStore.scanAll()
   } else {
     localMusicStore.scanAll()
   }
@@ -108,6 +116,7 @@ async function clearAllData() {
 }
 
 async function removeDir(dir: string) {
+  if (!dir) return
   const label = getDirLabel(dir)
   if (!confirm(`确定移除扫描目录「${label}」？该目录下的歌曲将从数据库同步删除。`)) return
   try {
@@ -134,6 +143,7 @@ async function removeDir(dir: string) {
 }
 
 function getDirLabel(dirPath: string): string {
+  if (!dirPath) return ''
   const parts = dirPath.replace(/\\/g, '/').split('/').filter(Boolean)
   return parts[parts.length - 1] || dirPath
 }

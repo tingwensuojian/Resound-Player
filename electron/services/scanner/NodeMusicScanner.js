@@ -19,7 +19,7 @@ class NodeMusicScanner {
 
   async *scanDir(dirPath, cachedMtimes) {
     // 先通知开始收集文件
-    yield { type: "progress", current: 0, total: 0, phase: "collecting" };
+    if (!dirPath) { yield { type: "error", path: "", message: "扫描路径为空" }; return; }    yield { type: "progress", current: 0, total: 0, phase: "collecting" };
 
     const files = [];
     const collectState = { found: 0, error: null };

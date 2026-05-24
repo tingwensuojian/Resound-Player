@@ -37,7 +37,7 @@ ipcMain.handle("select-directory", async () => {
 function registerLocalMusicIpc(scanner, db) {
   const coverCache = new CoverCache();
   ipcMain.handle("local:scan", async (event, dirPath) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!dirPath) return { success: false, error: "扫描路径为空" };    const win = BrowserWindow.fromWebContents(event.sender);
     const send = (data) => {
       if (!win || win.isDestroyed()) return;
       event.sender.send("local:scan-progress", data);
