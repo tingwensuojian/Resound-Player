@@ -12,20 +12,21 @@ macOS 上默认行为：红绿灯按钮（关闭、最小化、最大化）始�
 
 ### 核心原理
 
-利用 Electron 的 `titleBarStyle: 'customButtonsOnHover'`（macOS 独占）：
+利用 Electron 的 `frame: false` + `titleBarStyle: 'customButtonsOnHover'`（macOS 独占）：
 
-- 红绿灯按钮由 macOS 原生渲染，不占用 DOM 布局空间（overlay 在 web 内容之上）
-- **Electron 控制显隐**：默认隐藏，hover 到窗口左上角时淡入显示
-- 无需 JS/CSS 控制红绿灯的显隐
-- 不产生原生标题栏边条
+- `frame: false` 移除原生窗口边框，确保全屏下无灰色标题栏条
+- `customButtonsOnHover` 使红绿灯按钮由 macOS 原生渲染在窗口左上角，默认隐藏，鼠标移到左上角区域时显示（hover 显隐）
+- 红绿灯作为 overlay 置于 web 内容之上，不占用 DOM 布局空间
 
 非 Mac 平台保持 `frame: false`，完全依赖右侧自定义按钮。
+
+此组合是 Electron 官方支持的 frameless 窗口正确用法。参考 SPlayer-dev 项目（Electron 39.4.0）使用相同配置且工作正常。
 
 ---
 
 ## 涉及的代码文件
 
-### 1. `electron/main.js` — 窗口创建
+### 1. `electron/main.js` — 窗口创建与全屏控制
 
 #### 窗口选项
 
@@ -39,10 +40,11 @@ win = new BrowserWindow({
   minHeight: 700,
   show: false,
   backgroundColor: '#1a1a2e',           // 必须匹配 theme.css 的 html 背景色
-  // macOS: titleBarStyle → 红绿灯 hover 显示、无原生标题栏边条
+  // macOS: frame: false + titleBarStyle customButtonsOnHover → 无边框 + 原生红绿灯 hover 显示
+  // SPlayer-dev 验证：此组合为 Electron 官方支持的 frameless 窗口正确用法
   // 其他平台：frame: false → 无边框，依赖自定义控件
   ...(isMac
-    ? { titleBarStyle: 'customButtonsOnHover' }
+    ? { frame: false, titleBarStyle: 'customButtonsOnHover' }
     : { frame: false }
   ),
   webPreferences: {
@@ -54,7 +56,7 @@ win = new BrowserWindow({
 });
 ```
 
-> **注意**：`titleBarStyle` 和 `frame: false` **不能同时设置**。macOS 上只需要 `titleBarStyle`，不要加 `frame: false`，否则红绿灯常显。非 Mac 平台单独用 `frame: false`。
+> **说明**：`frame: false` + `titleBarStyle: 'customButtonsOnHover'` 是 Electron 官方支持的 macOS frameless 窗口正确配置。`customButtonsOnHover` 的行为就是让红绿灯按钮默认隐藏、hover 时显示，macOS 原生渲染这些按钮在窗口内容之上，不需要任何 HTML/CSS。
 
 #### 最大化状态广播
 
@@ -222,19 +224,16 @@ onMounted(() => {
 
 ## 常见问题
 
-### Q: 为什么红绿灯一直显示，没有 hover 显隐？
+### Q: 红绿灯默认隐藏，hover 才显示？
 
-检查 `electron/main.js` 中的窗口选项。**不要同时设置** `frame: false` 和 `titleBarStyle: 'customButtonsOnHover'`。
+是的，项目使用 `frame: false` + `titleBarStyle: 'customButtonsOnHover'`。`frame: false` 移除原生窗口边框，`customButtonsOnHover` 让红绿灯在鼠标移到左上角区域时 hover 显示。
 
-✅ 正确（macOS）：
+当前配置（macOS）：`frame: false, titleBarStyle: 'customButtonsOnHover'`
+
+如果要红绿灯始终可见（全屏兼容但失去 hover 效果），可改为：
+
 ```js
-...(isMac ? { titleBarStyle: 'customButtonsOnHover' } : { frame: false })
-```
-
-❌ 错误：
-```js
-titleBarStyle: 'customButtonsOnHover',
-frame: false,  // 这会覆盖 titleBarStyle 的行为
+...(isMac ? { frame: false, titleBarStyle: 'hidden' } : { frame: false })
 ```
 
 ### Q: 自定义按钮在 Web 端显示怎么办？
