@@ -355,6 +355,21 @@ export async function getArtistDescription(id: number) {
   });
 }
 
+export async function getArtistSongs(
+  id: number,
+  params?: { order?: 'hot' | 'time'; limit?: number; offset?: number },
+) {
+  return apiClient.get('/artist/songs', {
+    params: {
+      id,
+      order: params?.order ?? 'time',
+      limit: params?.limit ?? 50,
+      offset: params?.offset ?? 0,
+      timestamp: Date.now(),
+    },
+  });
+}
+
 export async function getNewestAlbums() {
   return apiClient.get('/album/newest', {
     params: {

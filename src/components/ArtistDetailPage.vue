@@ -115,6 +115,52 @@
           </template>
         </VirtualTrackList>
 
+        <!-- 全部歌曲标签 -->
+        <template v-if="activeTab === 'all-songs'">
+          <VirtualTrackList
+            ref="allSongsListRef"
+            scroll-mode="parent"
+            scroll-host-selector=".playlist-detail-page"
+            :items="allSongs"
+            :row-height="68"
+            :item-key="(s: any) => s.id || s"
+            container-class="song-list"
+          >
+            <template #default="{ item: song, index: idx }">
+              <div
+                class="song-item"
+                :class="{ 'song-item--playing': isAllSongsCurrentTrack(song) }"
+                @dblclick="onAllSongsItemDblClick($event, idx)"
+              >
+                <PlayPauseButton :song-id="Number(song?.id || 0)" :index-label="idx + 1" @play="playAllSong(idx)" />
+                <img class="song-cover" :src="resolveSongCover(song) || coverUrl" :alt="song.name || '歌曲封面'" loading="lazy" />
+                <div class="song-meta">
+                  <p class="song-name">{{ song.name }}</p>
+                  <p class="song-artist">
+                    <button
+                      v-for="artistItem in getSongArtists(song)"
+                      :key="`${song.id}-${artistItem.id || artistItem.name}`"
+                      type="button"
+                      class="artist-link"
+                      @click.stop="openArtistDetail(artistItem)"
+                    >
+                      {{ artistItem.name || '未知歌手' }}
+                    </button>
+                    <span v-if="!getSongArtists(song).length">{{ resolveSongSubtitle(song) }}</span>
+                  </p>
+                </div>
+                <SongActions :song="song" @play-next="playNext" @add-to-playlist="showAddToPlaylist" @open-comment="openComment" @open-album="(albumId) => emit('open-album-detail', albumId)" @open-artist="openArtistDetail" @open-language="openLanguageDetail" @open-mv-player="(mv) => emit('open-mv-player', mv)" />
+              </div>
+            </template>
+            <template #sentinel>
+              <div v-if="allSongsHasMore && allSongs.length > 0" class="load-more-sentinel">
+                <button v-if="!allSongsLoading" type="button" class="load-more-btn" @click="fetchAllSongs()">加载更多</button>
+                <span v-else class="load-more-tip">加载中…</span>
+              </div>
+            </template>
+          </VirtualTrackList>
+        </template>
+
         <AnimatedAppear v-show="activeTab === 'albums'" tag="div" variant="content" rhythm="list" class-name="album-grid">
           <AnimatedAppear v-for="(album, idx) in albums" :key="album.id || idx" tag="button" variant="content" rhythm="list" :index="idx" class-name="entity-card album-card" type="button" @click="emit('open-album-detail', Number(album.id || 0), activeTab)">
             <img v-if="resolveAlbumCover(album)" class="entity-cover cover-image" :src="resolveAlbumCover(album)" :alt="album.name || '专辑封面'" loading="lazy" />
@@ -185,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { useDominantColor } from '../composables/useDominantColor';
 import { useApiData } from '../composables/useApiData';
@@ -201,7 +247,7 @@ import PlaylistPickerModal from './common/PlaylistPickerModal.vue';
 import { useEntitySubscribe } from '../composables/useEntitySubscribe';
 import { useSongRowConfig } from '../composables/useSongRowConfig';
 import { getSongArtists } from '../utils/trackHelpers';
-import { getArtistAlbums, getArtistDescription, getArtistDetail, getArtistMvs, getArtistTopSongs, getUserPlaylist, addTrackToPlaylist } from '../api/music';
+import { getArtistAlbums, getArtistDescription, getArtistDetail, getArtistMvs, getArtistSongs, getArtistTopSongs, getUserPlaylist, addTrackToPlaylist } from '../api/music';
 import { resolveArtistImageUrl, normalizeImageUrl } from '../utils/image';
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
@@ -280,15 +326,66 @@ const subscribeState = useEntitySubscribe({
   initialSubscribed: computed(() => artist.value?.subscribed ?? false),
 });
 const activeTab = computed({
-  get: () => (props.initialTab || 'songs') as 'songs' | 'albums' | 'mvs' | 'bio',
+  get: () => (props.initialTab || 'songs') as 'songs' | 'all-songs' | 'albums' | 'mvs' | 'bio',
   set: (v) => emit('update:active-tab', v),
 });
 const tabs = [
   { key: 'songs', label: '热门歌曲' },
+  { key: 'all-songs', label: '全部歌曲' },
   { key: 'albums', label: '专辑' },
   { key: 'mvs', label: 'MV' },
   { key: 'bio', label: '简介' },
 ] as const;
+
+// 全部歌曲标签状态
+const allSongs = ref<any[]>([]);
+const allSongsLoading = ref(false);
+const allSongsOffset = ref(0);
+const allSongsHasMore = ref(true);
+const allSongsPageSize = 50;
+
+async function fetchAllSongs(reset = false) {
+  if (allSongsLoading.value) return;
+  if (reset) {
+    allSongsOffset.value = 0;
+    allSongs.value = [];
+    allSongsHasMore.value = true;
+  }
+  if (!allSongsHasMore.value) return;
+
+  allSongsLoading.value = true;
+  try {
+    const res = await getArtistSongs(props.artistId, {
+      order: 'time',
+      limit: allSongsPageSize,
+      offset: allSongsOffset.value,
+    });
+    const newSongs = res?.data?.songs || res?.data?.data?.songs || [];
+    if (reset) {
+      allSongs.value = newSongs;
+    } else {
+      allSongs.value = [...allSongs.value, ...newSongs];
+    }
+    allSongsOffset.value += newSongs.length;
+    allSongsHasMore.value = newSongs.length >= allSongsPageSize;
+  } catch {
+    // 静默失败
+  } finally {
+    allSongsLoading.value = false;
+  }
+}
+
+function switchAllSongsOrder(order: 'hot' | 'time') {
+  if (allSongsOrder.value === order) return;
+  allSongsOrder.value = order;
+  fetchAllSongs(true);
+}
+
+watch(() => activeTab.value, (tab) => {
+  if (tab === 'all-songs' && allSongs.value.length === 0 && !allSongsLoading.value) {
+    fetchAllSongs(true);
+  }
+});
 
 const coverUrl = computed(() => resolveArtistImageUrl(artist.value));
 useDominantColor(coverUrl);
@@ -402,9 +499,17 @@ async function playSong(index: number) {
   await playerStore.playByIndex(index);
 }
 
+async function playAllSong(index: number) {
+  if (!allSongs.value.length) return;
+  playerStore.setPlaylist(allSongs.value, index);
+  await playerStore.playByIndex(index);
+}
+
 const { isCurrentTrack, onSongItemDblClick } = useSongRowConfig(playSong);
+const { isCurrentTrack: isAllSongsCurrentTrack, onSongItemDblClick: onAllSongsItemDblClick } = useSongRowConfig(playAllSong);
 
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
+const allSongsListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 /* 操作按钮 */
 const { checkAuth, showToast } = useAuthAction(
@@ -426,7 +531,7 @@ async function showAddToPlaylist(song: any) {
   try {
     const res = await getUserPlaylist(userStore.state.profile?.userId || 0, userStore.state.loginCookie || undefined);
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
-  } catch { playlistPickerList.value = []; }
+  } catch { playlistPickerList.value = []; showToast('加载歌单列表失败', 'error', 3000); }
   selectedPlaylistId.value = null;
   showPlaylistPicker.value = true;
 }
@@ -436,7 +541,10 @@ async function confirmAddToPlaylist() {
   if (!pid || !song) return;
   try {
     await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.state.loginCookie || undefined);
-  } catch {}
+    showToast('已添加至歌单', 'success', 3000);
+  } catch {
+    showToast('添加失败，请重试', 'error', 3000);
+  }
   showPlaylistPicker.value = false;
 }
 function openComment(songId: number) {
@@ -612,6 +720,81 @@ const { refresh } = useDetailStickyState(coverUrl);
   white-space: pre-wrap;
 }
 
+/* 全部歌曲工具栏 */
+.all-songs-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 var(--space-3) 0;
+}
+
+.all-songs-count {
+  font-size: var(--text-label-sm);
+  color: var(--text-sub);
+}
+
+.all-songs-segment {
+  display: flex;
+  gap: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.all-songs-segment-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: var(--text-label-sm);
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+
+.all-songs-segment-btn:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.all-songs-segment-btn:hover:not(.active) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.all-songs-segment-btn.active {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, #fff), color-mix(in srgb, var(--accent) 68%, #000));
+  color: #fff;
+}
+
+/* 加载更多 */
+.load-more-sentinel {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0;
+}
+
+.load-more-btn {
+  height: 36px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  color: var(--text-sub);
+  font-size: var(--text-label-sm);
+  cursor: pointer;
+  transition: background .18s, border-color .18s, transform .18s;
+}
+
+.load-more-btn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+}
+
+.load-more-tip {
+  color: var(--text-soft);
+  font-size: var(--text-label-sm);
+}
+
 @media (max-width: 767px) {
   .artist-tabs {
     gap: 10px;
@@ -626,6 +809,10 @@ const { refresh } = useDetailStickyState(coverUrl);
   .album-grid,
   .mv-grid {
     grid-template-columns: 1fr;
+  }
+
+  .all-songs-segment-btn {
+    padding: 0 12px;
   }
 }
 

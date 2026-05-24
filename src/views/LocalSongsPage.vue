@@ -82,27 +82,12 @@
     />
 
     <!-- 选择歌单对话框 -->
-    <Teleport to="body">
-      <div v-if="showPlaylistPicker" class="dialog-overlay" @click.self="cancelPlaylistPicker">
-        <div class="dialog-panel">
-          <h3 class="dialog-title">选择歌单</h3>
-          <div class="playlist-picker-list">
-            <button
-              v-for="pl in localMusicStore.state.playlists"
-              :key="pl.id"
-              class="playlist-picker-item"
-              @click="confirmPlaylistPicker(pl.id)"
-            >
-              {{ pl.name }}
-              <span class="playlist-picker-count">{{ pl.trackCount || 0 }} 首</span>
-            </button>
-          </div>
-          <div class="dialog-actions">
-            <button class="button-surface" @click="cancelPlaylistPicker">取消</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <PlaylistPickerDialog
+      :visible="showPlaylistPicker"
+      :playlists="localMusicStore.state.playlists"
+      @confirm="confirmPlaylistPicker"
+      @cancel="cancelPlaylistPicker"
+    />
   </section>
 </template>
 
@@ -120,6 +105,7 @@ const userStore = useUserStore()
 import { importToCloud } from '../api/music'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import VirtualSongList from '../components/VirtualSongList.vue'
+import PlaylistPickerDialog from '../components/PlaylistPickerDialog.vue'
 import DropdownSelect from '../components/ui/DropdownSelect.vue'
 import { searchMusic } from '../api/music'
 
@@ -173,6 +159,8 @@ async function removeSelected() {
     }
   } catch (e) {
     console.error('[localSongs] remove tracks failed:', e)
+    loginModalStore.showGlobalToast('删除失败，请重试', 'error', 3000)
+    return
   }
 
   selectedIds.value.clear()
@@ -303,6 +291,7 @@ function addToQueue(track: LocalTrack, playNext: boolean) {
     loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
   } else {
     playerStore.appendToQueue([song])
+    loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
   }
 }
 
@@ -320,7 +309,7 @@ async function addToPlaylist(track: LocalTrack) {
     if (!create) return
     const pl = await localMusicStore.createPlaylist('新歌单')
     if (pl) {
-      await localMusicStore.addTrackToPlaylist(pl.id, track.id)
+      await localMusicStore.addTrackToPlaylist(pl.id, track)
       loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
     }
     return
@@ -334,8 +323,12 @@ async function confirmPlaylistPicker(playlistId: string) {
   if (!track) return
   showPlaylistPicker.value = false
   pendingTrackForPlaylist.value = null
-  await localMusicStore.addTrackToPlaylist(playlistId, track.id)
-  loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
+  try {
+    await localMusicStore.addTrackToPlaylist(playlistId, track)
+    loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
+  } catch {
+    loginModalStore.showGlobalToast('添加失败，请重试', 'error', 3000)
+  }
 }
 
 function cancelPlaylistPicker() {
@@ -345,10 +338,13 @@ function cancelPlaylistPicker() {
 
 /** 定位到目录：将绝对路径转换为树路径，展开祖先节点，记录高亮 track，切换到目录标签页 */
 function showInFolder(track: LocalTrack) {
-  const treePath = localMusicStore.getTreePath(track.path)
-  if (!treePath) return
-  localMusicStore.expandFolderAncestors(treePath)
-  localMusicStore.state.selectedFolderPath = treePath
+  if (!track.path) {
+    loginModalStore.showGlobalToast('未找到对应目录，文件可能已被移动或删除', 'warning', 3000)
+    return
+  }
+  const parentDir = track.path.replace(/\\/g, '/').replace(/\/[^/]*$/, '')
+  localMusicStore.expandFolderAncestors(parentDir)
+  localMusicStore.state.selectedFolderPath = parentDir
   localMusicStore.state.locatedTrackId = track.id
   localMusicStore.state.activeView = 'folders'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
@@ -413,7 +409,9 @@ async function uploadToCloud(track: LocalTrack) {
       album: track.album || '未知专辑',
       cookie: userStore.state.loginCookie || undefined,
     })
-    if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
+    if ((data as any)?.duplicate === true) {
+      loginModalStore.showGlobalToast('文件已在云盘', 'info', 3000)
+    } else if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
       loginModalStore.showGlobalToast('已上传至云盘', 'success', 3000)
     } else {
       loginModalStore.showGlobalToast('上传失败，请稍后重试', 'warning', 3000)
@@ -511,67 +509,5 @@ function handlePlayAll() {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
-}
-</style>
-
-<!-- 非 scoped 样式：对话框遮罩 -->
-<style>
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-.dialog-panel {
-  background: var(--bg-surface, #fff);
-  border: 1px solid var(--border, #ddd);
-  border-radius: var(--radius-md, 12px);
-  padding: var(--space-5, 20px);
-  min-width: 320px;
-  max-width: 420px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-}
-.dialog-title {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-headline-md);
-  font-weight: 600;
-  color: var(--text-main);
-}
-.playlist-picker-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin-bottom: var(--space-3);
-  max-height: 300px;
-  overflow-y: auto;
-}
-.playlist-picker-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-muted) 70%, var(--border));
-  color: var(--text-main);
-  font-size: var(--text-body-sm);
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.playlist-picker-item:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-.playlist-picker-count {
-  font-size: var(--text-label-xs);
-  color: var(--text-soft);
-}
-.dialog-actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
 }
 </style>

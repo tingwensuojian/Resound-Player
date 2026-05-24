@@ -722,7 +722,7 @@ async function showAddToPlaylist(song: any) {
   try {
     const res = await getUserPlaylist(userStore.state.profile?.userId || 0, userStore.state.loginCookie || undefined);
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
-  } catch { playlistPickerList.value = []; }
+  } catch { playlistPickerList.value = []; showToast('加载歌单列表失败', 'error', 3000); }
   selectedPlaylistId.value = null;
   showPlaylistPicker.value = true;
 }
@@ -732,7 +732,10 @@ async function confirmAddToPlaylist() {
   if (!pid || !song) return;
   try {
     await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.state.loginCookie || undefined);
-  } catch {}
+    showToast('已添加至歌单', 'success', 3000);
+  } catch {
+    showToast('添加失败，请重试', 'error', 3000);
+  }
   showPlaylistPicker.value = false;
 }
 function openComment(songId: number) {

@@ -5,8 +5,21 @@
       :tracks="tracks"
       :now-playing-id="nowPlayingId"
       @play="playTrack"
+      @play-next="playNext"
+      @add-to-playlist="addToPlaylist"
+      @show-in-folder="showInFolder"
+      @show-local-album="showLocalAlbum"
+      @show-online-album="showOnlineAlbum"
+      @upload-to-cloud="uploadToCloud"
     />
     <div v-if="!tracks.length" class="local-empty">暂无歌手数据</div>
+
+    <PlaylistPickerDialog
+      :visible="showPlaylistPicker"
+      :playlists="localMusicStore.state.playlists"
+      @confirm="confirmPlaylistPicker"
+      @cancel="cancelPlaylistPicker"
+    />
   </section>
 </template>
 
@@ -14,23 +27,25 @@
 import { computed } from 'vue'
 import { useLocalMusicStore } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
-import { usePlayerStore } from '../stores/player'
-const playerStore = usePlayerStore()
 import VirtualSongList from '../components/VirtualSongList.vue'
+import PlaylistPickerDialog from '../components/PlaylistPickerDialog.vue'
+import { useLocalTrackActions } from '../composables/useLocalTrackActions'
 
-const nowPlayingId = computed(() => playerStore.state.currentTrack?.id ?? null)
 const tracks = computed(() => localMusicStore.selectedArtistTracks)
 
-function playTrack(track: any, index: number) {
-  const playlist = tracks.value.map((t: any) => ({
-    id: t.id, name: t.title,
-    ar: [{ name: t.artist }],
-    al: { name: t.album, picUrl: t.coverUrl },
-    source: 'local' as const, path: t.path,
-  }))
-  playerStore.setPlaylist(playlist as any, index)
-  playerStore.playByIndex(index)
-}
+const {
+  nowPlayingId,
+  playTrack,
+  playNext,
+  addToPlaylist,
+  showPlaylistPicker,
+  confirmPlaylistPicker,
+  cancelPlaylistPicker,
+  showInFolder,
+  showLocalAlbum,
+  showOnlineAlbum,
+  uploadToCloud,
+} = useLocalTrackActions(tracks)
 </script>
 
 <style scoped>

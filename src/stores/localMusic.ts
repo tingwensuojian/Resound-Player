@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { reactive, computed } from 'vue';
+import { reactive, computed, toRaw } from 'vue';
 import { platform } from '../utils/platform';
 
 export interface LocalTrack {
@@ -337,7 +337,11 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   const selectedFolderTracks = computed(() => {
     state._coverVersion
     if (!state.selectedFolderPath) return state.tracks
-    return state.tracks.filter(t => t.path.startsWith(state.selectedFolderPath))
+    const folder = state.selectedFolderPath.replace(/\\/g, '/').replace(/\/$/, '')
+    return state.tracks.filter(t => {
+      const p = (t.path || '').replace(/\\/g, '/')
+      return p === folder || p.startsWith(folder + '/')
+    })
   });
 
   function setSelectedFolder(folderPath: string) {
@@ -355,16 +359,27 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     try {
       const raw = localStorage.getItem('local_music_playlists')
       if (raw) state.playlists = JSON.parse(raw)
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('[localMusic] loadPlaylists failed:', e)
+    }
   }
 
   function savePlaylists() {
-    try { localStorage.setItem('local_music_playlists', JSON.stringify(state.playlists)) }
-    catch { /* silently fail */ }
+    try {
+      const raw = toRaw(state.playlists)
+      const json = JSON.stringify(raw)
+      console.log('[localMusic] savePlaylists:', raw.length, 'playlists, json length:', json.length)
+      if (raw.length > 0 && raw[0].tracks) {
+        console.log('[localMusic] savePlaylists: first playlist tracks:', raw[0].tracks.length)
+      }
+      localStorage.setItem('local_music_playlists', json)
+    } catch (e) {
+      console.error('[localMusic] savePlaylists failed:', e)
+    }
   }
 
   function createPlaylist(name: string) {
-    const pl = { id: Date.now().toString(), name, tracks: [], createdAt: new Date().toISOString() }
+    const pl = { id: Date.now().toString(), name, tracks: [], trackCount: 0, createdAt: new Date().toISOString() }
     state.playlists.push(pl)
     savePlaylists()
     return pl
@@ -396,15 +411,23 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
 
   function addTrackToPlaylist(playlistId: string, track: any) {
     const pl = state.playlists.find((p: any) => p.id === playlistId)
-    if (pl && !pl.tracks.find((t: any) => t.id === track.id)) {
-      pl.tracks.push(track)
-      savePlaylists()
+    if (!pl) {
+      console.warn('[localMusic] addTrackToPlaylist: playlist not found', playlistId)
+      return
     }
+    if (pl.tracks.find((t: any) => t.id === track.id)) {
+      console.warn('[localMusic] addTrackToPlaylist: track already in playlist', track.id, playlistId)
+      return
+    }
+    pl.tracks.push(track)
+    pl.trackCount = pl.tracks.length
+    console.log('[localMusic] addTrackToPlaylist: pushed track', track.id, track.title, 'to playlist', playlistId, 'tracks.length=', pl.tracks.length)
+    savePlaylists()
   }
 
   function removeTrackFromPlaylist(playlistId: string, trackId: string) {
     const pl = state.playlists.find((p: any) => p.id === playlistId)
-    if (pl) { pl.tracks = pl.tracks.filter((t: any) => t.id !== trackId); savePlaylists() }
+    if (pl) { pl.tracks = pl.tracks.filter((t: any) => t.id !== trackId); pl.trackCount = pl.tracks.length; savePlaylists() }
   }
 
   async function loadTracks() {
@@ -470,10 +493,6 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     saveDirectories()
   }
 
-  function getTreePath(folderPath: string): string[] {
-    return folderPath.split('/').filter(Boolean)
-  }
-
   function expandFolderAncestors(folderPath: string) {
     const parts = folderPath.replace(/\\/g, '/').split('/').filter(Boolean)
     const set = new Set(state.collapsedFolders)
@@ -515,7 +534,6 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     loadTracks,
     scanAll,
     removeDirectoryPath,
-    getTreePath,
     expandFolderAncestors,
   };
 });

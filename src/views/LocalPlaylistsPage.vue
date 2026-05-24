@@ -1,7 +1,7 @@
 <template>
   <section class="local-page">
-    <div class="local-page-actions">
-      <button class="button-surface" @click="showCreateDialog = true">
+    <div class="local-page-actions ui-safe-group">
+      <button class="play-all" @click="showCreateDialog = true">
         + 新建歌单
       </button>
     </div>
@@ -42,7 +42,7 @@
         </div>
         <div class="playlist-card-info">
           <span class="playlist-card-name" :title="pl.name">{{ pl.name }}</span>
-          <span class="playlist-card-count">{{ pl.trackCount || 0 }} 首</span>
+          <span class="playlist-card-count">{{ pl.tracks?.length || 0 }} 首</span>
         </div>
         <button class="playlist-card-settings" @click.stop="openSettings(pl)" title="歌单设置">⚙</button>
         <button class="playlist-card-delete" @click.stop="handleDelete(pl.id, pl.name)" title="删除歌单">
@@ -130,6 +130,28 @@ function openPlaylist(id: string) {
 <style scoped>
 .local-page { display: grid; gap: var(--space-4); }
 .local-page-actions { display: flex; gap: var(--space-2); align-items: center; }
+.play-all {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, var(--border));
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--accent) 92%, #fff),
+    color-mix(in srgb, var(--accent) 74%, #000)
+  );
+  color: var(--text-main);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 34%, transparent), var(--glass-highlight);
+  cursor: pointer;
+  font-size: var(--text-label-sm);
+  font-weight: 600;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+.play-all:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 40%, transparent), var(--glass-highlight);
+}
 .local-empty { text-align: center; padding: var(--space-8); color: var(--text-soft); }
 
 .playlist-grid {

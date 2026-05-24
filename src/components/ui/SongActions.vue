@@ -466,7 +466,9 @@ async function uploadToCloud() {
       cookie: userStore.state.loginCookie || undefined,
     });
 
-    if (result?.code === 200) {
+    if (result?.duplicate === true) {
+      loginModalStore.showGlobalToast('文件已在云盘', 'info');
+    } else if (result?.code === 200) {
       loginModalStore.showGlobalToast('已成功上传至云盘', 'success');
     } else if (result?.code === 401 || result?.code === 301) {
       loginModalStore.showGlobalToast('登录已过期，请重新登录', 'error');

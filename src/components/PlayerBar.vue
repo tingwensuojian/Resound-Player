@@ -121,7 +121,7 @@
                     <span class="lyric-popover__item-check" :class="{ on: desktopLyricEnabled }"><span class="dot"></span></span>
                   </button>
                   <button type="button" class="lyric-popover__item" :class="{ active: lyricsSettings.state.showBarLyric }" @click="toggleBarLyric">
-                    <span class="lyric-popover__item-label">控制中心歌词</span>
+                    <span class="lyric-popover__item-label">底部栏歌词</span>
                     <span class="lyric-popover__item-check" :class="{ on: lyricsSettings.state.showBarLyric }"><span class="dot"></span></span>
                   </button>
                 </div>

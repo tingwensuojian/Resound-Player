@@ -130,7 +130,7 @@
             @click="confirmPlaylistPicker(pl.id)"
           >
             {{ pl.name }}
-            <span class="playlist-picker-count">{{ pl.trackCount || 0 }} 首</span>
+            <span class="playlist-picker-count">{{ pl.tracks?.length || 0 }} 首</span>
           </button>
         </div>
         <div class="dialog-actions">
@@ -301,7 +301,7 @@ async function onAddTrackConfirm(kw: string) {
     if (!confirm(`找到 ${newTracks.length} 首未添加的歌曲，确定全部加入歌单？`)) return
 
     for (const t of newTracks) {
-      await localMusicStore.addTrackToPlaylist(pl.id, t.id)
+      await localMusicStore.addTrackToPlaylist(pl.id, t)
     }
     alert(`已添加 ${newTracks.length} 首歌曲到歌单`)
   } catch (e) {
@@ -358,7 +358,7 @@ async function addToPlaylist(track: LocalTrack) {
     if (!create) return
     const pl = await localMusicStore.createPlaylist('新歌单')
     if (pl) {
-      await localMusicStore.addTrackToPlaylist(pl.id, track.id)
+      await localMusicStore.addTrackToPlaylist(pl.id, track)
       loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
     }
     return
@@ -372,8 +372,12 @@ async function confirmPlaylistPicker(playlistId: string) {
   if (!track) return
   showPlaylistPicker.value = false
   pendingTrackForPlaylist.value = null
-  await localMusicStore.addTrackToPlaylist(playlistId, track.id)
-  loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
+  try {
+    await localMusicStore.addTrackToPlaylist(playlistId, track)
+    loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
+  } catch {
+    loginModalStore.showGlobalToast('添加失败，请重试', 'error', 3000)
+  }
 }
 
 function cancelPlaylistPicker() {
@@ -383,10 +387,13 @@ function cancelPlaylistPicker() {
 
 /** 定位到目录 */
 function showInFolder(track: LocalTrack) {
-  const treePath = localMusicStore.getTreePath(track.path)
-  if (!treePath) return
-  localMusicStore.expandFolderAncestors(treePath)
-  localMusicStore.state.selectedFolderPath = treePath
+  if (!track.path) {
+    loginModalStore.showGlobalToast('未找到对应目录，文件可能已被移动或删除', 'warning', 3000)
+    return
+  }
+  const parentDir = track.path.replace(/\\/g, '/').replace(/\/[^/]*$/, '')
+  localMusicStore.expandFolderAncestors(parentDir)
+  localMusicStore.state.selectedFolderPath = parentDir
   localMusicStore.state.locatedTrackId = track.id
   localMusicStore.state.activeView = 'folders'
   window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
@@ -447,7 +454,9 @@ async function uploadToCloud(track: LocalTrack) {
       album: track.album || '未知专辑',
       cookie: userStore.state.loginCookie || undefined,
     })
-    if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
+    if ((data as any)?.duplicate === true) {
+      loginModalStore.showGlobalToast('文件已在云盘', 'info', 3000)
+    } else if ((data as any)?.body?.code === 200 || (data as any)?.code === 200) {
       loginModalStore.showGlobalToast('已上传至云盘', 'success', 3000)
     } else {
       loginModalStore.showGlobalToast('上传失败，请稍后重试', 'warning', 3000)

@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated } from 'vue'
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore()
 import ScrollToTopFab from './ui/ScrollToTopFab.vue'
@@ -181,6 +181,12 @@ onUnmounted(() => {
   if (parentScrollHost) {
     parentScrollHost.removeEventListener('scroll', onParentScroll)
     parentScrollHost = null
+  }
+})
+
+onActivated(() => {
+  if (props.highlightedId) {
+    nextTick(() => scrollToHighlighted())
   }
 })
 

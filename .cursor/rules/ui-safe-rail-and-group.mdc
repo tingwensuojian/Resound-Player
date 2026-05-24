@@ -164,3 +164,18 @@ description: Resound-Player 项目 UI 防裁切规范，约束横向滚动容器
 - 按钮上浮
 
 发现这些场景时，不要等问题出现后再修，应该在开发时就主动套用公共安全类。
+
+## 8. 典型案例
+
+### 8.1 LocalPlaylistsPage "新建歌单" 按钮裁切
+
+**场景**：`LocalPlaylistsPage.vue` 的 `.local-page-actions > .play-all` 按钮具有 hover 上浮（`transform: translateY(-1px)`）和阴影增强（`box-shadow` 外扩），但父容器 `.local-page-actions` 未挂 `ui-safe-group`，导致 hover 时上半部被裁切。
+
+**修复**：给 `.local-page-actions` 添加 `ui-safe-group` class。
+
+```diff
+- <div class="local-page-actions">
++ <div class="local-page-actions ui-safe-group">
+```
+
+**教训**：任何带 `translateY(-1px)` 或 hover 阴影增强的按钮，只要被包裹在紧凑容器中，就必须给该容器挂 `ui-safe-group`。这个案例覆盖了本地歌单页、本地歌曲页、设置页等所有本地音乐子页面的操作栏。

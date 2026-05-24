@@ -535,20 +535,15 @@ const groupsMap: Record<string, SettingGroup[]> = {
         { key: 'theme', label: '主题模式', desc: '切换浅色或深色界面', type: 'select', options: ['浅色', '深色', '跟随系统'] },
         { key: 'accent', label: '主题色', desc: '切换系统强调色（带颜色预览）', type: 'select', options: ['绿色', '蓝色', '紫色', '橙色', '自定义'] },
         { key: 'accentCustomColor', label: '自定义主题色', desc: '在调色盘中选择任意颜色', type: 'action' },
-        { key: 'barLyric', label: '底部栏歌词', desc: '播放时底部栏显示歌词', type: 'switch' },
         { key: 'showIntelligenceIndicator', label: '控制中心心动图标', desc: '在播放器控制栏显示心动模式图标', type: 'switch' },
         { key: 'autoHidePlayerUI', label: '全屏播放页自动隐藏 UI', desc: '在全屏播放页中，无操作时自动隐藏顶部栏、右侧按钮和底部控制台', type: 'switch' },
       ],
     },
     {
-      title: '系统托盘（macOS）',
+      title: '歌词显示',
       items: [
+        { key: 'barLyric', label: '底部栏歌词', desc: '播放时底部栏显示歌词', type: 'switch' },
         { key: 'trayLyricEnabled', label: '启用状态栏歌词', desc: '在 macOS 菜单栏显示当前播放的歌词信息', type: 'switch' },
-      ],
-    },
-    {
-      title: '桌面歌词',
-      items: [
         { key: 'desktopLyricEnabled', label: '启用桌面歌词', desc: '在桌面上显示一个可拖拽的歌词浮窗', type: 'switch' },
         { key: 'desktopLyricMode', label: '显示模式', desc: '选择歌词展示方式', type: 'select', options: ['滚动列表', '单行', '双行'] },
         { key: 'desktopLyricFontSize', label: '字体大小', desc: '歌词文字大小', type: 'select', options: ['小', '中', '大', '特大'] },
@@ -856,6 +851,14 @@ watch(
   (enabled) => {
     lyricsSettings.state.showBarLyric = Boolean(enabled);
     lyricsSettings.save();
+  },
+);
+
+// 反向同步：当外部（如 PlayerBar 弹窗）改变 showBarLyric 时，同步回 switchState
+watch(
+  () => lyricsSettings.state.showBarLyric,
+  (enabled) => {
+    switchState.barLyric = Boolean(enabled);
   },
 );
 

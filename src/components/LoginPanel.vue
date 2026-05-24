@@ -235,6 +235,7 @@ async function startQrLogin() {
           clearQrTimer();
           await userStore.refreshLoginStatus();
           setFeedback('扫码登录成功', 'success');
+          loginModalStore.hideLoginModal();
         }
 
         if (code === 800) {
@@ -265,6 +266,7 @@ async function submitCookieLogin() {
     await userStore.loginWithCookie(cookieInput.value);
     cookieInput.value = '';
     setFeedback('Cookie 登录成功', 'success');
+    loginModalStore.hideLoginModal();
   } catch (error: any) {
     setFeedback(error?.message || 'Cookie 登录失败', 'error');
   } finally {

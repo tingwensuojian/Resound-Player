@@ -113,6 +113,7 @@
             <LocalAlbumsPage v-else-if="activeView === 'albums'" />
             <LocalFoldersPage v-else-if="activeView === 'folders'" />
             <LocalPlaylistsPage v-else-if="activeView === 'playlists'" />
+            <LocalPlaylistDetailPage v-else-if="activeView === 'playlist-detail'" />
           </KeepAlive>
         </div>
       </div>
@@ -130,6 +131,7 @@ import LocalArtistsPage from '../views/LocalArtistsPage.vue'
 import LocalAlbumsPage from '../views/LocalAlbumsPage.vue'
 import LocalFoldersPage from '../views/LocalFoldersPage.vue'
 import LocalPlaylistsPage from '../views/LocalPlaylistsPage.vue'
+import LocalPlaylistDetailPage from '../views/LocalPlaylistDetailPage.vue'
 import FolderTreeNode from '../views/FolderTreeNode.vue'
 import { ref, onMounted, watch, KeepAlive } from 'vue'
 import { platform } from '../utils/platform'

@@ -350,6 +350,7 @@ async function showAddToPlaylist(song: any) {
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
   } catch {
     playlistPickerList.value = [];
+    showToast('加载歌单列表失败', 'error', 3000);
   }
   selectedPlaylistId.value = null;
   showPlaylistPicker.value = true;
