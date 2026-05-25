@@ -56,7 +56,11 @@ function buildAppMenu() {
         { role: 'zoomIn', label: '放大' },
         { role: 'zoomOut', label: '缩小' },
         { type: 'separator' },
-        { role: 'togglefullscreen', label: '全屏' },
+        {
+          label: '全屏',
+          accelerator: process.platform === 'darwin' ? 'Ctrl+Command+F' : 'F11',
+          click: () => setWindowFullscreen(!isWindowFullscreen()),
+        },
       ],
     },
     {
@@ -93,6 +97,22 @@ function buildAppMenu() {
 
 let serviceChildren = {};
 let win = null;
+
+function isWindowFullscreen() {
+  if (!win || win.isDestroyed()) return false;
+  if (process.platform === 'darwin') return win.isSimpleFullScreen();
+  return win.isFullScreen();
+}
+
+function setWindowFullscreen(fullscreen) {
+  if (!win || win.isDestroyed()) return;
+  if (process.platform === 'darwin') {
+    win.setSimpleFullScreen(fullscreen);
+  } else {
+    win.setFullScreen(fullscreen);
+  }
+  win.webContents.send('win-fullscreen-change', fullscreen);
+}
 
 /**
  * 设置中文菜单
@@ -162,7 +182,11 @@ function setupChineseMenu() {
         { role: 'zoomIn', label: '放大' },
         { role: 'zoomOut', label: '缩小' },
         { type: 'separator' },
-        { role: 'togglefullscreen', label: '全屏' },
+        {
+          label: '全屏',
+          accelerator: process.platform === 'darwin' ? 'Ctrl+Command+F' : 'F11',
+          click: () => setWindowFullscreen(!isWindowFullscreen()),
+        },
       ],
     },
 
@@ -215,11 +239,12 @@ async function createMainWindow(ports) {
     show: false,
     backgroundColor: '#1a1a2e',
     icon: iconPath,
-    // macOS: frame: false + customButtonsOnHover → 无边框 + 原生红绿灯 hover 显示
-    // SPlayer-dev 验证：此组合为 Electron 官方支持的 frameless 窗口正确用法
+    // macOS: 常态显示原生红绿灯，并保留自定义内容区
+    // titleBarStyle: 'hidden' → 隐藏原生标题文字/横条，红绿灯保持常态可见
+    // trafficLightPosition → 避开自定义顶部栏内容
     // 其他平台：frame: false → 无边框，依赖自定义控件
     ...(isMac
-      ? { frame: false, titleBarStyle: 'customButtonsOnHover' }
+      ? { frame: false, titleBarStyle: 'hidden', trafficLightPosition: { x: 20, y: 14 } }
       : { frame: false }
     ),
     webPreferences: {
@@ -248,6 +273,20 @@ async function createMainWindow(ports) {
     win.webContents.send('win-state-change', false);
   });
 
+  // 向渲染进程广播窗口全屏状态变更（供播放页全屏按钮与 macOS 原生红绿灯链路同步）
+  win.on('enter-full-screen', () => {
+    win.webContents.send('win-fullscreen-change', true);
+  });
+  win.on('leave-full-screen', () => {
+    win.webContents.send('win-fullscreen-change', false);
+  });
+  win.on('enter-html-full-screen', () => {
+    win.webContents.send('win-fullscreen-change', true);
+  });
+  win.on('leave-html-full-screen', () => {
+    win.webContents.send('win-fullscreen-change', false);
+  });
+
   // 窗口控制：通过 page-title-updated 事件监听 document.title 变更
   // 必须在 loadURL 之前注册，确保从页面加载初期就能捕获标题变更
   let _originalTitle = '';
@@ -263,6 +302,10 @@ async function createMainWindow(ports) {
         // frameless 窗口二次最大化修复：先重置 maximizable 再调用 maximize
         win.setMaximizable(true);
         win.maximize();
+      } else if (cmd === 'fullscreen-enter') {
+        setWindowFullscreen(true);
+      } else if (cmd === 'fullscreen-leave') {
+        setWindowFullscreen(false);
       }
       // 延迟恢复原标题，确保 macOS 窗口动画（~350ms）完成后再重置
       setTimeout(() => {

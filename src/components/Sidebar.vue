@@ -2,7 +2,7 @@
   <aside
     ref="sidebarRef"
     class="sidebar"
-    :class="{ collapsed: isCollapsed }"
+    :class="{ collapsed: isCollapsed, 'mac-window-controls': platform.isMacOS }"
     :style="{ '--sidebar-w': isCollapsed ? '76px' : '220px' }"
   >
     <AnimatedAppear tag="div" variant="sidebar" rhythm="shell" class-name="sidebar-shell">
@@ -177,10 +177,18 @@ const items = [
   border: none !important;
 }
 
+.sidebar.mac-window-controls .profile {
+  padding-top: 36px;
+}
+
 .profile.compact {
   justify-content: center;
   padding: 0;
   gap: 0;
+}
+
+.sidebar.mac-window-controls .profile.compact {
+  padding-top: 36px;
 }
 
 .user {

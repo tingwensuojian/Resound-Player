@@ -48,7 +48,6 @@
             @mouseenter="freeze"
             @mouseleave="unfreeze"
           >
-            <AnimatedAppear tag="button" variant="control" rhythm="actions" class-name="ghost" @click="showComments ? showComments = false : playerStore.closeExpanded()">返回</AnimatedAppear>
             <div class="panel-head-right">
               <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="ghost ra-icon" @click="toggleFullscreen" :data-tooltip="isFullscreen ? '退出全屏' : '全屏'" data-tooltip-dir="down" :title="isFullscreen ? '退出全屏' : '全屏'">
                 <svg v-if="isFullscreen" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
@@ -369,6 +368,11 @@ const transPopoverStyle = ref<Record<string, string>>({});
 
 const isFullscreen = ref(false);
 function toggleFullscreen() {
+  if (platform.isDesktop) {
+    document.title = (isFullscreen.value ? 'cmd:fullscreen-leave:' : 'cmd:fullscreen-enter:') + Date.now();
+    return;
+  }
+
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().then(() => { isFullscreen.value = true; }).catch(() => {});
   } else {
@@ -378,12 +382,28 @@ function toggleFullscreen() {
 onMounted(() => {
   document.addEventListener('fullscreenchange', onFsChange);
   document.addEventListener('webkitfullscreenchange', onFsChange);
+  if (!platform.isDesktop) return;
+
+  isFullscreen.value = 'winFullscreen' in document.documentElement.dataset;
+  const observer = new MutationObserver(() => {
+    isFullscreen.value = 'winFullscreen' in document.documentElement.dataset;
+  });
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-win-fullscreen'],
+  });
+  (window as any).__playerFsObserver = observer;
 });
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', onFsChange);
   document.removeEventListener('webkitfullscreenchange', onFsChange);
+  (window as any).__playerFsObserver?.disconnect();
+  delete (window as any).__playerFsObserver;
 });
-function onFsChange() { isFullscreen.value = !!document.fullscreenElement; }
+function onFsChange() {
+  if (platform.isDesktop) return;
+  isFullscreen.value = !!document.fullscreenElement;
+}
 
 // ── 桌面端窗口控制 ──
 const isWinMaximized = ref(false);
@@ -681,8 +701,8 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .cover-aura { position: absolute; inset: -8%; background: center/cover no-repeat; filter: blur(48px) saturate(130%); transform: scale(1.08); opacity: 0.18; pointer-events: none; transition: opacity 0.5s ease; }
 .bg-transition-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; transition: opacity 0.5s ease; }
 .expanded-panel { position: relative; z-index: 2; width: 100vw; height: 100vh; padding: var(--space-4) var(--space-6) var(--space-5); box-sizing: border-box; display: grid; grid-template-rows: auto 1fr auto; gap: 0; }
-.panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
-.panel-head-right { display: flex; align-items: center; gap: 6px; }
+.panel-head { display: flex; align-items: center; margin-bottom: var(--space-3); }
+.panel-head-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .cover-hidden-head { text-align: center; padding: var(--space-4) var(--space-4) 0; }
 .song-name-center { margin: 0; color: #fff !important; font-size: var(--text-headline-lg); font-weight: 700; line-height: 1.2; }
 .song-artist-center { margin: var(--space-1) 0 0; color: rgba(255,255,255,0.82) !important; font-size: var(--text-body-lg); }
@@ -761,38 +781,6 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .ra-btn-trans { font-size: var(--text-body-md); font-weight: 800; letter-spacing: 0.02em; }
 .ra-btn-trans.active { color: var(--accent, #c39c76); }
 .ra-icon { position: relative; display: grid; place-items: center; }
-
-/* 桌面端窗口控制按钮 */
-.win-controls {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 2px;
-  -webkit-app-region: no-drag;
-}
-
-.win-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.72);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.win-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-}
-
-.win-btn--close:hover {
-  background: #e81123;
-  color: #fff;
-}
 .ra-badge {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   font-size: 9px; font-weight: 800;

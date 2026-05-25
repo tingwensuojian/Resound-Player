@@ -2,25 +2,30 @@
 
 ## 需求
 
-macOS 上默认行为：红绿灯按钮（关闭、最小化、最大化）始终显示在窗口左上角且伴随原生标题栏边条。需要实现：
+macOS 上需要同时满足：
 
 - 隐藏原生标题栏边条（窗口顶部无灰色横条）
-- 红绿灯默认隐藏，鼠标移到左上角区域时显示
+- 原生红绿灯按钮常态显示，包含全屏状态
+- 右上角自建的最小化、最大化/还原、关闭按钮继续保留
 - Windows/Linux 不受影响，保持无边框 + 自定义按钮
 
 ## 最终方案
 
 ### 核心原理
 
-利用 Electron 的 `frame: false` + `titleBarStyle: 'customButtonsOnHover'`（macOS 独占）：
+利用 Electron 的 `frame: false` + `titleBarStyle: 'hidden'` + `trafficLightPosition`（macOS 独占）：
 
-- `frame: false` 移除原生窗口边框，确保全屏下无灰色标题栏条
-- `customButtonsOnHover` 使红绿灯按钮由 macOS 原生渲染在窗口左上角，默认隐藏，鼠标移到左上角区域时显示（hover 显隐）
-- 红绿灯作为 overlay 置于 web 内容之上，不占用 DOM 布局空间
+- `frame: false` 去掉原生标题栏框架，使页面内容接管窗口顶部区域
+- `titleBarStyle: 'hidden'` 隐藏原生标题文字与标题栏横条，同时保留原生红绿灯
+- `trafficLightPosition: { x: 20, y: 14 }` 手动控制红绿灯位置，避免过低或压住页面内容
+- 红绿灯作为系统 overlay 置于 web 内容之上，不占用 DOM 布局空间
+- 播放页全屏在桌面端必须走 Electron 窗口全屏命令，不能走 DOM `requestFullscreen()`
+- macOS 使用 `BrowserWindow.setSimpleFullScreen()`，避免进入 macOS 原生全屏 Space 后出现系统标题栏灰色边条
+- Windows/Linux 使用 `BrowserWindow.setFullScreen()`
+- 右上角自建窗口按钮继续保留，macOS 原生红绿灯与自建按钮可以同时存在
+- 全屏和小窗口状态下，红绿灯都保持常态显示
 
-非 Mac 平台保持 `frame: false`，完全依赖右侧自定义按钮。
-
-此组合是 Electron 官方支持的 frameless 窗口正确用法。参考 SPlayer-dev 项目（Electron 39.4.0）使用相同配置且工作正常。
+所有桌面平台都保留右侧自定义按钮；macOS 额外保留左上角原生红绿灯。
 
 ---
 
@@ -40,11 +45,12 @@ win = new BrowserWindow({
   minHeight: 700,
   show: false,
   backgroundColor: '#1a1a2e',           // 必须匹配 theme.css 的 html 背景色
-  // macOS: frame: false + titleBarStyle customButtonsOnHover → 无边框 + 原生红绿灯 hover 显示
-  // SPlayer-dev 验证：此组合为 Electron 官方支持的 frameless 窗口正确用法
+  // macOS: 常态显示原生红绿灯，并保留自定义内容区
+  // titleBarStyle: 'hidden' → 隐藏原生标题文字/横条，红绿灯保持常态可见
+  // trafficLightPosition → 控制红绿灯位置，避免压住页面内容
   // 其他平台：frame: false → 无边框，依赖自定义控件
   ...(isMac
-    ? { frame: false, titleBarStyle: 'customButtonsOnHover' }
+    ? { frame: false, titleBarStyle: 'hidden', trafficLightPosition: { x: 20, y: 14 } }
     : { frame: false }
   ),
   webPreferences: {
@@ -56,7 +62,7 @@ win = new BrowserWindow({
 });
 ```
 
-> **说明**：`frame: false` + `titleBarStyle: 'customButtonsOnHover'` 是 Electron 官方支持的 macOS frameless 窗口正确配置。`customButtonsOnHover` 的行为就是让红绿灯按钮默认隐藏、hover 时显示，macOS 原生渲染这些按钮在窗口内容之上，不需要任何 HTML/CSS。
+> **说明**：当前方案要求红绿灯常态显示，因此使用 `titleBarStyle: 'hidden'`，不要改回 `customButtonsOnHover`。`customButtonsOnHover` 会让红绿灯恢复为 hover 才显示，与当前交互要求不一致。
 
 #### 最大化状态广播
 
@@ -73,7 +79,7 @@ win.on('unmaximize', () => {
 
 #### 窗口控制事件监听
 
-窗口控制通过 `document.title` → `page-title-updated` 事件实现（不依赖 IPC/contextBridge）：
+窗口控制通过 `document.title` → `page-title-updated` 事件实现（不依赖 IPC/contextBridge）。播放页全屏在桌面端也走同一条命令通道，最终由主进程按平台选择窗口全屏方式：macOS 使用 `setSimpleFullScreen()`，Windows/Linux 使用 `setFullScreen()`。
 
 ```js
 let _originalTitle = '';
@@ -89,6 +95,10 @@ win.webContents.on('page-title-updated', (event, title) => {
       // frameless 窗口二次最大化修复
       win.setMaximizable(true);
       win.maximize();
+    } else if (cmd === 'fullscreen-enter') {
+      setWindowFullscreen(true);
+    } else if (cmd === 'fullscreen-leave') {
+      setWindowFullscreen(false);
     }
     // 延迟恢复原标题，确保 macOS 窗口动画（~350ms）完成后再重置
     setTimeout(() => {
@@ -100,6 +110,19 @@ win.webContents.on('page-title-updated', (event, title) => {
 });
 ```
 
+#### 全屏状态广播
+
+```js
+win.on('enter-full-screen', () => {
+  win.webContents.send('win-fullscreen-change', true);
+});
+win.on('leave-full-screen', () => {
+  win.webContents.send('win-fullscreen-change', false);
+});
+```
+
+播放页根据 `win-fullscreen-change` 更新按钮图标，不再依赖 DOM fullscreen 状态。
+
 ---
 
 ### 2. `electron/preload.js` — 最大化状态同步
@@ -107,12 +130,21 @@ win.webContents.on('page-title-updated', (event, title) => {
 preload 不暴露任何窗口控制 API，只负责将主进程广播的状态同步到 DOM dataset：
 
 ```js
-// preload.js — 末尾
+// 主进程广播最大化状态 → data-win-maximized 渲染进程通过 MutationObserver 获取
 ipcRenderer.on('win-state-change', (_event, maximized) => {
   if (maximized) {
     document.documentElement.dataset.winMaximized = '';
   } else {
     delete document.documentElement.dataset.winMaximized;
+  }
+});
+
+// 主进程广播全屏状态 → data-win-fullscreen 渲染进程通过 MutationObserver 获取
+ipcRenderer.on('win-fullscreen-change', (_event, fullscreen) => {
+  if (fullscreen) {
+    document.documentElement.dataset.winFullscreen = '';
+  } else {
+    delete document.documentElement.dataset.winFullscreen;
   }
 });
 
@@ -198,43 +230,103 @@ onMounted(() => {
 
 ---
 
+### 4. `src/components/Sidebar.vue` — macOS 红绿灯避让
+
+macOS 原生红绿灯位于窗口左上角，会覆盖页面内容层。侧栏顶部品牌区需要为红绿灯预留安全空间：
+
+```vue
+<aside
+  ref="sidebarRef"
+  class="sidebar"
+  :class="{ collapsed: isCollapsed, 'mac-window-controls': platform.isMacOS }"
+>
+```
+
+```css
+.sidebar.mac-window-controls .profile {
+  padding-top: 36px;
+}
+
+.sidebar.mac-window-controls .profile.compact {
+  padding-top: 36px;
+}
+```
+
+约定：
+
+- 不通过隐藏红绿灯来解决压住内容的问题
+- macOS 下侧栏展开态和折叠态都必须避让红绿灯
+- Windows/Linux 不添加该避让 class
+
+---
+
 ## 跨平台差异
 
 | 平台 | 窗口参数 | 红绿灯 | 自定义按钮 | 拖拽区域 |
 |------|---------|--------|-----------|---------|
-| macOS | `titleBarStyle: 'customButtonsOnHover'` | 原生，默认隐藏，hover 显示 | 右侧显示，始终可见 | `.topbar` + drag |
+| macOS | `frame: false` + `titleBarStyle: 'hidden'` + `trafficLightPosition` | 原生，常态显示 | 右侧显示，始终可见 | `.topbar` + drag |
 | Windows | `frame: false` | 无 | 右侧显示，始终可见 | `.topbar` + drag |
 | Linux | `frame: false` | 无 | 右侧显示，始终可见 | `.topbar` + drag |
 
-## 完整数据流
+## 播放页全屏链路
+
+桌面端播放页全屏必须走 Electron 原生窗口全屏，Web 端才走浏览器 DOM fullscreen：
+
+```ts
+function toggleFullscreen() {
+  if (platform.isDesktop) {
+    document.title = (isFullscreen.value ? 'cmd:fullscreen-leave:' : 'cmd:fullscreen-enter:') + Date.now();
+    return;
+  }
+
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+```
+
+主进程链路：
 
 ```
-用户点击自定义按钮
-  → document.title = 'cmd:maximize:1234567890'
+播放页点击全屏按钮
+  → document.title = 'cmd:fullscreen-enter:1234567890'
     → page-title-updated 事件 → event.preventDefault()
-      → BrowserWindow.maximize()
-        → win.on('maximize')
-          → webContents.send('win-state-change', true)
-            → preload: ipcRenderer.on('win-state-change')
-              → dataset.winMaximized = ''
-                → TopBar.vue: MutationObserver 触发
-                  → isMaximized.value = true
-                    → 按钮图标切换为「还原」
+      → setWindowFullscreen(true)
+        → macOS: BrowserWindow.setSimpleFullScreen(true)
+        → Windows/Linux: BrowserWindow.setFullScreen(true)
+        → win-fullscreen-change
+          → preload: dataset.winFullscreen = ''
+            → PlayerExpanded.vue: MutationObserver 触发
+              → isFullscreen.value = true
+                → 按钮图标切换为「退出全屏」
 ```
+
+这条链路避免了桌面端依赖 `document.documentElement.requestFullscreen()`，同时通过 `setSimpleFullScreen()` 减少 macOS 原生全屏 Space 带来的系统标题栏灰色边条。
 
 ## 常见问题
 
-### Q: 红绿灯默认隐藏，hover 才显示？
+### Q: 红绿灯为什么现在是常态显示？
 
-是的，项目使用 `frame: false` + `titleBarStyle: 'customButtonsOnHover'`。`frame: false` 移除原生窗口边框，`customButtonsOnHover` 让红绿灯在鼠标移到左上角区域时 hover 显示。
-
-当前配置（macOS）：`frame: false, titleBarStyle: 'customButtonsOnHover'`
-
-如果要红绿灯始终可见（全屏兼容但失去 hover 效果），可改为：
+当前需求要求红绿灯在普通窗口和全屏状态下都常态显示，因此 macOS 使用：
 
 ```js
-...(isMac ? { frame: false, titleBarStyle: 'hidden' } : { frame: false })
+...(isMac
+  ? { frame: false, titleBarStyle: 'hidden', trafficLightPosition: { x: 20, y: 14 } }
+  : { frame: false }
+)
 ```
+
+`titleBarStyle: 'hidden'` 用于隐藏原生标题栏横条，同时保留原生红绿灯；`trafficLightPosition` 用于控制红绿灯位置。
+
+不要改回：
+
+```js
+titleBarStyle: 'customButtonsOnHover'
+```
+
+否则红绿灯会恢复为默认隐藏、hover 才显示。
 
 ### Q: 自定义按钮在 Web 端显示怎么办？
 

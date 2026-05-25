@@ -120,6 +120,14 @@ ipcRenderer.on('win-state-change', (_event, maximized) => {
   }
 });
 
+ipcRenderer.on('win-fullscreen-change', (_event, fullscreen) => {
+  if (fullscreen) {
+    document.documentElement.dataset.winFullscreen = '';
+  } else {
+    delete document.documentElement.dataset.winFullscreen;
+  }
+});
+
 // ── 系统托盘动作 → 自定义 DOM 事件 ──
 // 渲染进程通过 document.addEventListener('tray-action', handler) 监听
 ipcRenderer.on('tray:play-pause', () => {
