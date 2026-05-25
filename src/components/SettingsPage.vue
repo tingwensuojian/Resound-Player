@@ -471,7 +471,7 @@ import DropdownSelect from './ui/DropdownSelect.vue';
 import FancySwitch from './ui/FancySwitch.vue';
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
-import { useUiStore } from '../stores/ui';
+import { useUiStore, type PlayerPageTransition } from '../stores/ui';
 const uiStore = useUiStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
@@ -538,6 +538,7 @@ const groupsMap: Record<string, SettingGroup[]> = {
         { key: 'accentCustomColor', label: '自定义主题色', desc: '在调色盘中选择任意颜色', type: 'action' },
         { key: 'showIntelligenceIndicator', label: '控制中心心动图标', desc: '在播放器控制栏显示心动模式图标', type: 'switch' },
         { key: 'autoHidePlayerUI', label: '全屏播放页自动隐藏 UI', desc: '在全屏播放页中，无操作时自动隐藏顶部栏、右侧按钮和底部控制台', type: 'switch' },
+        { key: 'playerPageTransition', label: '播放页打开动画', desc: '选择主界面打开和关闭播放页时的动态效果', type: 'select', options: ['经典上滑', '景深推进', '液态扩散', '幕布揭开'] },
       ],
     },
     {
@@ -727,6 +728,7 @@ const selectState = reactive<Record<string, string>>({
   playbackRate: `${playerStore.state.defaultPlaybackRate.toFixed(2).replace(/\.00$/, '.0')}x`,
   theme: uiStore.state.themeMode,
   accent: uiStore.state.accentMode,
+  playerPageTransition: uiStore.state.playerPageTransition,
   desktopLyricMode: '滚动列表', // 实际值从主进程加载
   desktopLyricFontSize: '中', // 实际值从主进程加载
 });
@@ -824,6 +826,13 @@ watch(
     if (next === '绿色' || next === '蓝色' || next === '紫色' || next === '橙色' || next === '自定义') {
       uiStore.setAccentMode(next);
     }
+  },
+);
+
+watch(
+  () => selectState.playerPageTransition,
+  (next) => {
+    uiStore.setPlayerPageTransition(next as PlayerPageTransition);
   },
 );
 

@@ -125,6 +125,29 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     return `${labels[state.sortField]} ${arrow}`
   });
 
+  function normalizeLocalPath(value: string): string {
+    return (value || '').replace(/\\/g, '/').replace(/\/+$/, '')
+  }
+
+  function getParentDir(filePath: string): string {
+    const normalized = normalizeLocalPath(filePath)
+    return normalized.replace(/\/[^/]*$/, '')
+  }
+
+  function inferDirectoryRootsFromTracks(): string[] {
+    const dirs = Array.from(new Set(
+      state.tracks
+        .map(t => getParentDir(t.path || ''))
+        .filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+
+    return dirs.filter((dir, index) => {
+      return !dirs.some((other, otherIndex) =>
+        otherIndex !== index && dir.startsWith(other + '/')
+      )
+    })
+  }
+
   // ── Methods ──
 
   function toggleSort(field: SortField) {
@@ -139,13 +162,13 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   // ── 文件夹树 ──
   const folderTree = computed((): FolderNode[] => {
     state._coverVersion
-    if (!state.directories.length) loadDirectories()
 
     // 规范化目录列表
     const dirList: { path: string; name: string }[] = []
-    for (const d of state.directories) {
+    const roots = state.directories.length ? state.directories : inferDirectoryRootsFromTracks()
+    for (const d of roots) {
       if (!d) continue
-      const clean = d.replace(/\\/g, '/').replace(/\/+$/, '')
+      const clean = normalizeLocalPath(d)
       const name = clean.split('/').pop() || clean
       dirList.push({ path: clean, name })
     }
@@ -155,8 +178,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     const trackCount = new Map<string, number>()
     for (const t of state.tracks) {
       if (!t.path) continue
-      const normalized = t.path.replace(/\\/g, '/')
-      const parentDir = normalized.replace(/\/[^/]*$/, '')
+      const parentDir = getParentDir(t.path)
       trackCount.set(parentDir, (trackCount.get(parentDir) || 0) + 1)
 
       // 逐级向上注册目录
@@ -202,14 +224,29 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     return dirList.map(({ path: fullPath }) => buildNode(fullPath))
   });
 
-  function loadDirectories() {
+  async function loadDirectories() {
+    if (platform.localApi?.listScanDirs) {
+      try {
+        const dbDirs = await platform.localApi.listScanDirs()
+        if (Array.isArray(dbDirs) && dbDirs.length) {
+          state.directories = Array.from(new Set(dbDirs.map(normalizeLocalPath).filter(Boolean)))
+          try { localStorage.setItem('local_music_dirs', JSON.stringify(state.directories)) } catch {}
+          return
+        }
+      } catch (e) {
+        console.warn('[localMusic] load scan dirs from DB failed:', e)
+      }
+    }
+
     try {
       const raw = localStorage.getItem('local_music_dirs')
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) state.directories = parsed.filter(d => d)
+        if (Array.isArray(parsed)) state.directories = parsed.map(normalizeLocalPath).filter(d => d)
       }
     } catch { /* ignore */ }
+
+    await restoreDirectoriesFromTracks()
   }
 
   function saveDirectories() {
@@ -220,17 +257,52 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     } catch { /* silently fail */ }
   }
 
-  function addDirectory(dir: string) {
-    if (!dir) return
-    if (!state.directories.includes(dir)) {
-      state.directories.push(dir)
-      saveDirectories()
+  async function restoreDirectoriesFromTracks() {
+    if (state.directories.length || !state.tracks.length) return
+
+    const inferred = inferDirectoryRootsFromTracks()
+    if (!inferred.length) return
+
+    state.directories = inferred
+    saveDirectories()
+
+    if (platform.localApi?.saveScanDir) {
+      for (const dir of inferred) {
+        try {
+          await platform.localApi.saveScanDir(dir)
+        } catch (e) {
+          console.warn('[localMusic] restore scan dir failed:', dir, e)
+        }
+      }
     }
   }
 
-  function removeDirectory(dir: string) {
-    state.directories = state.directories.filter(d => d !== dir)
+  async function addDirectory(dir?: string) {
+    if (!dir && platform.localApi?.selectDirectory) {
+      dir = await platform.localApi.selectDirectory() || ''
+    }
+    if (!dir) return
+    const clean = normalizeLocalPath(dir)
+    if (!state.directories.includes(clean)) {
+      state.directories.push(clean)
+      saveDirectories()
+    }
+    try {
+      await platform.localApi?.saveScanDir?.(clean)
+    } catch (e) {
+      console.warn('[localMusic] save scan dir failed:', e)
+    }
+  }
+
+  async function removeDirectory(dir: string) {
+    const clean = normalizeLocalPath(dir)
+    state.directories = state.directories.filter(d => d !== clean)
     saveDirectories()
+    try {
+      await platform.localApi?.removeScanDir?.(clean)
+    } catch (e) {
+      console.warn('[localMusic] remove scan dir failed:', e)
+    }
   }
 
   async function clearAll() {
@@ -337,9 +409,9 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   const selectedFolderTracks = computed(() => {
     state._coverVersion
     if (!state.selectedFolderPath) return state.tracks
-    const folder = state.selectedFolderPath.replace(/\\/g, '/').replace(/\/$/, '')
+    const folder = normalizeLocalPath(state.selectedFolderPath)
     return state.tracks.filter(t => {
-      const p = (t.path || '').replace(/\\/g, '/')
+      const p = normalizeLocalPath(t.path || '')
       return p === folder || p.startsWith(folder + '/')
     })
   });
@@ -442,6 +514,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
         source: 'local' as const,
         hasLyrics: Boolean(t.hasLyrics),
       }))
+      await restoreDirectoriesFromTracks()
       // 异步加载封面（不阻塞）
       lazyLoadCovers()
     } catch (e) {
@@ -454,6 +527,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   async function scanAll() {
     if (state.scanning) return
     if (!platform.localApi) return
+    if (!state.directories.length) await loadDirectories()
     if (!state.directories.length) return
 
     state.scanning = true
@@ -488,9 +562,15 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     }
   }
 
-  function removeDirectoryPath(path: string) {
-    state.directories = state.directories.filter(d => d !== path)
+  async function removeDirectoryPath(path: string) {
+    const clean = normalizeLocalPath(path)
+    state.directories = state.directories.filter(d => d !== clean)
     saveDirectories()
+    try {
+      await platform.localApi?.removeScanDir?.(clean)
+    } catch (e) {
+      console.warn('[localMusic] remove scan dir failed:', e)
+    }
   }
 
   function expandFolderAncestors(folderPath: string) {

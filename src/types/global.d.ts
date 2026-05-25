@@ -5,6 +5,10 @@ interface LocalApi {
   search(query: string): Promise<any[]>
   getAll(): Promise<any[]>
   trackCount(): Promise<number>
+  openFolder?(folderPath: string): Promise<{ success: boolean; error?: string }>
+  listScanDirs?(): Promise<string[]>
+  saveScanDir?(dirPath: string): Promise<{ success: boolean }>
+  removeScanDir?(dirPath: string): Promise<{ success: boolean }>
   getLyric(filePath: string): Promise<{ text: string; format: string } | null>
   getCover(filePath: string): Promise<string | null>
   readFile(filePath: string): Promise<ArrayBuffer | null>

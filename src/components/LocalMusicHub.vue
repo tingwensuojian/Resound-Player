@@ -87,7 +87,12 @@
         <!-- 目录树 -->
         <template v-else>
           <div class="left-section-title">目录</div>
-          <div class="left-index-list folder-tree">
+          <div
+            class="left-index-list folder-tree"
+            data-allow-dblclick-gesture="true"
+            @click.capture="handleFolderTreeClick"
+            @contextmenu.capture.prevent="handleFolderTreeContextMenu"
+          >
             <FolderTreeNode
               v-for="(node, idx) in localMusicStore.folderTree"
               :key="node.path"
@@ -118,6 +123,15 @@
         </div>
       </div>
     </div>
+
+    <LocalContextMenu
+      :visible="folderMenu.visible"
+      :x="folderMenu.x"
+      :y="folderMenu.y"
+      :items="folderMenuItems"
+      @action="handleFolderMenuAction"
+      @close="closeFolderMenu"
+    />
   </section>
 </template>
 
@@ -133,6 +147,7 @@ import LocalFoldersPage from '../views/LocalFoldersPage.vue'
 import LocalPlaylistsPage from '../views/LocalPlaylistsPage.vue'
 import LocalPlaylistDetailPage from '../views/LocalPlaylistDetailPage.vue'
 import FolderTreeNode from '../views/FolderTreeNode.vue'
+import LocalContextMenu, { type ContextMenuItem } from './LocalContextMenu.vue'
 import { ref, onMounted, watch, KeepAlive } from 'vue'
 import { platform } from '../utils/platform'
 
@@ -148,11 +163,15 @@ const tabs = [
 const activeView = computed(() => localMusicStore.state.activeView)
 
 const stats = ref<{ totalTracks: number; totalArtists: number; totalAlbums: number; totalDuration: number; totalSize: number } | null>(null)
+const folderMenu = ref({ visible: false, x: 0, y: 0, path: '' })
+const folderMenuItems: ContextMenuItem[] = [
+  { key: 'open-folder', label: '打开文件夹', icon: '📁' },
+]
 
 onMounted(async () => {
   if (!platform.localApi) return
-  // 从 localStorage 恢复扫描目录
-  localMusicStore.loadDirectories()
+  // 从 DB / localStorage 恢复扫描目录
+  await localMusicStore.loadDirectories()
   // 先加载歌曲列表，确保所有子页面共享同一份数据
   if (!localMusicStore.state.tracks.length) {
     await localMusicStore.loadTracks()
@@ -200,6 +219,48 @@ function formatSize(bytes: number): string {
 
 function switchTab(key: LocalView) {
   localMusicStore.state.activeView = key
+}
+
+function handleFolderTreeClick(event: MouseEvent) {
+  if (event.detail < 2) return
+  openFolderMenuFromEvent(event)
+}
+
+function handleFolderTreeContextMenu(event: MouseEvent) {
+  openFolderMenuFromEvent(event)
+}
+
+function openFolderMenuFromEvent(event: MouseEvent) {
+  const target = event.target as HTMLElement | null
+  const nodeEl = target?.closest<HTMLElement>('.folder-node[data-folder-path]')
+  const folderPath = nodeEl?.dataset.folderPath || ''
+  if (!folderPath) return
+  event.preventDefault()
+  event.stopPropagation()
+  openFolderMenu(event, folderPath)
+}
+
+function openFolderMenu(event: MouseEvent, folderPath: string) {
+  folderMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    path: folderPath,
+  }
+}
+
+function closeFolderMenu() {
+  folderMenu.value.visible = false
+}
+
+async function handleFolderMenuAction(key: string) {
+  if (key !== 'open-folder') return
+  const folderPath = folderMenu.value.path
+  if (!folderPath || !platform.localApi?.openFolder) return
+  const result = await platform.localApi.openFolder(folderPath)
+  if (!result?.success) {
+    console.warn('[localMusic] open folder failed:', result?.error || folderPath)
+  }
 }
 </script>
 

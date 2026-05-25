@@ -44,5 +44,8 @@ export interface IMetadataDB {
   search(query: string): Promise<TrackRecord[]>
   getTrackCount(): Promise<number>
   getAllMtimes(): Promise<Map<string, number>>
+  upsertScanDir(path: string): Promise<void>
+  listScanDirs(): Promise<string[]>
+  removeScanDir(path: string): Promise<void>
   close(): Promise<void>
 }

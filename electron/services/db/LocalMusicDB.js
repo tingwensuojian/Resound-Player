@@ -452,6 +452,30 @@ class LocalMusicDB {
     return Promise.resolve(map);
   }
 
+  upsertScanDir(dirPath) {
+    if (!dirPath) return Promise.resolve();
+    return this.#enqueueWrite(() => {
+      this.#run(
+        "INSERT INTO scan_dirs (path, label, lastScan) VALUES (?, '', ?) ON CONFLICT(path) DO UPDATE SET lastScan=excluded.lastScan",
+        [dirPath, now()]
+      );
+      this.#atomicPersist();
+    });
+  }
+
+  listScanDirs() {
+    const rows = this.#queryAll("SELECT path FROM scan_dirs ORDER BY path COLLATE NOCASE");
+    return Promise.resolve(rows.map((r) => r.path).filter(Boolean));
+  }
+
+  removeScanDir(dirPath) {
+    if (!dirPath) return Promise.resolve();
+    return this.#enqueueWrite(() => {
+      this.#run("DELETE FROM scan_dirs WHERE path = ?", [dirPath]);
+      this.#atomicPersist();
+    });
+  }
+
   // ── 歌单 ──
 
   createPlaylist(name, description = "") {

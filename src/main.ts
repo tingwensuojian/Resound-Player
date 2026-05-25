@@ -10,6 +10,14 @@ const allowNativeSelection = (target: EventTarget | null) =>
   Boolean(target.closest('input, textarea, [contenteditable="true"], [contenteditable="plaintext-only"]'));
 
 const blockGlobalCopyActions = (event: Event) => {
+  if (
+    (event.type === 'selectstart' || event.type === 'contextmenu') &&
+    event.target instanceof HTMLElement &&
+    event.target.closest('[data-allow-dblclick-gesture="true"]')
+  ) {
+    return;
+  }
+
   if (allowNativeSelection(event.target)) {
     return;
   }

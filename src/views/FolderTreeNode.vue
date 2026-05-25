@@ -3,6 +3,7 @@
     <div
       class="folder-node"
       :class="{ selected: selected === node.path }"
+      :data-folder-path="node.path"
       :style="{ paddingLeft: depth * 18 + 20 + 'px' }"
       @click="$emit('select', node.path)"
     >

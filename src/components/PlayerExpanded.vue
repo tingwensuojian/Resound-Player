@@ -1,5 +1,5 @@
 <template>
-  <transition name="player-sheet">
+  <transition :name="playerTransitionName">
     <div
       v-if="playerStore.state.expanded"
       class="expanded-wrap"
@@ -365,6 +365,19 @@ const settingsAnchor = ref({ top: 0, right: 0 });
 const gearBtnRef = ref<HTMLElement | null>(null);
 const offsetPopoverStyle = ref<Record<string, string>>({});
 const transPopoverStyle = ref<Record<string, string>>({});
+
+const playerTransitionName = computed(() => {
+  switch (uiStore.state.playerPageTransition) {
+    case '景深推进':
+      return 'player-depth';
+    case '液态扩散':
+      return 'player-liquid';
+    case '幕布揭开':
+      return 'player-curtain';
+    default:
+      return 'player-sheet';
+  }
+});
 
 const isFullscreen = ref(false);
 function toggleFullscreen() {
@@ -940,6 +953,160 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .player-sheet-enter-from .expanded-panel, .player-sheet-leave-to .expanded-panel {
   transform: translateY(100%);
 }
+
+.player-depth-enter-active,
+.player-depth-leave-active {
+  transition:
+    opacity 0.34s ease,
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.38s ease;
+  transform-origin: center center;
+}
+
+.player-depth-enter-active .expanded-panel,
+.player-depth-leave-active .expanded-panel {
+  transition:
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease;
+}
+
+.player-depth-enter-from {
+  opacity: 0;
+  transform: scale(1.08);
+  filter: blur(18px);
+}
+
+.player-depth-leave-to {
+  opacity: 0;
+  transform: scale(0.92);
+  filter: blur(10px);
+}
+
+.player-depth-enter-from .expanded-panel {
+  opacity: 0;
+  transform: scale(0.94) translateY(18px);
+}
+
+.player-depth-leave-to .expanded-panel {
+  opacity: 0;
+  transform: scale(1.04) translateY(-10px);
+}
+
+.player-liquid-enter-active,
+.player-liquid-leave-active {
+  transition:
+    opacity 0.42s ease,
+    transform 0.44s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.44s ease;
+}
+
+.player-liquid-enter-active .expanded-panel,
+.player-liquid-leave-active .expanded-panel {
+  transition:
+    opacity 0.32s ease,
+    transform 0.44s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.player-liquid-enter-from {
+  opacity: 0;
+  transform: scale(0.9);
+  filter: blur(24px) saturate(160%);
+}
+
+.player-liquid-leave-to {
+  opacity: 0;
+  transform: scale(1.06);
+  filter: blur(18px) saturate(80%);
+}
+
+.player-liquid-enter-from .expanded-panel {
+  opacity: 0;
+  transform: translateY(32px) scale(0.98);
+}
+
+.player-liquid-leave-to .expanded-panel {
+  opacity: 0;
+  transform: translateY(18px) scale(0.98);
+}
+
+.player-curtain-enter-active,
+.player-curtain-leave-active {
+  transition:
+    clip-path 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease;
+}
+
+.player-curtain-enter-active .expanded-panel,
+.player-curtain-leave-active .expanded-panel {
+  transition:
+    opacity 0.3s ease,
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.player-curtain-enter-from,
+.player-curtain-leave-to {
+  opacity: 0;
+  clip-path: inset(100% 0 0 0 round 28px);
+}
+
+.player-curtain-enter-to,
+.player-curtain-leave-from {
+  clip-path: inset(0 0 0 0 round 0);
+}
+
+.player-curtain-enter-from .expanded-panel {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.player-curtain-leave-to .expanded-panel {
+  opacity: 0;
+  transform: translateY(32px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-sheet-enter-active,
+  .player-sheet-leave-active,
+  .player-sheet-enter-active .expanded-panel,
+  .player-sheet-leave-active .expanded-panel,
+  .player-depth-enter-active,
+  .player-depth-leave-active,
+  .player-depth-enter-active .expanded-panel,
+  .player-depth-leave-active .expanded-panel,
+  .player-liquid-enter-active,
+  .player-liquid-leave-active,
+  .player-liquid-enter-active .expanded-panel,
+  .player-liquid-leave-active .expanded-panel,
+  .player-curtain-enter-active,
+  .player-curtain-leave-active,
+  .player-curtain-enter-active .expanded-panel,
+  .player-curtain-leave-active .expanded-panel {
+    transition: opacity 0.12s ease !important;
+  }
+
+  .player-sheet-enter-from,
+  .player-sheet-leave-to,
+  .player-sheet-enter-from .expanded-panel,
+  .player-sheet-leave-to .expanded-panel,
+  .player-depth-enter-from,
+  .player-depth-leave-to,
+  .player-depth-enter-from .expanded-panel,
+  .player-depth-leave-to .expanded-panel,
+  .player-liquid-enter-from,
+  .player-liquid-leave-to,
+  .player-liquid-enter-from .expanded-panel,
+  .player-liquid-leave-to .expanded-panel,
+  .player-curtain-enter-from,
+  .player-curtain-leave-to,
+  .player-curtain-enter-from .expanded-panel,
+  .player-curtain-leave-to .expanded-panel {
+    opacity: 0;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+  }
+}
+
 .soft-gradient-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 
 /* ── 全屏封面 ── */

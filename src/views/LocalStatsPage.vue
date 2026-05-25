@@ -58,8 +58,8 @@ import { platform } from '../utils/platform'
 const recent = ref<any[]>([])
 
 onMounted(async () => {
-  // 从 localStorage 恢复已保存的扫描目录
-  if (!localMusicStore.state.directories.length) localMusicStore.loadDirectories()
+  // 从 DB / localStorage 恢复已保存的扫描目录
+  if (!localMusicStore.state.directories.length) await localMusicStore.loadDirectories()
 
   if (!platform.localApi) return
   try {
@@ -93,7 +93,7 @@ async function addDir() {
   if (!platform.localApi) return
   const dir = await platform.localApi.selectDirectory()
   if (!dir) return
-  localMusicStore.addDirectory(dir)
+  await localMusicStore.addDirectory(dir)
 }
 
 async function handleScan() {
@@ -101,11 +101,11 @@ async function handleScan() {
     if (!platform.localApi) return
     const dir = await platform.localApi.selectDirectory()
     if (!dir) return
-    localMusicStore.addDirectory(dir)
+    await localMusicStore.addDirectory(dir)
     // 添加目录后自动触发扫描
-    localMusicStore.scanAll()
+    await localMusicStore.scanAll()
   } else {
-    localMusicStore.scanAll()
+    await localMusicStore.scanAll()
   }
 }
 
@@ -137,7 +137,7 @@ async function removeDir(dir: string) {
     return
   }
 
-  localMusicStore.removeDirectoryPath(dir)
+  await localMusicStore.removeDirectoryPath(dir)
   await localMusicStore.loadTracks()
   // 重新加载最近添加列表
   if (platform.localApi) {

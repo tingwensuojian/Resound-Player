@@ -6,6 +6,7 @@ import { setUnblockProxyEnabled } from '../api/client';
 type ThemeMode = '浅色' | '深色' | '跟随系统';
 type ResolvedTheme = 'light' | 'dark';
 type AccentMode = '绿色' | '蓝色' | '紫色' | '橙色' | '自定义';
+export type PlayerPageTransition = '经典上滑' | '景深推进' | '液态扩散' | '幕布揭开';
 
 const STORAGE_KEY = 'tm_theme_mode';
 const GLASS_KEY = 'tm_liquid_glass';
@@ -16,6 +17,7 @@ const ACCENT_COLOR_KEY = 'tm_accent_custom_color';
 const RESUME_AFTER_MV_KEY = 'tm_resume_after_mv';
 const SHOW_INTEL_KEY = 'tm_show_intel_indicator';
 const AUTO_HIDE_UI_KEY = 'tm_auto_hide_player_ui';
+const PLAYER_PAGE_TRANSITION_KEY = 'tm_player_page_transition';
 const MINI_ALWAYS_ON_TOP_KEY = 'tm_mini_always_on_top';
 
 export type UiState = {
@@ -28,6 +30,7 @@ export type UiState = {
   resumeAfterMv: boolean;
   showIntelligenceIndicator: boolean;
   autoHidePlayerUI: boolean;
+  playerPageTransition: PlayerPageTransition;
   showPlayQueue: boolean;
   searchKeyword: string;
   searchType: number;
@@ -115,6 +118,7 @@ export const useUiStore = defineStore('ui', () => {
     resumeAfterMv: true,
     showIntelligenceIndicator: true,
     autoHidePlayerUI: true,
+    playerPageTransition: '幕布揭开',
     showPlayQueue: false,
     searchKeyword: '',
     searchType: 1,
@@ -144,6 +148,8 @@ export const useUiStore = defineStore('ui', () => {
     state.showIntelligenceIndicator = savedIntel === null ? true : savedIntel === '1';
     const savedAutoHide = localStorage.getItem(AUTO_HIDE_UI_KEY);
     state.autoHidePlayerUI = savedAutoHide === null ? true : savedAutoHide === '1';
+    const savedPlayerTransition = localStorage.getItem(PLAYER_PAGE_TRANSITION_KEY);
+    state.playerPageTransition = isPlayerPageTransition(savedPlayerTransition) ? savedPlayerTransition : '幕布揭开';
     state.isMiniMode = getWindowRole() === 'mini';
 
     // 迷你模式置顶偏好
@@ -222,6 +228,16 @@ export const useUiStore = defineStore('ui', () => {
     localStorage.setItem(AUTO_HIDE_UI_KEY, enabled ? '1' : '0');
   }
 
+  function isPlayerPageTransition(value: unknown): value is PlayerPageTransition {
+    return value === '经典上滑' || value === '景深推进' || value === '液态扩散' || value === '幕布揭开';
+  }
+
+  function setPlayerPageTransition(value: PlayerPageTransition) {
+    if (!isPlayerPageTransition(value)) return;
+    state.playerPageTransition = value;
+    localStorage.setItem(PLAYER_PAGE_TRANSITION_KEY, value);
+  }
+
   function enterMiniMode() {
     if (getWindowRole() === 'main' && !state.isMiniMode) {
       window.appEnv?.miniMode?.enter(state.miniAlwaysOnTop);
@@ -282,6 +298,7 @@ export const useUiStore = defineStore('ui', () => {
     setResumeAfterMv,
     setShowIntelligenceIndicator,
     setAutoHidePlayerUI,
+    setPlayerPageTransition,
     enterMiniMode,
     exitMiniMode,
     setMiniAlwaysOnTop,

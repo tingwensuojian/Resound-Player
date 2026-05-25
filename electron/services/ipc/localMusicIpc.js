@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from "electron";
+import { ipcMain, BrowserWindow, shell } from "electron";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -37,7 +37,11 @@ ipcMain.handle("select-directory", async () => {
 function registerLocalMusicIpc(scanner, db) {
   const coverCache = new CoverCache();
   ipcMain.handle("local:scan", async (event, dirPath) => {
-    if (!dirPath) return { success: false, error: "扫描路径为空" };    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!dirPath) return { success: false, error: "扫描路径为空" };
+    if (typeof db.upsertScanDir === "function") {
+      await db.upsertScanDir(dirPath);
+    }
+    const win = BrowserWindow.fromWebContents(event.sender);
     const send = (data) => {
       if (!win || win.isDestroyed()) return;
       event.sender.send("local:scan-progress", data);
@@ -86,6 +90,9 @@ function registerLocalMusicIpc(scanner, db) {
   ipcMain.handle("local:remove-tracks-by-dir", async (_event, dirPath) => {
     console.log("[local:remove-tracks-by-dir] \u6536\u5230\u8BF7\u6C42:", dirPath);
     const result = await db.removeTracksByDirectory(dirPath);
+    if (typeof db.removeScanDir === "function") {
+      await db.removeScanDir(dirPath);
+    }
     console.log("[local:remove-tracks-by-dir] \u5B8C\u6210, \u5220\u9664\u4E86", result, "\u884C");
     return { success: true };
   });
@@ -104,6 +111,27 @@ function registerLocalMusicIpc(scanner, db) {
   });
   ipcMain.handle("local:track-count", async () => {
     return db.getTrackCount();
+  });
+  ipcMain.handle("local:open-folder", async (_event, folderPath) => {
+    if (!isPathSafe(folderPath) || !fs.existsSync(folderPath)) return { success: false, error: "目录不存在" };
+    const stat = fs.statSync(folderPath);
+    const target = stat.isDirectory() ? folderPath : path.dirname(folderPath);
+    const error = await shell.openPath(target);
+    return error ? { success: false, error } : { success: true };
+  });
+  ipcMain.handle("local:list-scan-dirs", async () => {
+    if (typeof db.listScanDirs !== "function") return [];
+    return db.listScanDirs();
+  });
+  ipcMain.handle("local:save-scan-dir", async (_event, dirPath) => {
+    if (!dirPath || typeof db.upsertScanDir !== "function") return { success: false };
+    await db.upsertScanDir(dirPath);
+    return { success: true };
+  });
+  ipcMain.handle("local:remove-scan-dir", async (_event, dirPath) => {
+    if (!dirPath || typeof db.removeScanDir !== "function") return { success: false };
+    await db.removeScanDir(dirPath);
+    return { success: true };
   });
   ipcMain.handle("local:get-lyric", async (_event, filePath) => {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked get-lyric path:', filePath); return null; }

@@ -23,6 +23,9 @@ export class LocalMusicDB {
   getAllMtimes(): Promise<Map<string, number>>
   getRecentTracks(limit?: number): Promise<any[]>
   getTrackStats(): Promise<{ totalTracks: number; totalArtists: number; totalAlbums: number; totalDuration: number; totalSize: number }>
+  upsertScanDir(dirPath: string): Promise<void>
+  listScanDirs(): Promise<string[]>
+  removeScanDir(dirPath: string): Promise<void>
 
   // Playlist CRUD
   createPlaylist(name: string, description?: string): Promise<number>

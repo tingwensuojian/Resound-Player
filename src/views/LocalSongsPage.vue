@@ -430,10 +430,10 @@ async function handleScan() {
     if (!platform.localApi) return
     const dir = await platform.localApi.selectDirectory()
     if (!dir) return
-    localMusicStore.addDirectory(dir)
-    localMusicStore.scanAll()
+    await localMusicStore.addDirectory(dir)
+    await localMusicStore.scanAll()
   } else {
-    localMusicStore.scanAll()
+    await localMusicStore.scanAll()
   }
 }
 

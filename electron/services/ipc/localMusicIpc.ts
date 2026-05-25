@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, shell } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import jschardet from 'jschardet'
@@ -28,6 +28,9 @@ ipcMain.handle('select-directory', async () => {
 export function registerLocalMusicIpc(scanner: IMusicScanner, db: IMetadataDB) {
   const coverCache = new CoverCache()
   ipcMain.handle('local:scan', async (event, dirPath: string) => {
+    if (dirPath && typeof (db as any).upsertScanDir === 'function') {
+      await (db as any).upsertScanDir(dirPath)
+    }
     const win = BrowserWindow.fromWebContents(event.sender)
     const send = (data: any) => {
       if (!win || win.isDestroyed()) return
@@ -77,6 +80,9 @@ export function registerLocalMusicIpc(scanner: IMusicScanner, db: IMetadataDB) {
   ipcMain.handle('local:remove-tracks-by-dir', async (_event, dirPath: string) => {
     console.log('[local:remove-tracks-by-dir] 收到请求:', dirPath)
     const result = await db.removeTracksByDirectory(dirPath)
+    if (typeof (db as any).removeScanDir === 'function') {
+      await (db as any).removeScanDir(dirPath)
+    }
     console.log('[local:remove-tracks-by-dir] 完成, 删除了', result, '行')
     return { success: true }
   })
@@ -99,6 +105,31 @@ export function registerLocalMusicIpc(scanner: IMusicScanner, db: IMetadataDB) {
 
   ipcMain.handle('local:track-count', async () => {
     return db.getTrackCount()
+  })
+
+  ipcMain.handle('local:open-folder', async (_event, folderPath: string) => {
+    if (!folderPath || !fs.existsSync(folderPath)) return { success: false, error: '目录不存在' }
+    const stat = fs.statSync(folderPath)
+    const target = stat.isDirectory() ? folderPath : path.dirname(folderPath)
+    const error = await shell.openPath(target)
+    return error ? { success: false, error } : { success: true }
+  })
+
+  ipcMain.handle('local:list-scan-dirs', async () => {
+    if (typeof (db as any).listScanDirs !== 'function') return []
+    return (db as any).listScanDirs()
+  })
+
+  ipcMain.handle('local:save-scan-dir', async (_event, dirPath: string) => {
+    if (!dirPath || typeof (db as any).upsertScanDir !== 'function') return { success: false }
+    await (db as any).upsertScanDir(dirPath)
+    return { success: true }
+  })
+
+  ipcMain.handle('local:remove-scan-dir', async (_event, dirPath: string) => {
+    if (!dirPath || typeof (db as any).removeScanDir !== 'function') return { success: false }
+    await (db as any).removeScanDir(dirPath)
+    return { success: true }
   })
 
   ipcMain.handle('local:get-lyric', async (_event, filePath: string) => {

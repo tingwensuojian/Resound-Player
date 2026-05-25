@@ -71,7 +71,9 @@
           </span>
           <div class="local-song-meta">
             <span class="local-song-title" :title="track.title">
-              <span v-if="track.hasLyrics" class="local-lyric-icon" title="有歌词">♪</span>
+              <TooltipWrapper v-if="track.hasLyrics" text="内嵌歌词">
+                <span class="local-lyric-icon">♪</span>
+              </TooltipWrapper>
               {{ track.title }}
             </span>
             <span class="local-song-artist" :title="track.artist">{{ track.artist }}</span>
@@ -155,6 +157,7 @@ import HeroCoverMedia from '../components/HeroCoverMedia.vue'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import PromptModal from '../components/ui/PromptModal.vue'
 import LocalSongActions from '../components/ui/LocalSongActions.vue'
+import TooltipWrapper from '../components/ui/TooltipWrapper.vue'
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
 import { useUserStore } from '../stores/user'
@@ -560,7 +563,7 @@ async function uploadToCloud(track: LocalTrack) {
   display: flex; align-items: center; gap: 4px;
 }
 .local-song-row.playing .local-song-title { color: var(--accent); }
-.local-lyric-icon { font-size: 13px; color: var(--accent); flex-shrink: 0; }
+.local-lyric-icon { position: relative; display: inline-flex; align-items: center; font-size: 13px; color: var(--accent); flex-shrink: 0; }
 .local-song-artist {
   color: var(--text-sub); font-size: var(--text-label-sm);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

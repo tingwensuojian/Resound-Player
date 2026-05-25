@@ -47,7 +47,9 @@
         </span>
         <div class="local-song-meta">
           <span class="local-song-title" :title="vi.track.title">
-            <span v-if="vi.track.hasLyrics" class="local-lyric-icon" title="有歌词">♪</span>
+            <TooltipWrapper v-if="vi.track.hasLyrics" text="内嵌歌词">
+              <span class="local-lyric-icon">♪</span>
+            </TooltipWrapper>
             {{ vi.track.title }}
           </span>
           <span class="local-song-artist" :title="vi.track.artist">{{ vi.track.artist }}</span>
@@ -77,6 +79,7 @@ import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore()
 import ScrollToTopFab from './ui/ScrollToTopFab.vue'
 import LocalSongActions from './ui/LocalSongActions.vue'
+import TooltipWrapper from './ui/TooltipWrapper.vue'
 
 const ROW_HEIGHT = 68
 const OVERSCAN = 15
@@ -472,7 +475,7 @@ function handlePPClick(track: LocalTrack, index: number) {
   gap: 4px;
 }
 .local-song-row.playing .local-song-title { color: var(--accent); }
-.local-lyric-icon { font-size: 13px; color: var(--accent); flex-shrink: 0; }
+.local-lyric-icon { position: relative; display: inline-flex; align-items: center; font-size: 13px; color: var(--accent); flex-shrink: 0; }
 .local-song-artist {
   color: var(--text-sub);
   font-size: var(--text-label-sm);
