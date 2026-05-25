@@ -1,6 +1,12 @@
 <template>
   <MiniPlayBar v-if="uiStore.state.isMiniMode" />
-  <div v-else class="layout" :style="layoutVars">
+  <div
+    class="layout"
+    :class="{ 'layout--mini-hidden': uiStore.state.isMiniMode }"
+    :style="layoutVars"
+    :inert="uiStore.state.isMiniMode || undefined"
+    :aria-hidden="uiStore.state.isMiniMode ? 'true' : undefined"
+  >
     <Sidebar
       v-show="!isNarrow || sidebarOpen"
       :active-key="sidebarActiveKey"
@@ -173,10 +179,15 @@
       <ScrollToTopFab v-if="showBackToTop" :fixed="true" :scroll-host-selector="backToTopScrollHost" />
     </div>
 
-    <PlayerBar v-show="!playerStore.state.expanded" />
+    <PlayerBar v-if="!uiStore.state.isMiniMode" v-show="!playerStore.state.expanded" />
     <PlayQueuePanel />
-    <PlayerExpanded @open-artist="openArtistFromPlayer" @open-album="(albumId) => { playerStore.closeExpanded(); openAlbumDetail(albumId, activePage); }" @open-user="openUserFromComment" @open-podcast-detail="(item) => { playerStore.closeExpanded(); openPodcastDetail(item); }" />
-    <LoginModal />
+    <PlayerExpanded
+      @open-artist="openArtistFromPlayer"
+      @open-album="(albumId) => { playerStore.closeExpanded(); openAlbumDetail(albumId, activePage); }"
+      @open-user="openUserFromComment"
+      @open-podcast-detail="(item) => { playerStore.closeExpanded(); openPodcastDetail(item); }"
+    />
+    <LoginModal v-if="!uiStore.state.isMiniMode" />
   </div>
 </template>
 
@@ -233,6 +244,8 @@ import { useUserStore } from './stores/user';
 const userStore = useUserStore();
 import { recordLocalHistoryEntry } from './utils/localHistory';
 import { useNavigationHistory } from './composables/useNavigationHistory';
+import { useLoginModalStore } from './stores/loginModal';
+const loginModalStore = useLoginModalStore();
 
 const navHistory = useNavigationHistory();
 
@@ -1089,7 +1102,13 @@ watch(
 
 /** 处理本地页面间导航事件 */
 function handleMiniModeState(e: Event) {
-  uiStore.state.isMiniMode = !!(e as CustomEvent).detail;
+  const isMini = !!(e as CustomEvent).detail;
+  uiStore.state.isMiniMode = isMini;
+  if (isMini) {
+    uiStore.state.showPlayQueue = false;
+    playerStore.closeExpanded();
+    loginModalStore.hideLoginModal();
+  }
 }
 
 function handleLocalNavigate(e: Event) {
@@ -1169,9 +1188,18 @@ onBeforeUnmount(() => {
 
   width: 100%;
   height: 100vh;
-  position: relative;
+  position: fixed;
+  inset: 0;
   background: var(--bg-app);
   overflow-x: clip;
+}
+
+.layout--mini-hidden {
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .main-area {
