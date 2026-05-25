@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import {
   Heart,
   ListMusic,
@@ -135,6 +135,17 @@ const { isCurrentLiked, likeLoading, toggleCurrentLike } = useCurrentTrackLike()
 const showPlaylist = ref(false);
 const hoveredIdx = ref<number | null>(null);
 
+const MINI_BAR_HEIGHT = 70;
+const MINI_PLAYLIST_HEIGHT = 360;
+
+function resizeMiniWindow(height: number) {
+  window.appEnv?.miniMode?.resize?.(height);
+}
+
+function syncMiniPlaylistWindow() {
+  resizeMiniWindow(showPlaylist.value ? MINI_PLAYLIST_HEIGHT : MINI_BAR_HEIGHT);
+}
+
 // ── 序号 / 播放 / 暂停 / 音浪 ──
 function isTrackPlaying(track: any) {
   return playerStore.state.currentTrack?.id === track.id;
@@ -159,7 +170,12 @@ function showPause(track: any, idx: number) {
 
 function togglePlaylist() {
   showPlaylist.value = !showPlaylist.value;
+  syncMiniPlaylistWindow();
 }
+
+onBeforeUnmount(() => {
+  resizeMiniWindow(MINI_BAR_HEIGHT);
+});
 
 function playByIndex(idx: number) {
   playerStore.playByIndex(idx);
@@ -356,29 +372,30 @@ function onFullscreen() {
 .playlist-dropdown {
   position: absolute;
   top: 67px;
-  left: 0;
   right: 0;
+  bottom: 0;
+  left: 0;
   background: var(--bg-surface);
   border-top: 1px solid var(--border);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
   -webkit-app-region: no-drag;
-  max-height: 0;
+  height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: max-height 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.2s ease;
+  transition: height 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.2s ease;
   pointer-events: none;
 }
 
 .playlist-dropdown.open {
-  max-height: 300px;
+  height: calc(100% - 67px);
   opacity: 1;
   pointer-events: auto;
 }
 
 .mini-playlist-list {
-  max-height: 300px;
+  height: 100%;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 4px 0 0;
 }
 
 .mini-playlist-list::-webkit-scrollbar {
