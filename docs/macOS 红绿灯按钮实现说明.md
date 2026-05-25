@@ -260,6 +260,39 @@ macOS 原生红绿灯位于窗口左上角，会覆盖页面内容层。侧栏�
 
 ---
 
+### 5. 迷你模式红绿灯处理
+
+迷你模式下 macOS 红绿灯按钮与紧凑的 MiniPlayBar 布局不协调，需要在进入/退出迷你模式时动态隐藏/显示。
+
+**实现位置**：`electron/main.js` — `mini-mode:enter` 的 `applyMiniSize()` 和 `mini-mode:exit`。
+
+#### 进入迷你模式时隐藏
+
+在 `applyMiniSize()` 中，设置窗口尺寸和置顶后，追加 macOS 专属调用：
+
+```js
+// applyMiniSize() 末尾：
+win.setAlwaysOnTop(!!alwaysOnTop);
+if (process.platform === 'darwin') win.setWindowButtonVisibility(false);
+win.webContents.send('mini-mode:state-change', true);
+```
+
+#### 退出迷你模式时恢复
+
+在 `mini-mode:exit` 中，恢复窗口尺寸后、发送状态变更前，恢复红绿灯显示：
+
+```js
+// mini-mode:exit 末尾：
+if (process.platform === 'darwin') win.setWindowButtonVisibility(true);
+win.webContents.send('mini-mode:state-change', false);
+```
+
+**原理**：`BrowserWindow.setWindowButtonVisibility()` 是 Electron 的 macOS 专属 API，运行时控制红绿灯显示/隐藏，不改变窗口创建时的 `titleBarStyle` 配置。
+
+**约束**：该 API 仅在 macOS 有效，调用时必须用 `process.platform === 'darwin'` 守卫，防止其他平台抛出异常。
+
+---
+
 ## 跨平台差异
 
 | 平台 | 窗口参数 | 红绿灯 | 自定义按钮 | 拖拽区域 |

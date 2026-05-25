@@ -523,6 +523,7 @@ ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
     win.setSize(miniWidth, miniHeight);
     win.setPosition(screenWidth - miniWidth - margin, margin);
     win.setAlwaysOnTop(!!alwaysOnTop);
+    if (process.platform === 'darwin') win.setWindowButtonVisibility(false);
     win.webContents.send('mini-mode:state-change', true);
   }
 
@@ -554,6 +555,7 @@ ipcMain.on('mini-mode:exit', () => {
   } else if (isMaximized) {
     win.maximize();
   }
+  if (process.platform === 'darwin') win.setWindowButtonVisibility(true);
   win.webContents.send('mini-mode:state-change', false);
 });
 
