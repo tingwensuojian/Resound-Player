@@ -220,7 +220,7 @@ function onFullscreen() {
   uiStore.exitMiniMode();
   setTimeout(() => {
     playerStore.openExpanded();
-  }, 100);
+  }, 200);
 }
 </script>
 

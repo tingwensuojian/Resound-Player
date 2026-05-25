@@ -1192,9 +1192,11 @@ onBeforeUnmount(() => {
   inset: 0;
   background: var(--bg-app);
   overflow-x: clip;
+  transition: opacity 0.18s ease;
 }
 
 .layout--mini-hidden {
+  opacity: 0;
   width: 0;
   height: 0;
   overflow: hidden;

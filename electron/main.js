@@ -559,14 +559,16 @@ ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
 ipcMain.on('mini-mode:exit', () => {
   if (!win || !preMiniState) return;
 
+  const { x, y, width, height, isMaximized, wasFullScreen } = preMiniState;
+  preMiniState = null;
+
+  // 优先通知渲染进程解除布局隐藏，再恢复窗口物理尺寸
+  win.webContents.send('mini-mode:state-change', false);
+
   applyMiniAlwaysOnTop(false);
   win.setResizable(true);
   win.setMinimumSize(1100, 700);
   win.setMaximumSize(0, 0);
-
-  const { x, y, width, height, isMaximized, wasFullScreen } = preMiniState;
-  preMiniState = null;
-
   win.setSize(width, height);
   win.setPosition(x, y);
   if (wasFullScreen) {
@@ -575,7 +577,6 @@ ipcMain.on('mini-mode:exit', () => {
     win.maximize();
   }
   if (process.platform === 'darwin') win.setWindowButtonVisibility(true);
-  win.webContents.send('mini-mode:state-change', false);
 });
 
 ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
