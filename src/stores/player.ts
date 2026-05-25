@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { reactive } from 'vue';
+import { reactive, toRaw } from 'vue';
 import { getIntelligenceList, getPlaylistTrackAll, getSongDetail, trashPersonalFm } from '../api/music';
 import { useUserStore } from './user';
 import { useLoginModalStore } from '../stores/loginModal';
@@ -7,10 +7,11 @@ import { hydrateCache, getCache, setCache } from './unblock-cache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { platform } from '../utils/platform';
 import { useEqSettingsStore } from './eqSettings';
-import { setupMediaSession } from '../composables/useMediaSession';
-import { createAudioEngine } from '../player/audioEngine';
 import { resolvePlayUrl } from '../player/playbackResolver';
 import { useUiStore } from './ui';
+import { getPlayerRuntime, initPlayerRuntime } from '../player/runtime';
+import { getPlaybackSnapshot, subscribePlaybackSnapshot } from '../player/bridge';
+import type { PlaybackCommand } from '../player/contracts';
 
 type Artist = { name: string };
 type Album = { name?: string; picUrl?: string };
@@ -61,11 +62,27 @@ function formatTrack(raw: any): Track {
   };
 }
 
+function cloneTrack(track: Track | null) {
+  if (!track) return null;
+  const raw = toRaw(track) as Track;
+  return {
+    ...raw,
+    ar: Array.isArray(raw.ar) ? raw.ar.map((artist) => ({ ...toRaw(artist) })) : [],
+    al: raw.al ? { ...toRaw(raw.al) } : {},
+    podcast: raw.podcast ? { ...toRaw(raw.podcast) } : undefined,
+  } as Track;
+}
+
 
 const VALID_QUALITIES = new Set(['标准', '较高', '极高(HQ)', '无损(SQ)', 'Hi-Res', '高清臻音', '高清环绕声', '沉浸环绕声', '杜比全景声', '超清母带']);
 
-const audioEl = new Audio();
-const audioEngine = createAudioEngine(audioEl);
+function getWindowRole(): 'main' | 'mini' {
+  return window.appEnv?.windowRole === 'mini' ? 'mini' : 'main';
+}
+
+function getRuntime() {
+  return getPlayerRuntime();
+}
 
 export const usePlayerStore = defineStore('player', () => {
   const userStore = useUserStore();
@@ -74,11 +91,12 @@ export const usePlayerStore = defineStore('player', () => {
 
   const state = reactive({
 
-  audio: audioEl,
+  audio: null as HTMLAudioElement | null,
   playlist: [] as Track[],
   currentIndex: -1,
   currentTrack: null as Track | null,
   currentSongId: 0,
+  miniLyricText: '',
   currentQualityBr: 0,
   currentQualityDowngraded: false,
   qualityDowngradeInfo: null as { from: string; to: string } | null,
@@ -116,38 +134,134 @@ export const usePlayerStore = defineStore('player', () => {
 
   });
 
+  let stopRuntimeSubscription: (() => void) | null = null;
+  let stopPlaybackStateSubscription: (() => void) | null = null;
+  let stopPlaybackCommandSubscription: (() => void) | null = null;
+
+  function applyPlaybackSnapshot(snapshot: ReturnType<typeof getPlaybackSnapshot>) {
+    state.currentTrack = snapshot.currentTrack as Track | null;
+    state.playlist = snapshot.playlist as Track[];
+    state.currentIndex = snapshot.currentIndex;
+    state.currentSongId = Number(snapshot.currentTrack?.id || 0);
+    state.miniLyricText = snapshot.miniLyricText || '';
+    state.isPlaying = snapshot.isPlaying;
+    state.currentTime = snapshot.currentTime;
+    state.duration = snapshot.duration;
+    state.volume = snapshot.volume;
+    state.muted = snapshot.muted;
+    state.loading = snapshot.loading;
+    state.currentSource = snapshot.currentSource;
+    state.currentQualityBr = snapshot.currentQualityBr;
+    state.currentQualityDowngraded = snapshot.currentQualityDowngraded;
+    state.qualityDowngradeInfo = snapshot.qualityDowngradeInfo;
+    state.playMode = snapshot.playMode;
+    state.playbackRate = snapshot.playbackRate;
+  }
+
+  function isMiniWindow() {
+    return getWindowRole() === 'mini';
+  }
+
+  function sendPlaybackCommand(command: PlaybackCommand) {
+    window.appEnv?.playback?.sendCommand?.(command);
+  }
+
+  function syncRuntimeState() {
+    if (isMiniWindow()) return;
+    const runtime = getRuntime();
+    runtime.state.currentTrack = cloneTrack(state.currentTrack) as any;
+    runtime.state.playlist = state.playlist.map((track) => cloneTrack(track) as any);
+    runtime.state.currentIndex = state.currentIndex;
+    runtime.state.miniLyricText = state.miniLyricText;
+    runtime.state.isPlaying = state.isPlaying;
+    runtime.state.currentTime = state.currentTime;
+    runtime.state.duration = state.duration;
+    runtime.state.volume = state.volume;
+    runtime.state.muted = state.muted;
+    runtime.state.playMode = state.playMode;
+    runtime.state.playbackRate = state.playbackRate;
+    runtime.state.loading = state.loading;
+    runtime.state.currentSource = state.currentSource;
+    runtime.state.currentQualityBr = state.currentQualityBr;
+    runtime.state.currentQualityDowngraded = state.currentQualityDowngraded;
+    runtime.state.qualityDowngradeInfo = state.qualityDowngradeInfo;
+    runtime.notify();
+  }
+
+  function setMiniLyricText(text: string) {
+    if (isMiniWindow()) return;
+    const nextText = text.trim();
+    if (state.miniLyricText === nextText) return;
+    state.miniLyricText = nextText;
+    syncRuntimeState();
+  }
+
+  async function executeHostCommand(command: PlaybackCommand) {
+    switch (command.type) {
+      case 'togglePlay':
+        await togglePlay({ fromRemote: true });
+        return;
+      case 'next':
+        await next({ fromRemote: true });
+        return;
+      case 'prev':
+        await prev({ fromRemote: true });
+        return;
+      case 'seek':
+        seek(command.time, { fromRemote: true });
+        return;
+      case 'setVolume':
+        setVolume(command.volume, { fromRemote: true });
+        return;
+      case 'toggleMute':
+        toggleMute({ fromRemote: true });
+        return;
+      case 'playByIndex':
+        await playByIndex(command.index, { fromRemote: true });
+        return;
+      case 'removeFromPlaylist':
+        removeFromPlaylist(command.index, { fromRemote: true });
+        return;
+      case 'openExpanded':
+        openExpanded({ fromRemote: true });
+        return;
+      case 'closeExpanded':
+        closeExpanded({ fromRemote: true });
+        return;
+      default:
+        return;
+    }
+  }
+
 
   function init() {
+    const runtime = initPlayerRuntime(getWindowRole());
+    if (!runtime) {
+      hydrateCache();
+      hydrate();
+      window.appEnv?.playback?.getInitialSnapshot?.().then((snapshot) => {
+        if (snapshot) applyPlaybackSnapshot(snapshot);
+      }).catch(() => {});
+      stopPlaybackStateSubscription?.();
+      stopPlaybackStateSubscription = window.appEnv?.playback?.onState?.((snapshot) => {
+        if (snapshot) applyPlaybackSnapshot(snapshot);
+      }) || null;
+      stopPlaybackCommandSubscription?.();
+      return;
+    }
     hydrateCache();
+    state.audio = runtime.audio;
     state.audio.volume = state.volume;
 
-    // 注册 macOS Now Playing / Media Session API（系统栏封面、歌名、控制）
-    setupMediaSession();
-
-    state.audio.ontimeupdate = () => {
-      state.currentTime = state.audio.currentTime || 0;
-    };
-
-    state.audio.onloadedmetadata = () => {
-      state.duration = state.audio.duration || 0;
-    };
-
-    state.audio.onended = () => {
-      if (state.autoplayNext) next();
-      else state.isPlaying = false;
-    };
-
-    state.audio.onplay = () => {
-      state.isPlaying = true;
-    };
-
-    state.audio.onpause = () => {
-      state.isPlaying = false;
-    };
-
-    // 预热音频硬件，缩短首次 AudioContext 创建时间
-    // Windows 上首次 new AudioContext() 需初始化 WASAPI，延迟可达 500ms+
-    audioEngine.ensureReady();
+    stopRuntimeSubscription?.();
+    stopRuntimeSubscription = subscribePlaybackSnapshot((snapshot) => {
+      applyPlaybackSnapshot(snapshot);
+      window.appEnv?.playback?.publishState?.(snapshot);
+    });
+    stopPlaybackCommandSubscription?.();
+    stopPlaybackCommandSubscription = window.appEnv?.playback?.onCommand?.((command) => {
+      void executeHostCommand(command);
+    }) || null;
 
     hydrate();
   }
@@ -253,7 +367,9 @@ export const usePlayerStore = defineStore('player', () => {
       state.volume = typeof parsed.volume === 'number' ? parsed.volume : 0.7;
       state.muted = typeof parsed.muted === 'boolean' ? parsed.muted : false;
       state.volumeBeforeMute = typeof parsed.volumeBeforeMute === 'number' ? parsed.volumeBeforeMute : state.volume;
-      state.audio.volume = state.muted ? 0 : state.volume;
+      if (state.audio) {
+        state.audio.volume = state.muted ? 0 : state.volume;
+      }
 
       state.autoplayNext = typeof parsed.autoplayNext === 'boolean' ? parsed.autoplayNext : true;
       state.playMode = parsed.playMode === 'single' || parsed.playMode === 'shuffle' ? parsed.playMode : 'loop';
@@ -277,27 +393,31 @@ export const usePlayerStore = defineStore('player', () => {
       state.fmSubmode = typeof parsed.fmSubmode === 'string' ? parsed.fmSubmode : '';
       state.defaultPlaylist = Array.isArray(parsed.defaultPlaylist) ? parsed.defaultPlaylist : [];
       state.currentPlaylistId = typeof parsed.currentPlaylistId === 'number' ? parsed.currentPlaylistId : 0;
-      state.audio.playbackRate = state.playbackRate;
+      if (state.audio) state.audio.playbackRate = state.playbackRate;
       syncThemeState();
+      syncRuntimeState();
     } catch {
       syncThemeState();
+      syncRuntimeState();
     }
   }
 
   function enableEq(on: boolean) {
-    if (audioEngine.isEnabled === on) return;
+    const { audioEngine } = getRuntime();
+    const audio = state.audio;
+    if (!audio || audioEngine.isEnabled === on) return;
 
     if (on) {
       const wasPlaying = state.isPlaying;
-      const savedTime = state.audio.currentTime;
-      if (wasPlaying) state.audio.pause();
+      const savedTime = audio.currentTime;
+      if (wasPlaying) audio.pause();
 
       audioEngine.ensureReady();
       if (!audioEngine.isReady) {
         console.warn('[EQ] pipeline init failed, fallback to native');
         if (wasPlaying) {
-          state.audio.currentTime = savedTime;
-          state.audio.play().catch(() => {});
+          audio.currentTime = savedTime;
+          audio.play().catch(() => {});
         }
         return;
       }
@@ -305,8 +425,8 @@ export const usePlayerStore = defineStore('player', () => {
       audioEngine.rebuildChain(true, eqSettings.state.gains);
 
       if (wasPlaying) {
-        state.audio.currentTime = savedTime;
-        state.audio.play().catch((err) => {
+        audio.currentTime = savedTime;
+        audio.play().catch((err) => {
           console.warn('[EQ] resume playback failed:', err);
         });
       }
@@ -314,27 +434,27 @@ export const usePlayerStore = defineStore('player', () => {
       audioEngine.syncVolume(state.volume, state.muted);
     } else {
       const wasPlaying = state.isPlaying;
-      const savedTime = state.audio.currentTime;
-      if (wasPlaying) state.audio.pause();
+      const savedTime = audio.currentTime;
+      if (wasPlaying) audio.pause();
 
       audioEngine.rebuildChain(false);
 
-      if (state.audio.crossOrigin === 'anonymous' && state.audio.src) {
-        state.audio.crossOrigin = '';
-        const savedSrc = state.audio.currentSrc || state.audio.src;
-        state.audio.src = savedSrc;
-        state.audio.load();
+      if (audio.crossOrigin === 'anonymous' && audio.src) {
+        audio.crossOrigin = '';
+        const savedSrc = audio.currentSrc || audio.src;
+        audio.src = savedSrc;
+        audio.load();
       }
 
       if (wasPlaying) {
-        state.audio.currentTime = savedTime;
-        state.audio.play().catch(() => {});
+        audio.currentTime = savedTime;
+        audio.play().catch(() => {});
       }
     }
   }
 
   function setEqGains(gains: number[]) {
-    audioEngine.setEqGains(gains);
+    getRuntime().audioEngine.setEqGains(gains);
   }
 
   function setPlaylist(list: any[], startIndex = 0, playlistId?: number) {
@@ -343,6 +463,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (typeof playlistId === 'number') {
       state.currentPlaylistId = playlistId;
     }
+    syncRuntimeState();
     persist();
   }
 /** 将一批 track 追加到当前播放列表末尾，不替换已有队列。
@@ -362,6 +483,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (!unique.length) return 0;
 
     state.playlist.push(...unique);
+    syncRuntimeState();
     persist();
     return unique.length;
   }
@@ -426,6 +548,7 @@ export const usePlayerStore = defineStore('player', () => {
 
     state.playlist.push(...uniqueIncoming);
     state.personalFmTrackIds = [...new Set([...state.personalFmTrackIds, ...uniqueIncoming.map((track) => track.id)])];
+    syncRuntimeState();
     persist();
     return uniqueIncoming.length;
   }
@@ -437,6 +560,7 @@ export const usePlayerStore = defineStore('player', () => {
   function setFmMode(mode: string, submode = '') {
     state.fmMode = mode;
     state.fmSubmode = submode;
+    syncRuntimeState();
     persist();
   }
 
@@ -445,6 +569,7 @@ export const usePlayerStore = defineStore('player', () => {
     state.personalFmFetcher = null;
     state.personalFmLoadingMore = false;
     state.personalFmHasMore = true;
+    syncRuntimeState();
     persist();
   }
 
@@ -507,7 +632,11 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  async function playByIndex(index: number) {
+  async function playByIndex(index: number, options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'playByIndex', index });
+      return;
+    }
     if (!state.playlist[index]) {
       if (state.personalFmFetcher) {
         await ensurePersonalFmQueue(0);
@@ -517,6 +646,7 @@ export const usePlayerStore = defineStore('player', () => {
     state.currentIndex = index;
     state.currentTrack = state.playlist[index];
     state.currentSongId = Number(state.currentTrack?.id || 0);
+    syncRuntimeState();
     persist();
     await playTrack(state.currentTrack);
     if (isPersonalFmTrack(state.currentTrack)) {
@@ -529,6 +659,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (track.source === 'podcast' && track.podcast?.feeTone === 'paid') {
       useLoginModalStore().showGlobalToast('该节目为付费内容，请前往播客详情页购买后收听', 'warning', 4000);
       state.loading = false;
+      syncRuntimeState();
       if (state.paidContentSkip) {
         await next();
       } else {
@@ -540,8 +671,10 @@ export const usePlayerStore = defineStore('player', () => {
     state.qualityDowngradeInfo = null;
     // 切歌时重置播放速度为全局默认
     state.playbackRate = state.defaultPlaybackRate;
+    if (!state.audio) return false;
     state.audio.playbackRate = state.defaultPlaybackRate;
     state.loading = true;
+    syncRuntimeState();
     try {
       let playUrl = track.url || '';
 
@@ -577,6 +710,7 @@ export const usePlayerStore = defineStore('player', () => {
         state.isPlaying = true;
         state.currentTrack = track;
         state.currentSongId = Number(track.id || 0);
+        syncRuntimeState();
         recordCurrentTrackToHistory();
         persist();
         return true;
@@ -623,17 +757,20 @@ export const usePlayerStore = defineStore('player', () => {
               cloudOwnerId: track.cloudOwnerId || n.cloudOwnerId,
               uid: track.uid || n.uid,
             };
+            syncRuntimeState();
           }
         }).catch(() => {});
       }
 
       state.currentTrack = track;
       state.currentSongId = Number(track.id || 0);
-	console.log("[playback] source:", state.currentSource, "| br:", state.currentQualityBr, "| id:", state.currentSongId, "| song:", track.name);
+      syncRuntimeState();
+      console.log("[playback] source:", state.currentSource, "| br:", state.currentQualityBr, "| id:", state.currentSongId, "| song:", track.name);
       if (!playUrl) {
-          state.audio.removeAttribute('src');
+        state.audio.removeAttribute('src');
         state.audio.load();
         state.isPlaying = false;
+        syncRuntimeState();
         persist();
         return false;
       }
@@ -650,15 +787,17 @@ export const usePlayerStore = defineStore('player', () => {
         state.audio.currentTime = seekTo;
       }
       // 确保 AudioContext 处于运行态（预创建时可能为 suspended）
-      audioEngine.resumeIfSuspended();
+      getRuntime().audioEngine.resumeIfSuspended();
       try {
         await state.audio.play();
       } catch {
         state.isPlaying = false;
+        syncRuntimeState();
         persist();
         return false;
       }
       state.isPlaying = true;
+      syncRuntimeState();
 
       if (typeof seekTo === 'number' && seekTo > 0 && wasPlaying) {
         state.audio.currentTime = seekTo;
@@ -675,10 +814,15 @@ export const usePlayerStore = defineStore('player', () => {
       return true;
     } finally {
       state.loading = false;
+      syncRuntimeState();
     }
   }
 
-  async function togglePlay() {
+  async function togglePlay(options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'togglePlay' });
+      return;
+    }
     if (!state.currentTrack && state.playlist.length === 0 && state.defaultPlaylist.length > 0) {
       setPlaylist(state.defaultPlaylist, 0);
       await playByIndex(0);
@@ -701,6 +845,7 @@ export const usePlayerStore = defineStore('player', () => {
       try {
         await state.audio.play();
         state.isPlaying = true;
+        syncRuntimeState();
       } catch {
         // 若播放地址失效或被浏览器策略拦截，回退到重新拉取地址再播放
         if (state.currentTrack) {
@@ -710,10 +855,15 @@ export const usePlayerStore = defineStore('player', () => {
     } else {
       state.audio.pause();
       state.isPlaying = false;
+      syncRuntimeState();
     }
   }
 
-  async function next() {
+  async function next(options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'next' });
+      return;
+    }
     if (state.playlist.length === 0) return;
 
     const isPersonalFmMode = isPersonalFmTrack(state.currentTrack) && Boolean(state.personalFmFetcher);
@@ -767,23 +917,28 @@ export const usePlayerStore = defineStore('player', () => {
     }
 
     if (!state.playlist.length) {
-      state.audio.pause();
-      state.isPlaying = false;
+      pausePlayback();
       state.currentIndex = -1;
       state.currentTrack = null;
       state.currentSongId = 0;
+      syncRuntimeState();
       persist();
       return true;
     }
 
     const nextIndex = removedIndex >= state.playlist.length ? state.playlist.length - 1 : removedIndex;
     state.currentIndex = Math.max(0, nextIndex);
+    syncRuntimeState();
     persist();
     await playByIndex(state.currentIndex);
     return true;
   }
 
-  async function prev() {
+  async function prev(options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'prev' });
+      return;
+    }
     if (state.playlist.length === 0) return;
 
     if (state.playMode === 'shuffle') {
@@ -796,12 +951,35 @@ export const usePlayerStore = defineStore('player', () => {
     await playByIndex(prevIndex);
   }
 
-  function seek(time: number) {
+  function seek(time: number, options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'seek', time });
+      return;
+    }
+    if (!state.audio) return;
     state.audio.currentTime = Math.max(0, Math.min(time, state.duration || 0));
     state.currentTime = state.audio.currentTime;
+    syncRuntimeState();
   }
 
-  function setVolume(v: number) {
+  function pausePlayback(options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'togglePlay' });
+      return;
+    }
+    if (!state.audio) return;
+    state.audio.pause();
+    state.isPlaying = false;
+    syncRuntimeState();
+  }
+
+  function setVolume(v: number, options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'setVolume', volume: v });
+      return;
+    }
+    const { audioEngine } = getRuntime();
+    if (!state.audio) return;
     const val = Math.max(0, Math.min(v, 1));
     state.volume = val;
     if (state.muted) {
@@ -813,10 +991,17 @@ export const usePlayerStore = defineStore('player', () => {
     } else {
       state.audio.volume = val;
     }
+    syncRuntimeState();
     persist();
   }
 
-  function toggleMute() {
+  function toggleMute(options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'toggleMute' });
+      return;
+    }
+    const { audioEngine } = getRuntime();
+    if (!state.audio) return;
     if (state.muted) {
       state.muted = false;
       const vol = state.volumeBeforeMute;
@@ -836,6 +1021,7 @@ export const usePlayerStore = defineStore('player', () => {
         state.audio.volume = 0;
       }
     }
+    syncRuntimeState();
     persist();
   }
 
@@ -846,6 +1032,7 @@ export const usePlayerStore = defineStore('player', () => {
 
   function setPlayMode(mode: 'loop' | 'single' | 'shuffle') {
     state.playMode = mode;
+    syncRuntimeState();
     persist();
   }
 
@@ -853,6 +1040,7 @@ export const usePlayerStore = defineStore('player', () => {
     const order: Array<'loop' | 'single' | 'shuffle'> = ['loop', 'single', 'shuffle'];
     const idx = order.indexOf(state.playMode);
     state.playMode = order[(idx + 1) % order.length];
+    syncRuntimeState();
     persist();
   }
 
@@ -864,19 +1052,22 @@ export const usePlayerStore = defineStore('player', () => {
   function setPlaybackRate(rate: number) {
     const r = Math.max(0.5, Math.min(3, Number(rate || 1)));
     state.playbackRate = r;
-    state.audio.playbackRate = r;
+    if (state.audio) state.audio.playbackRate = r;
+    syncRuntimeState();
   }
 
   function setDefaultPlaybackRate(rate: number) {
     const r = Math.max(0.5, Math.min(3, Number(rate || 1)));
     state.defaultPlaybackRate = r;
     state.playbackRate = r;
-    state.audio.playbackRate = r;
+    if (state.audio) state.audio.playbackRate = r;
+    syncRuntimeState();
     persist();
   }
 
   function setCurrentSource(source: string) {
     state.currentSource = source || 'official';
+    syncRuntimeState();
   }
 
   function setDefaultQuality(quality: '标准' | '较高' | '极高(HQ)' | '无损(SQ)' | 'Hi-Res' | '高清臻音' | '高清环绕声' | '沉浸环绕声' | '杜比全景声' | '超清母带') {
@@ -894,11 +1085,29 @@ export const usePlayerStore = defineStore('player', () => {
     state.lyricsOffset = 0;
   }
 
-  function openExpanded() {
+  function openExpanded(options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'openExpanded' });
+      return;
+    }
+    if (options?.fromRemote) {
+      const uiStore = useUiStore();
+      if (uiStore.state.isMiniMode) {
+        uiStore.exitMiniMode();
+        window.setTimeout(() => {
+          state.expanded = true;
+        }, 80);
+        return;
+      }
+    }
     state.expanded = true;
   }
 
-  function closeExpanded() {
+  function closeExpanded(options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'closeExpanded' });
+      return;
+    }
     state.expanded = false;
   }
 
@@ -907,7 +1116,11 @@ export const usePlayerStore = defineStore('player', () => {
   }
 /* ---- queue management ---- */
 
-  function removeFromPlaylist(index: number) {
+  function removeFromPlaylist(index: number, options?: { fromRemote?: boolean }) {
+    if (isMiniWindow() && !options?.fromRemote) {
+      sendPlaybackCommand({ type: 'removeFromPlaylist', index });
+      return;
+    }
     if (index < 0 || index >= state.playlist.length) return;
     state.playlist.splice(index, 1);
 
@@ -915,8 +1128,8 @@ export const usePlayerStore = defineStore('player', () => {
       state.currentIndex = -1;
       state.currentTrack = null;
       state.currentSongId = 0;
-      state.audio.pause();
-      state.isPlaying = false;
+      state.miniLyricText = '';
+      pausePlayback();
     } else if (index < state.currentIndex) {
       state.currentIndex -= 1;
     } else if (index === state.currentIndex) {
@@ -930,6 +1143,7 @@ export const usePlayerStore = defineStore('player', () => {
         return;
       }
     }
+    syncRuntimeState();
     persist();
   }
 
@@ -938,8 +1152,9 @@ export const usePlayerStore = defineStore('player', () => {
     state.currentIndex = -1;
     state.currentTrack = null;
     state.currentSongId = 0;
-    state.audio.pause();
-    state.isPlaying = false;
+    state.miniLyricText = '';
+    pausePlayback();
+    syncRuntimeState();
     persist();
   }
 /** 登出时清理播放器持久化数据，防止用户切换后 playlist 残留在 localStorage */
@@ -960,6 +1175,7 @@ export const usePlayerStore = defineStore('player', () => {
       if (fromIndex < state.currentIndex && toIndex >= state.currentIndex) state.currentIndex -= 1;
       else if (fromIndex > state.currentIndex && toIndex <= state.currentIndex) state.currentIndex += 1;
     }
+    syncRuntimeState();
     persist();
   }
 
@@ -1003,6 +1219,6 @@ export const usePlayerStore = defineStore('player', () => {
     setPlaybackRate, setDefaultPlaybackRate, setCurrentSource, setDefaultQuality,
     adjustLyricsOffset, resetLyricsOffset,
     openExpanded, closeExpanded, toggleExpanded,
-    seek, syncThemeState, recordCurrentTrackToHistory,
+    seek, pausePlayback, syncThemeState, recordCurrentTrackToHistory, setMiniLyricText,
   };
 });

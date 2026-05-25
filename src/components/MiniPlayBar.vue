@@ -55,10 +55,15 @@
         </button>
 
         <!-- 关闭按钮 -->
-        <button class="fn-btn close-btn" @click="uiStore.exitMiniMode()" aria-label="退出迷你模式">
+        <button class="fn-btn mini-close-btn" @click="uiStore.exitMiniMode()" aria-label="退出迷你模式">
           <X :size="16" />
         </button>
       </div>
+    </div>
+
+    <!-- 迷你歌词由主窗口计算后同步，迷你窗口只展示，避免重复拉取歌词。 -->
+    <div class="mini-lyric-line" :class="{ empty: !miniLyricText }" :title="miniLyricText">
+      {{ miniLyricText }}
     </div>
 
     <!-- 进度条 -->
@@ -75,12 +80,16 @@
     <!-- 下拉播放列表 -->
     <div class="playlist-dropdown" :class="{ open: showPlaylist }">
         <div class="mini-playlist-list">
-          <button
+          <div
             v-for="(track, idx) in playerStore.state.playlist"
             :key="`${track.playlistTrackId || track.id}-${idx}`"
             class="mini-pl-item"
+            role="button"
+            tabindex="0"
             :class="{ 'mini-pl-item--current': idx === playerStore.state.currentIndex }"
             @dblclick="playByIndex(idx)"
+            @keydown.enter.prevent="playByIndex(idx)"
+            @keydown.space.prevent="playByIndex(idx)"
             @mouseenter="hoveredIdx = idx"
             @mouseleave="hoveredIdx = null"
           >
@@ -99,7 +108,7 @@
             <button class="mini-pl-remove" @click.stop="playerStore.removeFromPlaylist(idx)" aria-label="移除">
               <X :size="12" />
             </button>
-          </button>
+          </div>
         </div>
       </div>
   </div>
@@ -196,6 +205,8 @@ const artistText = computed(() => {
   return ar.map((a: { name: string }) => a.name).join(' / ');
 });
 
+const miniLyricText = computed(() => playerStore.state.miniLyricText || '');
+
 // 进度条
 const progressPercent = computed(() => {
   const duration = playerStore.state.duration || 1;
@@ -208,8 +219,7 @@ function onSeek(e: MouseEvent) {
   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
   const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   const time = percent * (playerStore.state.duration || 0);
-  playerStore.state.audio.currentTime = time;
-  playerStore.state.currentTime = time;
+  playerStore.seek(time);
 }
 
 function onProgressHover(e: MouseEvent) {
@@ -217,10 +227,7 @@ function onProgressHover(e: MouseEvent) {
 }
 // 点击封面 / 歌名区域 → 退出 mini 并打开全屏播放
 function onFullscreen() {
-  uiStore.exitMiniMode();
-  setTimeout(() => {
-    playerStore.openExpanded();
-  }, 200);
+  playerStore.openExpanded();
 }
 </script>
 
@@ -240,17 +247,17 @@ function onFullscreen() {
 .mini-bar-container {
   display: flex;
   align-items: center;
-  height: 64px;
-  padding: 0 8px;
-  gap: 8px;
+  height: 52px;
+  padding: 2px 8px 0;
+  gap: 7px;
 }
 
 /* ── 封面 ── */
 .cover-wrap {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
   background: var(--bg-raised);
   background-size: cover;
   background-position: center;
@@ -357,7 +364,7 @@ function onFullscreen() {
   color: #dc2626;
 }
 
-.fn-btn.close-btn:hover {
+.fn-btn.mini-close-btn:hover {
   background: rgba(239, 68, 68, 0.12);
   color: #ef4444;
 }
@@ -365,6 +372,27 @@ function onFullscreen() {
 .fn-btn.fn-active {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ── 迷你歌词行 ── */
+.mini-lyric-line {
+  height: 14px;
+  padding: 0 10px;
+  margin-top: -1px;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-sub);
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  pointer-events: none;
+  -webkit-app-region: drag;
+}
+
+.mini-lyric-line.empty {
+  opacity: 0;
 }
 
 /* ── 下拉播放列表 ── */
@@ -395,6 +423,7 @@ function onFullscreen() {
 .mini-playlist-list {
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 4px 0 0;
 }
 
@@ -411,6 +440,7 @@ function onFullscreen() {
   display: flex;
   align-items: center;
   gap: 6px;
+  box-sizing: border-box;
   width: 100%;
   height: 40px;
   padding: 0 8px;

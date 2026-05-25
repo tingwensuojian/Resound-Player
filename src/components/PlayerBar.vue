@@ -527,6 +527,25 @@ const currentLyricText = computed(() => {
   return line.text;
 });
 
+const miniLyricText = computed(() => {
+  if (!playerStore.state.currentTrack) return '';
+  const idx = currentLyricIndex.value;
+  if (idx < 0 || idx >= lyricLines.value.length) return '';
+  const line = lyricLines.value[idx];
+  const mainText = line?.text?.trim() || '';
+  if (!mainText) return '';
+  const subText = lyricsSettings.state.showTranslation
+    ? line.translation?.trim()
+    : lyricsSettings.state.showRomalrc
+      ? line.romalrc?.trim()
+      : '';
+  return subText ? `${mainText} · ${subText}` : mainText;
+});
+
+watch(miniLyricText, (text) => {
+  playerStore.setMiniLyricText(text);
+}, { immediate: true });
+
 const artistText = computed(() => {
   const ar = playerStore.state.currentTrack?.ar || [];
   if (!ar.length) return 'Unknown Artist';

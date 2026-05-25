@@ -823,8 +823,7 @@ async function applyFmMode() {
     const { data } = await setPersonalFmMode({ mode, submode: submode || undefined, cookie });
     const tracks = (data?.data || []) as any[];
     // 立即停止当前播放
-    playerStore.state.audio?.pause();
-    playerStore.state.isPlaying = false;
+    playerStore.pausePlayback();
 
     if (tracks.length) {
       personalFmTracks.value = tracks;

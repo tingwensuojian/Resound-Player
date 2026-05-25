@@ -14,4 +14,11 @@ interface LocalApi {
 
 interface Window {
   localApi?: LocalApi
+  appEnv?: {
+    windowRole?: 'main' | 'mini'
+    window?: {
+      setBackgroundColor?: (color: string) => void
+    }
+    [key: string]: any
+  }
 }

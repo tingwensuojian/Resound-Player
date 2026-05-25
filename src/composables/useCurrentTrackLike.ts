@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import { usePlayerStore } from '../stores/player'
 import { useUserStore } from '../stores/user';
+import { useLoginModalStore } from '../stores/loginModal';
 import { toggleDjSubscribe, toggleSongLike } from '../api/music';
 
 /**
@@ -12,6 +13,7 @@ import { toggleDjSubscribe, toggleSongLike } from '../api/music';
 export function useCurrentTrackLike() {
   const playerStore = usePlayerStore();
   const userStore = useUserStore();
+  const loginModalStore = useLoginModalStore();
   const currentTrackId = computed(() => Number(playerStore.state.currentTrack?.id || 0));
   const currentPodcastRid = computed(() => Number(playerStore.state.currentTrack?.podcast?.rid || 0));
   const isCurrentPodcast = computed(() => playerStore.state.currentTrack?.source === 'podcast' && currentPodcastRid.value > 0);
@@ -43,6 +45,17 @@ export function useCurrentTrackLike() {
 
   async function toggleCurrentLike() {
     if (likeLoading.value || !canToggleCurrentLike.value) return;
+
+    if (!userStore.state.isLogin) {
+      loginModalStore.showLoginModal('like');
+      return;
+    }
+
+    if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
+      loginModalStore.showGlobalToast('搜索用户方式登录不支持收藏功能，请使用扫码或 Cookie 登录', 'warning', 5000);
+      return;
+    }
+
     const next = !isCurrentLiked.value;
     likeLoading.value = true;
     try {

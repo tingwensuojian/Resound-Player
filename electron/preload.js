@@ -2,7 +2,9 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Parse the --service-ports argument injected by main.js
 const portsArg = process.argv.find((s) => s.startsWith('--service-ports='));
+const windowRoleArg = process.argv.find((s) => s.startsWith('--window-role='));
 let ports = { api: 38761, unblockProxy: 38762, unblockMatch: 38763 };
+let windowRole = 'main';
 if (portsArg) {
   try {
     const parsed = JSON.parse(portsArg.split('=')[1]);
@@ -11,6 +13,10 @@ if (portsArg) {
     // fall back to defaults
   }
 }
+if (windowRoleArg) {
+  const parsedRole = windowRoleArg.split('=')[1];
+  if (parsedRole === 'mini') windowRole = 'mini';
+}
 
 contextBridge.exposeInMainWorld('appEnv', {
   apiPort: ports.api,
@@ -18,6 +24,7 @@ contextBridge.exposeInMainWorld('appEnv', {
   unblockProxyUrl: `http://127.0.0.1:${ports.unblockProxy}`,
   unblockMatchUrl: `http://127.0.0.1:${ports.unblockMatch}`,
   isDesktop: true,
+  windowRole,
   platform: process.platform,
   electronVersion: process.versions.electron,
   nodeVersion: process.versions.node,
@@ -63,6 +70,24 @@ contextBridge.exposeInMainWorld('appEnv', {
       ipcRenderer.on('mini-mode:state-change', handler);
       return () => ipcRenderer.removeListener('mini-mode:state-change', handler);
     },
+  },
+  playback: {
+    publishState: (snapshot) => ipcRenderer.send('playback:publish-state', snapshot),
+    sendCommand: (command) => ipcRenderer.send('playback:command', command),
+    getInitialSnapshot: () => ipcRenderer.invoke('playback:get-initial-snapshot'),
+    onState: (cb) => {
+      const handler = (_e, snapshot) => cb(snapshot);
+      ipcRenderer.on('playback:state', handler);
+      return () => ipcRenderer.removeListener('playback:state', handler);
+    },
+    onCommand: (cb) => {
+      const handler = (_e, command) => cb(command);
+      ipcRenderer.on('playback:command', handler);
+      return () => ipcRenderer.removeListener('playback:command', handler);
+    },
+  },
+  window: {
+    setBackgroundColor: (color) => ipcRenderer.send('window:set-background-color', color),
   },
 });
 

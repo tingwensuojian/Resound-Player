@@ -97,6 +97,9 @@ function buildAppMenu() {
 
 let serviceChildren = {};
 let win = null;
+let miniWin = null;
+let currentServicePorts = {};
+let latestPlaybackSnapshot = null;
 
 function isWindowFullscreen() {
   if (!win || win.isDestroyed()) return false;
@@ -112,6 +115,25 @@ function setWindowFullscreen(fullscreen) {
     win.setFullScreen(fullscreen);
   }
   win.webContents.send('win-fullscreen-change', fullscreen);
+}
+
+function applyMiniAlwaysOnTopToWindow(targetWindow, enabled) {
+  if (!targetWindow || targetWindow.isDestroyed()) return;
+
+  if (enabled) {
+    if (process.platform === 'darwin') {
+      targetWindow.setAlwaysOnTop(true, 'floating');
+      targetWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    } else {
+      targetWindow.setAlwaysOnTop(true);
+    }
+    return;
+  }
+
+  targetWindow.setAlwaysOnTop(false);
+  if (process.platform === 'darwin') {
+    targetWindow.setVisibleOnAllWorkspaces(false);
+  }
 }
 
 /**
@@ -225,6 +247,7 @@ async function createMainWindow(ports) {
   // Serialize port map into additionalArguments for preload
   const portArgs = [
     `--service-ports=${JSON.stringify(ports)}`,
+    '--window-role=main',
   ];
 
   const isMac = process.platform === 'darwin';
@@ -323,6 +346,66 @@ async function createMainWindow(ports) {
   }
 }
 
+function getMiniWindowBounds() {
+  const display = screen.getPrimaryDisplay();
+  const { width: screenWidth } = display.workAreaSize;
+  const miniWidth = 340;
+  const miniHeight = 70;
+  const margin = 20;
+  return {
+    x: screenWidth - miniWidth - margin,
+    y: margin,
+    width: miniWidth,
+    height: miniHeight,
+  };
+}
+
+function createMiniWindow(ports) {
+  if (miniWin && !miniWin.isDestroyed()) return miniWin;
+
+  const preloadPath = path.join(__dirname, 'preload.js');
+  const portArgs = [
+    `--service-ports=${JSON.stringify(ports)}`,
+    '--window-role=mini',
+  ];
+  const bounds = getMiniWindowBounds();
+  const isMac = process.platform === 'darwin';
+
+  miniWin = new BrowserWindow({
+    ...bounds,
+    minWidth: 340,
+    minHeight: 70,
+    maxWidth: 340,
+    maxHeight: 500,
+    resizable: false,
+    show: false,
+    frame: false,
+    titleBarStyle: isMac ? 'hidden' : undefined,
+    trafficLightPosition: isMac ? { x: -100, y: -100 } : undefined,
+    backgroundColor: '#1a1a2e',
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+      additionalArguments: portArgs,
+    },
+  });
+
+  miniWin.on('closed', () => {
+    miniWin = null;
+  });
+
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl) {
+    miniWin.loadURL(`${devServerUrl.replace(/\/$/, '')}/mini.html`);
+  } else {
+    miniWin.loadFile(path.join(__dirname, '..', 'dist', 'mini.html'));
+  }
+
+  return miniWin;
+}
+
 /**
  * Show an error window when startup fails.
  */
@@ -386,6 +469,7 @@ async function bootstrap() {
       return;
     }
   }
+  currentServicePorts = ports;
 
   // ── Start backend services ──
   // In dev mode (SERVICE_PORTS from orchestrator), unblock services are already
@@ -495,6 +579,11 @@ ipcMain.handle('window-close', (event) => {
   bw?.close();
 });
 
+ipcMain.on('window:set-background-color', (_event, color) => {
+  if (!win || typeof color !== 'string' || !color.trim()) return;
+  win.setBackgroundColor(color);
+});
+
 // ── 迷你模式 IPC ──
 let preMiniState = null;
 
@@ -529,30 +618,26 @@ ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
     wasFullScreen: win.isFullScreen(),
   };
 
-  function applyMiniSize() {
-    const display = screen.getPrimaryDisplay();
-    const { width: screenWidth } = display.workAreaSize;
-    const miniWidth = 340;
-    const miniHeight = 70;
-    const margin = 20;
-
-    win.setResizable(false);
-    win.setMinimumSize(miniWidth, miniHeight);
-    win.setMaximumSize(miniWidth, 500);
-    win.setSize(miniWidth, miniHeight);
-    win.setPosition(screenWidth - miniWidth - margin, margin);
-    applyMiniAlwaysOnTop(!!alwaysOnTop);
-    if (process.platform === 'darwin') win.setWindowButtonVisibility(false);
+  function openMiniWindow() {
+    const targetMiniWin = createMiniWindow(currentServicePorts);
+    applyMiniAlwaysOnTopToWindow(targetMiniWin, !!alwaysOnTop);
+    targetMiniWin.once('ready-to-show', () => {
+      targetMiniWin.show();
+      targetMiniWin.focus();
+      targetMiniWin.webContents.send('mini-mode:state-change', true);
+    });
+    if (targetMiniWin.isVisible()) targetMiniWin.focus();
+    win.hide();
     win.webContents.send('mini-mode:state-change', true);
   }
 
   if (win.isFullScreen()) {
     win.once('leave-full-screen', () => {
-      applyMiniSize();
+      openMiniWindow();
     });
     win.setFullScreen(false);
   } else {
-    applyMiniSize();
+    openMiniWindow();
   }
 });
 
@@ -562,33 +647,48 @@ ipcMain.on('mini-mode:exit', () => {
   const { x, y, width, height, isMaximized, wasFullScreen } = preMiniState;
   preMiniState = null;
 
-  // 优先通知渲染进程解除布局隐藏，再恢复窗口物理尺寸
   win.webContents.send('mini-mode:state-change', false);
-
-  applyMiniAlwaysOnTop(false);
-  win.setResizable(true);
-  win.setMinimumSize(1100, 700);
-  win.setMaximumSize(0, 0);
-  win.setSize(width, height);
-  win.setPosition(x, y);
+  if (miniWin && !miniWin.isDestroyed()) {
+    miniWin.webContents.send('mini-mode:state-change', false);
+    applyMiniAlwaysOnTopToWindow(miniWin, false);
+    miniWin.close();
+    miniWin = null;
+  }
+  win.setBounds({ x, y, width, height });
+  win.show();
+  win.focus();
   if (wasFullScreen) {
     win.setFullScreen(true);
   } else if (isMaximized) {
     win.maximize();
   }
-  if (process.platform === 'darwin') win.setWindowButtonVisibility(true);
 });
 
 ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
-  if (!win || !preMiniState) return;
-  applyMiniAlwaysOnTop(!!enabled);
+  if (!preMiniState || !miniWin || miniWin.isDestroyed()) return;
+  applyMiniAlwaysOnTopToWindow(miniWin, !!enabled);
 });
 
 ipcMain.on('mini-mode:resize', (_event, height) => {
-  if (!win || !preMiniState) return;
+  if (!miniWin || miniWin.isDestroyed()) return;
   const clampedHeight = Math.max(70, Math.min(height, 500));
-  win.setSize(340, clampedHeight);
+  miniWin.setSize(340, clampedHeight);
 });
+
+ipcMain.on('playback:publish-state', (_event, snapshot) => {
+  latestPlaybackSnapshot = snapshot;
+  if (miniWin && !miniWin.isDestroyed()) {
+    miniWin.webContents.send('playback:state', snapshot);
+  }
+});
+
+ipcMain.on('playback:command', (_event, command) => {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('playback:command', command);
+  }
+});
+
+ipcMain.handle('playback:get-initial-snapshot', () => latestPlaybackSnapshot);
 
 // ── 缓存持久化 IPC ──
 const CACHE_FILE = path.join(app.getPath('userData'), 'api-cache.json');

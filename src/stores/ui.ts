@@ -56,6 +56,12 @@ function applyThemeToDom(theme: ResolvedTheme) {
   document.documentElement.setAttribute('data-theme', theme);
 }
 
+function syncDesktopWindowBackground(theme: ResolvedTheme) {
+  if (typeof window === 'undefined') return;
+  const color = theme === 'dark' ? '#100e0d' : '#f5f5f4';
+  window.appEnv?.window?.setBackgroundColor?.(color);
+}
+
 function applyGlassToDom(enabled: boolean) {
   document.documentElement.setAttribute('data-glass', enabled ? 'on' : 'off');
 }
@@ -92,6 +98,10 @@ function applyAccentToDom(mode: AccentMode, customColor?: string) {
     document.documentElement.style.removeProperty('--accent');
     document.documentElement.style.removeProperty('--accent-soft');
   }
+}
+
+function getWindowRole(): 'main' | 'mini' {
+  return window.appEnv?.windowRole === 'mini' ? 'mini' : 'main';
 }
 
 export const useUiStore = defineStore('ui', () => {
@@ -134,6 +144,7 @@ export const useUiStore = defineStore('ui', () => {
     state.showIntelligenceIndicator = savedIntel === null ? true : savedIntel === '1';
     const savedAutoHide = localStorage.getItem(AUTO_HIDE_UI_KEY);
     state.autoHidePlayerUI = savedAutoHide === null ? true : savedAutoHide === '1';
+    state.isMiniMode = getWindowRole() === 'mini';
 
     // 迷你模式置顶偏好
     const savedMiniTop = sessionStorage.getItem(MINI_ALWAYS_ON_TOP_KEY);
@@ -143,6 +154,7 @@ export const useUiStore = defineStore('ui', () => {
 
     state.resolvedTheme = resolveTheme(state.themeMode);
     applyThemeToDom(state.resolvedTheme);
+    syncDesktopWindowBackground(state.resolvedTheme);
     applyAccentToDom(state.accentMode, state.accentCustomColor);
 
     if (!mediaQuery) {
@@ -154,6 +166,7 @@ export const useUiStore = defineStore('ui', () => {
         if (state.themeMode === '跟随系统') {
           state.resolvedTheme = getSystemTheme();
           applyThemeToDom(state.resolvedTheme);
+          syncDesktopWindowBackground(state.resolvedTheme);
         }
       };
       mediaQuery.addEventListener('change', mediaListener);
@@ -165,6 +178,7 @@ export const useUiStore = defineStore('ui', () => {
     localStorage.setItem(STORAGE_KEY, mode);
     state.resolvedTheme = resolveTheme(mode);
     applyThemeToDom(state.resolvedTheme);
+    syncDesktopWindowBackground(state.resolvedTheme);
   }
 
   function setAccentMode(mode: AccentMode) {
@@ -209,13 +223,13 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   function enterMiniMode() {
-    if (!state.isMiniMode) {
+    if (getWindowRole() === 'main' && !state.isMiniMode) {
       window.appEnv?.miniMode?.enter(state.miniAlwaysOnTop);
     }
   }
 
   function exitMiniMode() {
-    if (state.isMiniMode) {
+    if (state.isMiniMode || getWindowRole() === 'mini') {
       window.appEnv?.miniMode?.exit();
     }
   }

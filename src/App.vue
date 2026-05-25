@@ -1,11 +1,7 @@
 <template>
-  <MiniPlayBar v-if="uiStore.state.isMiniMode" />
   <div
     class="layout"
-    :class="{ 'layout--mini-hidden': uiStore.state.isMiniMode }"
     :style="layoutVars"
-    :inert="uiStore.state.isMiniMode || undefined"
-    :aria-hidden="uiStore.state.isMiniMode ? 'true' : undefined"
   >
     <Sidebar
       v-show="!isNarrow || sidebarOpen"
@@ -179,7 +175,7 @@
       <ScrollToTopFab v-if="showBackToTop" :fixed="true" :scroll-host-selector="backToTopScrollHost" />
     </div>
 
-    <PlayerBar v-if="!uiStore.state.isMiniMode" v-show="!playerStore.state.expanded" />
+    <PlayerBar v-show="!playerStore.state.expanded" />
     <PlayQueuePanel />
     <PlayerExpanded
       @open-artist="openArtistFromPlayer"
@@ -187,7 +183,7 @@
       @open-user="openUserFromComment"
       @open-podcast-detail="(item) => { playerStore.closeExpanded(); openPodcastDetail(item); }"
     />
-    <LoginModal v-if="!uiStore.state.isMiniMode" />
+    <LoginModal />
   </div>
 </template>
 
@@ -196,7 +192,6 @@ import { computed, KeepAlive, onBeforeUnmount, onMounted, watch, ref, defineAsyn
 import { platform } from './utils/platform';
 import HomePanel from './components/HomePanel.vue';
 import PlayerBar from './components/PlayerBar.vue';
-import MiniPlayBar from './components/MiniPlayBar.vue';
 import PlayQueuePanel from './components/PlayQueuePanel.vue';
 import PlayerExpanded from './components/PlayerExpanded.vue';
 import PlaceholderPanel from './components/PlaceholderPanel.vue';
@@ -1193,15 +1188,6 @@ onBeforeUnmount(() => {
   background: var(--bg-app);
   overflow-x: clip;
   transition: opacity 0.18s ease;
-}
-
-.layout--mini-hidden {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .main-area {

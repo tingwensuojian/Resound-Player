@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
+import path from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import http from 'http';
 import https from 'https';
@@ -97,10 +98,14 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
-      entries: ['index.html'],
+      entries: ['index.html', 'mini.html'],
     },
     build: {
       rollupOptions: {
+        input: {
+          main: path.resolve(process.cwd(), 'index.html'),
+          mini: path.resolve(process.cwd(), 'mini.html'),
+        },
         output: {
           manualChunks: {
             'vendor-vue': ['vue'],

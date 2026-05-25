@@ -381,10 +381,8 @@ export function useLyrics() {
 
     function tick() {
       if (!tickRunning.value) return;
-      if (playerStore.state.isPlaying) {
-        // 直接读 audio.currentTime 高精度值（~16ms），远超 timeupdate 事件精度（~250ms）
-        displayTime.value = playerStore.state.audio.currentTime || 0;
-      }
+      // 主窗口优先读 audio.currentTime；迷你窗口无 audio 时回退到同步后的 store currentTime
+      displayTime.value = playerStore.state.audio?.currentTime ?? playerStore.state.currentTime ?? 0;
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
