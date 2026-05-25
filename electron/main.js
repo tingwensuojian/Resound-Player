@@ -498,6 +498,25 @@ ipcMain.handle('window-close', (event) => {
 // ── 迷你模式 IPC ──
 let preMiniState = null;
 
+function applyMiniAlwaysOnTop(enabled) {
+  if (!win) return;
+
+  if (enabled) {
+    if (process.platform === 'darwin') {
+      win.setAlwaysOnTop(true, 'floating');
+      win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    } else {
+      win.setAlwaysOnTop(true);
+    }
+    return;
+  }
+
+  win.setAlwaysOnTop(false);
+  if (process.platform === 'darwin') {
+    win.setVisibleOnAllWorkspaces(false);
+  }
+}
+
 ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
   if (!win || preMiniState) return;
 
@@ -522,7 +541,7 @@ ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
     win.setMaximumSize(miniWidth, 500);
     win.setSize(miniWidth, miniHeight);
     win.setPosition(screenWidth - miniWidth - margin, margin);
-    win.setAlwaysOnTop(!!alwaysOnTop);
+    applyMiniAlwaysOnTop(!!alwaysOnTop);
     if (process.platform === 'darwin') win.setWindowButtonVisibility(false);
     win.webContents.send('mini-mode:state-change', true);
   }
@@ -540,7 +559,7 @@ ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
 ipcMain.on('mini-mode:exit', () => {
   if (!win || !preMiniState) return;
 
-  win.setAlwaysOnTop(false);
+  applyMiniAlwaysOnTop(false);
   win.setResizable(true);
   win.setMinimumSize(1100, 700);
   win.setMaximumSize(0, 0);
@@ -561,7 +580,7 @@ ipcMain.on('mini-mode:exit', () => {
 
 ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
   if (!win || !preMiniState) return;
-  win.setAlwaysOnTop(!!enabled);
+  applyMiniAlwaysOnTop(!!enabled);
 });
 
 ipcMain.on('mini-mode:resize', (_event, height) => {
