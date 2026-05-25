@@ -129,6 +129,29 @@ SettingsPage / 托盘菜单 → setTrayLyricConfig({enabled: true/false})
 
 托盘菜单的「状态栏歌词」和「桌面歌词」toggle 均直接在主进程完成开关，不绕路渲染进程 IPC，避免依赖 `getWin()` 找对窗口。
 
+### 打开设置
+
+状态栏 Logo 菜单中的「设置」不是普通窗口聚焦动作，必须走主进程统一入口：
+
+```text
+托盘菜单点击「设置」
+  → main 进程 dispatchMainWindowTrayAction('openSettings')
+  → restoreMainWindowFromMiniMode()
+      ├─ 如果当前处于迷你模式：关闭 miniWin，恢复 mainWin bounds，发送 mini-mode-state=false
+      └─ 如果主窗口已存在：show() + focus()
+  → mainWin.webContents.send('tray-action', 'openSettings')
+  → PlayerBar.handleTrayAction
+  → window.dispatchEvent('open-tray-settings')
+  → App.vue openTraySettings()
+      ├─ playerStore.closeExpanded()
+      └─ openSettings('playback')
+```
+
+这样处理两个历史边界：
+
+- **迷你模式下打不开设置**：旧逻辑把事件发给隐藏的主窗口，但没有先退出迷你模式；当前先恢复主窗口再发事件。
+- **播放页状态下打不开设置**：旧逻辑已经切换 `activePage='settings'`，但 `PlayerExpanded` 仍覆盖在上层；当前进入设置前先关闭播放页。
+
 ### 收藏切换
 
 ```
@@ -233,6 +256,8 @@ if (!(diff <= ENGINE_SYNC_THRESHOLD_MS && engineIsPlaying)) {
 ### 系统托盘菜单
 
 使用 Electron `Menu.buildFromTemplate()` 构建完整上下文菜单。点击时通过 `getWin()` 工具函数动态获取有效窗口引用，避免捕获已销毁的 BrowserWindow。
+
+注意：播放控制 / 收藏等动作仍可通过当前有效窗口分发；「设置」必须使用 `dispatchMainWindowTrayAction('openSettings')`，不能直接 `getWin()?.webContents.send(...)`，否则在迷你模式或播放页覆盖状态下会再次出现不可见问题。
 
 菜单仅设置在 `mainTray` 上，`lyricTray` 不挂载菜单——点击歌词/歌名区域不会弹出菜单，仅点击右侧 Logo 图标才打开菜单。
 

@@ -136,6 +136,40 @@ function applyMiniAlwaysOnTopToWindow(targetWindow, enabled) {
   }
 }
 
+function restoreMainWindowFromMiniMode() {
+  if (!win || win.isDestroyed()) return null;
+
+  if (preMiniState) {
+    const { x, y, width, height, isMaximized, wasFullScreen } = preMiniState;
+    preMiniState = null;
+
+    win.webContents.send('mini-mode:state-change', false);
+    if (miniWin && !miniWin.isDestroyed()) {
+      miniWin.webContents.send('mini-mode:state-change', false);
+      applyMiniAlwaysOnTopToWindow(miniWin, false);
+      miniWin.close();
+      miniWin = null;
+    }
+
+    win.setBounds({ x, y, width, height });
+    if (wasFullScreen) {
+      win.setFullScreen(true);
+    } else if (isMaximized) {
+      win.maximize();
+    }
+  }
+
+  win.show();
+  win.focus();
+  return win;
+}
+
+function dispatchMainWindowTrayAction(action) {
+  const target = restoreMainWindowFromMiniMode();
+  if (!target || target.isDestroyed()) return;
+  target.webContents.send('tray-action', action);
+}
+
 /**
  * 设置中文菜单
  */
@@ -644,24 +678,7 @@ ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
 ipcMain.on('mini-mode:exit', () => {
   if (!win || !preMiniState) return;
 
-  const { x, y, width, height, isMaximized, wasFullScreen } = preMiniState;
-  preMiniState = null;
-
-  win.webContents.send('mini-mode:state-change', false);
-  if (miniWin && !miniWin.isDestroyed()) {
-    miniWin.webContents.send('mini-mode:state-change', false);
-    applyMiniAlwaysOnTopToWindow(miniWin, false);
-    miniWin.close();
-    miniWin = null;
-  }
-  win.setBounds({ x, y, width, height });
-  win.show();
-  win.focus();
-  if (wasFullScreen) {
-    win.setFullScreen(true);
-  } else if (isMaximized) {
-    win.maximize();
-  }
+  restoreMainWindowFromMiniMode();
 });
 
 ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
@@ -835,8 +852,7 @@ function buildTrayMenu(win) {
     {
       label: '设置',
       click: () => {
-        const w = getWin();
-        if (w) { w.show(); w.focus(); w.webContents.send('tray-action', 'openSettings'); }
+        dispatchMainWindowTrayAction('openSettings');
       },
     },
     { type: 'separator' },
@@ -2028,7 +2044,7 @@ ipcMain.on('desktop-lyric:action', (_event, action) => {
       });
       break;
     case 'openSettings':
-      if (mainWin) { mainWin.show(); mainWin.focus(); }
+      dispatchMainWindowTrayAction('openSettings');
       break;
     case 'switchMode':
       // handled below (starts with "switchMode|")

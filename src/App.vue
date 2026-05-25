@@ -989,7 +989,10 @@ function openSettings(tab: 'playback' | 'appearance' | 'account' = 'appearance')
   activePage.value = 'settings';
 }
 
-const openTraySettings = () => openSettings('playback');
+const openTraySettings = () => {
+  playerStore.closeExpanded();
+  openSettings('playback');
+};
 
 function openArtistFromComment(artist: any) {
   openArtistDetail(artist, 'song-comment');
