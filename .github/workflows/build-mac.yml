@@ -34,6 +34,14 @@ jobs:
       - name: Build macOS package
         run: npm run dist:mac
 
+      - name: Inspect build output
+        if: always()
+        run: |
+          echo "dist-build contents:"
+          ls -la dist-build || true
+          echo "dmg files:"
+          find dist-build -maxdepth 2 -name "*.dmg" -print || true
+
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:

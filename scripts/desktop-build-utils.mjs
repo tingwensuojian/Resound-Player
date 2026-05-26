@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const outputDir = path.join(root, 'test-build');
+const outputDir = path.join(root, 'dist-build');
 
 export function cleanDesktopDist() {
   try {
@@ -41,7 +41,7 @@ export function runCommand(command, args, options = {}) {
   const isWindows = process.platform === 'win32';
   const shell = isWindows ? true : false;
   
-  spawnSync(command, args, {
+  const result = spawnSync(command, args, {
     cwd: root,
     stdio: 'inherit',
     shell: shell,
@@ -52,6 +52,18 @@ export function runCommand(command, args, options = {}) {
       ...options.env,
     },
   });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (typeof result.status === 'number' && result.status !== 0) {
+    throw new Error(`${command} ${args.join(' ')} exited with code ${result.status}`);
+  }
+
+  if (result.signal) {
+    throw new Error(`${command} ${args.join(' ')} was terminated by signal ${result.signal}`);
+  }
 }
 
 export function buildRenderer() {
