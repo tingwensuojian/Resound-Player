@@ -81,10 +81,12 @@ export function runNodeScript(scriptPath) {
 export function runDesktopBuild({ builderArgs, prepareScripts = [] }) {
   cleanDesktopDist();
 
+  const publishArgs = process.env.CI ? ['--publish', 'never'] : [];
+
   for (const script of prepareScripts) {
     runNodeScript(script);
   }
 
   buildRenderer();
-  runElectronBuilder(builderArgs);
+  runElectronBuilder([...builderArgs, ...publishArgs]);
 }
