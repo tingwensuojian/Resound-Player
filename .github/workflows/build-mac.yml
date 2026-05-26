@@ -1,0 +1,40 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  build-mac:
+    name: Build macOS DMG
+    runs-on: macos-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS package
+        run: npm run dist:mac
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Resound-Player-macOS-dmg
+          path: dist-build/*.dmg
+          if-no-files-found: error
+          retention-days: 14
