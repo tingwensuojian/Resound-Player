@@ -6,7 +6,19 @@ interface LocalLyricMatch {
   cloudSongName: string
   cloudArtists: string
   cloudAlbum: string
+  cloudAlbumId?: number
+  cloudAlbumPicUrl?: string
   cloudDuration: number
+  cloudTrackNo?: number
+  cloudDiscNo?: number
+  cloudYear?: number
+  cloudGenre?: string
+  cloudLyrics?: string
+  cloudSyncedLyrics?: string
+  cloudTranslationLyrics?: string
+  cloudRomanizedLyrics?: string
+  sourceVersion?: string
+  confidence?: number
   matchMode?: string
   createdAt?: string
   updatedAt?: string
@@ -26,6 +38,11 @@ interface LocalApi {
   getLyricMatch?(localTrackId: string, localPath?: string): Promise<LocalLyricMatch | null>
   saveLyricMatch?(payload: LocalLyricMatch): Promise<{ success: boolean; error?: string }>
   removeLyricMatch?(localTrackId: string, localPath?: string): Promise<{ success: boolean; error?: string }>
+  previewMetadataWrite?(payload: { filePath: string; localTrackId?: string }): Promise<any>
+  writeMetadata?(payload: { filePath: string; localTrackId?: string; mode?: 'fill-missing' }): Promise<any>
+  revertMetadata?(payload: { filePath: string; localTrackId?: string }): Promise<any>
+  getMetadataStatus?(payload: { filePath: string; localTrackId?: string }): Promise<any>
+  getMetadataStatusBatch?(payload: { items: Array<{ filePath: string; localTrackId?: string }> }): Promise<Record<string, any>>
   getCover(filePath: string): Promise<string | null>
   getCoversBatch?(filePaths: string[]): Promise<(string | null)[]>
   computeFileMd5?(filePath: string): Promise<{ md5: string; size: number } | null>

@@ -52,13 +52,21 @@
             </TooltipWrapper>
             {{ vi.track.title }}
           </span>
-          <span class="local-song-artist" :title="vi.track.artist">{{ vi.track.artist }}</span>
+          <span class="local-song-artist-row">
+            <span class="local-song-artist" :title="vi.track.artist">{{ vi.track.artist }}</span>
+            <LocalMetadataStatusBadge
+              v-if="metadataStatusMap?.[vi.track.path]"
+              :result="metadataStatusMap[vi.track.path]"
+              compact
+            />
+          </span>
         </div>
         <LocalSongActions
           @play="$emit('play', vi.track, vi.index)"
           @play-next="$emit('play-next', vi.track, vi.index)"
           @add-to-playlist="$emit('add-to-playlist', vi.track, vi.index)"
           @show-in-folder="$emit('show-in-folder', vi.track, vi.index)"
+          @match-metadata="$emit('match-metadata', vi.track, vi.index)"
           @show-local-album="$emit('show-local-album', vi.track, vi.index)"
           @show-online-album="$emit('show-online-album', vi.track, vi.index)"
           @upload-to-cloud="$emit('upload-to-cloud', vi.track, vi.index)"
@@ -80,6 +88,7 @@ const playerStore = usePlayerStore()
 import ScrollToTopFab from './ui/ScrollToTopFab.vue'
 import LocalSongActions from './ui/LocalSongActions.vue'
 import TooltipWrapper from './ui/TooltipWrapper.vue'
+import LocalMetadataStatusBadge from './ui/LocalMetadataStatusBadge.vue'
 
 const ROW_HEIGHT = 68
 const OVERSCAN = 15
@@ -93,6 +102,7 @@ interface LocalTrack {
 const props = withDefaults(
   defineProps<{
     tracks: LocalTrack[]
+    metadataStatusMap?: Record<string, any>
     selectionMode?: boolean
     selectedIds?: string[] | Set<string>
     nowPlayingId: string | number | null
@@ -108,6 +118,7 @@ const emit = defineEmits<{
   'play-next': [track: LocalTrack, index: number]
   'add-to-playlist': [track: LocalTrack, index: number]
   'show-in-folder': [track: LocalTrack, index: number]
+  'match-metadata': [track: LocalTrack, index: number]
   'show-local-album': [track: LocalTrack, index: number]
   'show-online-album': [track: LocalTrack, index: number]
   'upload-to-cloud': [track: LocalTrack, index: number]
@@ -482,6 +493,12 @@ function handlePPClick(track: LocalTrack, index: number) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.local-song-artist-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .local-empty { text-align: center; padding: var(--space-8); color: var(--text-soft); }

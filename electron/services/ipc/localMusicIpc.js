@@ -5,6 +5,7 @@ import crypto from "crypto";
 import jschardet from "jschardet";
 import iconv from "iconv-lite";
 import { CoverCache } from "../CoverCache.js";
+import { MetadataWriteService } from "../metadata/MetadataWriteService.js";
 function readLyricFile(lrcPath) {
   const raw = fs.readFileSync(lrcPath);
   const detected = jschardet.detect(raw);
@@ -36,6 +37,7 @@ ipcMain.handle("select-directory", async () => {
 });
 function registerLocalMusicIpc(scanner, db) {
   const coverCache = new CoverCache();
+  const metadataWriteService = new MetadataWriteService(db);
   ipcMain.handle("local:scan", async (event, dirPath) => {
     if (!dirPath) return { success: false, error: "扫描路径为空" };
     if (typeof db.upsertScanDir === "function") {
@@ -157,6 +159,21 @@ function registerLocalMusicIpc(scanner, db) {
   ipcMain.handle("local:remove-lyric-match", async (_event, localTrackId, localPath) => {
     if (typeof db.removeLocalLyricMatch !== "function") return { success: false, error: "not supported" };
     return db.removeLocalLyricMatch(localTrackId || "", localPath || "");
+  });
+  ipcMain.handle("local:metadata-preview", async (_event, payload) => {
+    return metadataWriteService.preview(payload || {});
+  });
+  ipcMain.handle("local:metadata-write-one", async (_event, payload) => {
+    return metadataWriteService.writeOne(payload || {});
+  });
+  ipcMain.handle("local:metadata-revert-one", async (_event, payload) => {
+    return metadataWriteService.revertOne(payload || {});
+  });
+  ipcMain.handle("local:metadata-status", async (_event, payload) => {
+    return metadataWriteService.getStatus(payload || {});
+  });
+  ipcMain.handle("local:metadata-status-batch", async (_event, payload) => {
+    return metadataWriteService.getStatusBatch(payload || {});
   });
   ipcMain.handle("local:get-cover", async (_event, filePath) => {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked get-cover path:', filePath); return null; }

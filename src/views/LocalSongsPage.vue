@@ -56,6 +56,7 @@
     <VirtualSongList
       v-if="list.length"
       :tracks="filteredList"
+      :metadata-status-map="localMusicStore.state.metadataStatusMap"
       :selection-mode="selectionMode"
       :selected-ids="selectedIds"
       :now-playing-id="nowPlayingId"
@@ -63,6 +64,7 @@
       @play-next="(track: LocalTrack) => addToQueue(track, true)"
       @add-to-playlist="addToPlaylist"
       @show-in-folder="showInFolder"
+      @match-metadata="openLyricMatch"
       @show-local-album="showLocalAlbum"
       @show-online-album="showOnlineAlbum"
       @upload-to-cloud="uploadToCloud"
@@ -88,6 +90,11 @@
       @confirm="confirmPlaylistPicker"
       @cancel="cancelPlaylistPicker"
     />
+    <LocalLyricMatchDialog
+      :visible="showLyricMatchDialog"
+      :track="pendingMetadataTrack"
+      @close="closeMetadataDialogs"
+    />
   </section>
 </template>
 
@@ -106,6 +113,7 @@ import { importToCloud } from '../api/music'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import VirtualSongList from '../components/VirtualSongList.vue'
 import PlaylistPickerDialog from '../components/PlaylistPickerDialog.vue'
+import LocalLyricMatchDialog from '../components/LocalLyricMatchDialog.vue'
 import DropdownSelect from '../components/ui/DropdownSelect.vue'
 import { searchMusic } from '../api/music'
 
@@ -250,6 +258,7 @@ const ctxItems = computed<ContextMenuItem[]>(() => {
     { key: 'add-to-queue', label: '添加到队列', icon: '➕' },
     { key: 'add-to-playlist', label: '添加到歌单', icon: '📋' },
     { key: 'show-in-folder', label: '定位到目录', icon: '📁' },
+    { key: 'match-metadata', label: '匹配歌词/标签', icon: '♪' },
   ]
 })
 
@@ -274,6 +283,8 @@ function handleCtxAction(key: string) {
     addToPlaylist(track)
   } else if (key === 'show-in-folder') {
     showInFolder(track)
+  } else if (key === 'match-metadata') {
+    openLyricMatch(track)
   }
 }
 
@@ -298,6 +309,8 @@ function addToQueue(track: LocalTrack, playNext: boolean) {
 /** 添加到歌单 —— 打开选择歌单对话框 */
 const showPlaylistPicker = ref(false)
 const pendingTrackForPlaylist = ref<LocalTrack | null>(null)
+const showLyricMatchDialog = ref(false)
+const pendingMetadataTrack = ref<LocalTrack | null>(null)
 
 async function addToPlaylist(track: LocalTrack) {
   // 确保歌单列表已加载
@@ -334,6 +347,16 @@ async function confirmPlaylistPicker(playlistId: string) {
 function cancelPlaylistPicker() {
   showPlaylistPicker.value = false
   pendingTrackForPlaylist.value = null
+}
+
+function openLyricMatch(track: LocalTrack) {
+  pendingMetadataTrack.value = track
+  showLyricMatchDialog.value = true
+}
+
+function closeMetadataDialogs() {
+  showLyricMatchDialog.value = false
+  pendingMetadataTrack.value = null
 }
 
 /** 定位到目录：将绝对路径转换为树路径，展开祖先节点，记录高亮 track，切换到目录标签页 */

@@ -59,7 +59,14 @@
               :class="{ active: localMusicStore.state.selectedArtist === artist.name }"
               @click="localMusicStore.state.selectedArtist = artist.name"
             >
-              <span class="left-index-name">{{ artist.name }}</span>
+              <span class="left-index-main">
+                <span class="left-index-name">{{ artist.name }}</span>
+                <LocalMetadataStatusBadge
+                  v-if="collectionStatusOf(artist.tracks)"
+                  :result="collectionStatusOf(artist.tracks)"
+                  compact
+                />
+              </span>
               <span class="left-index-count">{{ artist.count }}</span>
             </div>
             <div v-if="!localMusicStore.artistList.length" class="left-empty">暂无数据</div>
@@ -77,7 +84,14 @@
               :class="{ active: localMusicStore.state.selectedAlbum === album.name }"
               @click="localMusicStore.state.selectedAlbum = album.name"
             >
-              <span class="left-index-name">{{ album.name }}</span>
+              <span class="left-index-main">
+                <span class="left-index-name">{{ album.name }}</span>
+                <LocalMetadataStatusBadge
+                  v-if="collectionStatusOf(album.tracks)"
+                  :result="collectionStatusOf(album.tracks)"
+                  compact
+                />
+              </span>
               <span class="left-index-count">{{ album.count }}</span>
             </div>
             <div v-if="!localMusicStore.albumList.length" class="left-empty">暂无数据</div>
@@ -148,6 +162,7 @@ import LocalPlaylistsPage from '../views/LocalPlaylistsPage.vue'
 import LocalPlaylistDetailPage from '../views/LocalPlaylistDetailPage.vue'
 import FolderTreeNode from '../views/FolderTreeNode.vue'
 import LocalContextMenu, { type ContextMenuItem } from './LocalContextMenu.vue'
+import LocalMetadataStatusBadge from './ui/LocalMetadataStatusBadge.vue'
 import { ref, onMounted, watch, KeepAlive } from 'vue'
 import { platform } from '../utils/platform'
 
@@ -219,6 +234,14 @@ function formatSize(bytes: number): string {
 
 function switchTab(key: LocalView) {
   localMusicStore.state.activeView = key
+}
+
+function collectionStatusOf(tracks: Array<{ id?: string; path?: string }>) {
+  for (const track of tracks || []) {
+    const status = localMusicStore.metadataStatusOf(track)
+    if (status) return status
+  }
+  return null
 }
 
 function handleFolderTreeClick(event: MouseEvent) {
@@ -388,6 +411,13 @@ async function handleFolderMenuAction(key: string) {
 .left-index-item:hover { background: var(--bg-muted); }
 .left-index-item.active { background: var(--accent-soft); }
 .left-index-item.active .left-index-name { color: var(--accent); font-weight: 600; }
+.left-index-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
 .left-index-name {
   font-size: var(--text-body-sm);
   font-weight: 500;

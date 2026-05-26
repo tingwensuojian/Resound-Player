@@ -82,13 +82,44 @@ const SCHEMA = `
     cloudSongName TEXT NOT NULL DEFAULT '',
     cloudArtists TEXT NOT NULL DEFAULT '',
     cloudAlbum TEXT NOT NULL DEFAULT '',
+    cloudAlbumId INTEGER NOT NULL DEFAULT 0,
+    cloudAlbumPicUrl TEXT NOT NULL DEFAULT '',
     cloudDuration REAL NOT NULL DEFAULT 0,
+    cloudTrackNo INTEGER NOT NULL DEFAULT 0,
+    cloudDiscNo INTEGER NOT NULL DEFAULT 0,
+    cloudYear INTEGER NOT NULL DEFAULT 0,
+    cloudGenre TEXT NOT NULL DEFAULT '',
+    cloudLyrics TEXT NOT NULL DEFAULT '',
+    cloudSyncedLyrics TEXT NOT NULL DEFAULT '',
+    cloudTranslationLyrics TEXT NOT NULL DEFAULT '',
+    cloudRomanizedLyrics TEXT NOT NULL DEFAULT '',
+    sourceVersion TEXT NOT NULL DEFAULT '',
+    confidence REAL NOT NULL DEFAULT 0,
     matchMode TEXT NOT NULL DEFAULT 'manual',
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL
   );
 
   CREATE INDEX IF NOT EXISTS idx_local_lyric_matches_path ON local_lyric_matches(localPath);
+
+  CREATE TABLE IF NOT EXISTS file_metadata_state (
+    filePath TEXT PRIMARY KEY,
+    localTrackId TEXT NOT NULL DEFAULT '',
+    fileSize INTEGER NOT NULL DEFAULT 0,
+    mtime REAL NOT NULL DEFAULT 0,
+    matchSongId INTEGER NOT NULL DEFAULT 0,
+    sourceVersion TEXT NOT NULL DEFAULT '',
+    writeFingerprint TEXT NOT NULL DEFAULT '',
+    lastStatus TEXT NOT NULL DEFAULT '',
+    lastError TEXT NOT NULL DEFAULT '',
+    lastWrittenAt TEXT NOT NULL DEFAULT '',
+    completedFields TEXT NOT NULL DEFAULT '',
+    revertSnapshot TEXT NOT NULL DEFAULT '',
+    lastAppliedValues TEXT NOT NULL DEFAULT '',
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_file_metadata_state_track ON file_metadata_state(localTrackId);
 `;
 
 class LocalMusicDB {
@@ -124,6 +155,7 @@ class LocalMusicDB {
     try {
       this.#db.run("ALTER TABLE playlists ADD COLUMN customCoverUrl TEXT NOT NULL DEFAULT ''");
     } catch { /* 列已存在，忽略 */ }
+    this.#migrateLocalLyricMatchColumns();
     await this.#migrateFromJson();
     this.#atomicPersist();
   }
@@ -292,8 +324,61 @@ class LocalMusicDB {
     return {
       ...row,
       cloudSongId: Number(row.cloudSongId || 0),
+      cloudAlbumId: Number(row.cloudAlbumId || 0),
       cloudDuration: Number(row.cloudDuration || 0),
+      cloudTrackNo: Number(row.cloudTrackNo || 0),
+      cloudDiscNo: Number(row.cloudDiscNo || 0),
+      cloudYear: Number(row.cloudYear || 0),
+      confidence: Number(row.confidence || 0),
     };
+  }
+
+  #fileMetadataStateRow(row) {
+    if (!row) return null;
+    return {
+      ...row,
+      fileSize: Number(row.fileSize || 0),
+      mtime: Number(row.mtime || 0),
+      matchSongId: Number(row.matchSongId || 0),
+      completedFields: row.completedFields ? JSON.parse(row.completedFields) : [],
+      revertSnapshot: row.revertSnapshot ? JSON.parse(row.revertSnapshot) : {},
+      lastAppliedValues: row.lastAppliedValues ? JSON.parse(row.lastAppliedValues) : {},
+    };
+  }
+
+  #migrateLocalLyricMatchColumns() {
+    const alterStatements = [
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudAlbumId INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudAlbumPicUrl TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudTrackNo INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudDiscNo INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudYear INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudGenre TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudLyrics TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudSyncedLyrics TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudTranslationLyrics TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE local_lyric_matches ADD COLUMN cloudRomanizedLyrics TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE local_lyric_matches ADD COLUMN sourceVersion TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE local_lyric_matches ADD COLUMN confidence REAL NOT NULL DEFAULT 0",
+    ];
+    for (const sql of alterStatements) {
+      try {
+        this.#db.run(sql);
+      } catch {
+        /* 列已存在，忽略 */
+      }
+    }
+    const metadataStateAlterStatements = [
+      "ALTER TABLE file_metadata_state ADD COLUMN revertSnapshot TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE file_metadata_state ADD COLUMN lastAppliedValues TEXT NOT NULL DEFAULT ''",
+    ];
+    for (const sql of metadataStateAlterStatements) {
+      try {
+        this.#db.run(sql);
+      } catch {
+        /* 列已存在，忽略 */
+      }
+    }
   }
 
   // ── 写队列 + 原子持久化 ──
@@ -407,6 +492,10 @@ class LocalMusicDB {
           ids
         );
         this.#run(
+          `DELETE FROM file_metadata_state WHERE localTrackId IN (${idPh})`,
+          ids
+        );
+        this.#run(
           `DELETE FROM playlist_tracks WHERE trackId IN (${idPh})`,
           ids
         );
@@ -423,6 +512,7 @@ class LocalMusicDB {
     return this.#enqueueWrite(() => {
       this.#run("DELETE FROM playlist_tracks");
       this.#run("DELETE FROM local_lyric_matches");
+      this.#run("DELETE FROM file_metadata_state");
       this.#run("DELETE FROM scan_dirs");
       const count = this.#queryOne("SELECT COUNT(*) as cnt FROM tracks").cnt;
       this.#run("DELETE FROM tracks");
@@ -444,6 +534,7 @@ class LocalMusicDB {
       if (ids.length > 0) {
         const ph = ids.map(() => "?").join(",");
         this.#run(`DELETE FROM local_lyric_matches WHERE localTrackId IN (${ph})`, ids);
+        this.#run(`DELETE FROM file_metadata_state WHERE localTrackId IN (${ph})`, ids);
         this.#run(`DELETE FROM playlist_tracks WHERE trackId IN (${ph})`, ids);
         this.#run(
           `DELETE FROM tracks WHERE LOWER(REPLACE(path, '\\\\', '/')) LIKE ?`,
@@ -529,15 +620,30 @@ class LocalMusicDB {
       this.#run(`
         INSERT INTO local_lyric_matches (
           localTrackId, localPath, cloudSongId, cloudSongName, cloudArtists,
-          cloudAlbum, cloudDuration, matchMode, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          cloudAlbum, cloudAlbumId, cloudAlbumPicUrl, cloudDuration, cloudTrackNo,
+          cloudDiscNo, cloudYear, cloudGenre, cloudLyrics, cloudSyncedLyrics,
+          cloudTranslationLyrics, cloudRomanizedLyrics, sourceVersion, confidence,
+          matchMode, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(localTrackId) DO UPDATE SET
           localPath=excluded.localPath,
           cloudSongId=excluded.cloudSongId,
           cloudSongName=excluded.cloudSongName,
           cloudArtists=excluded.cloudArtists,
           cloudAlbum=excluded.cloudAlbum,
+          cloudAlbumId=excluded.cloudAlbumId,
+          cloudAlbumPicUrl=excluded.cloudAlbumPicUrl,
           cloudDuration=excluded.cloudDuration,
+          cloudTrackNo=excluded.cloudTrackNo,
+          cloudDiscNo=excluded.cloudDiscNo,
+          cloudYear=excluded.cloudYear,
+          cloudGenre=excluded.cloudGenre,
+          cloudLyrics=excluded.cloudLyrics,
+          cloudSyncedLyrics=excluded.cloudSyncedLyrics,
+          cloudTranslationLyrics=excluded.cloudTranslationLyrics,
+          cloudRomanizedLyrics=excluded.cloudRomanizedLyrics,
+          sourceVersion=excluded.sourceVersion,
+          confidence=excluded.confidence,
           matchMode=excluded.matchMode,
           updatedAt=excluded.updatedAt
       `, [
@@ -547,13 +653,78 @@ class LocalMusicDB {
         payload.cloudSongName || "",
         payload.cloudArtists || "",
         payload.cloudAlbum || "",
+        Number(payload.cloudAlbumId || 0),
+        payload.cloudAlbumPicUrl || "",
         Number(payload.cloudDuration || 0),
+        Number(payload.cloudTrackNo || 0),
+        Number(payload.cloudDiscNo || 0),
+        Number(payload.cloudYear || 0),
+        payload.cloudGenre || "",
+        payload.cloudLyrics || "",
+        payload.cloudSyncedLyrics || "",
+        payload.cloudTranslationLyrics || "",
+        payload.cloudRomanizedLyrics || "",
+        payload.sourceVersion || "",
+        Number(payload.confidence || 0),
         payload.matchMode || "manual",
         ts,
         ts,
       ]);
       this.#atomicPersist();
       return { success: true };
+    });
+  }
+
+  getFileMetadataState(filePath) {
+    if (!filePath) return Promise.resolve(null);
+    const normalizedPath = String(filePath).replace(/\\\\/g, "/");
+    const row = this.#queryOne(
+      "SELECT * FROM file_metadata_state WHERE REPLACE(filePath, '\\\\', '/') = ?",
+      [normalizedPath]
+    );
+    return Promise.resolve(this.#fileMetadataStateRow(row));
+  }
+
+  upsertFileMetadataState(payload) {
+    if (!payload?.filePath) return Promise.resolve();
+    return this.#enqueueWrite(() => {
+      this.#run(`
+        INSERT INTO file_metadata_state (
+          filePath, localTrackId, fileSize, mtime, matchSongId, sourceVersion,
+          writeFingerprint, lastStatus, lastError, lastWrittenAt, completedFields,
+          revertSnapshot, lastAppliedValues, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(filePath) DO UPDATE SET
+          localTrackId=excluded.localTrackId,
+          fileSize=excluded.fileSize,
+          mtime=excluded.mtime,
+          matchSongId=excluded.matchSongId,
+          sourceVersion=excluded.sourceVersion,
+          writeFingerprint=excluded.writeFingerprint,
+          lastStatus=excluded.lastStatus,
+          lastError=excluded.lastError,
+          lastWrittenAt=excluded.lastWrittenAt,
+          completedFields=excluded.completedFields,
+          revertSnapshot=excluded.revertSnapshot,
+          lastAppliedValues=excluded.lastAppliedValues,
+          updatedAt=excluded.updatedAt
+      `, [
+        payload.filePath,
+        payload.localTrackId || "",
+        Number(payload.fileSize || 0),
+        Number(payload.mtime || 0),
+        Number(payload.matchSongId || 0),
+        payload.sourceVersion || "",
+        payload.writeFingerprint || "",
+        payload.lastStatus || "",
+        payload.lastError || "",
+        payload.lastWrittenAt || "",
+        JSON.stringify(Array.isArray(payload.completedFields) ? payload.completedFields : []),
+        JSON.stringify(payload.revertSnapshot && typeof payload.revertSnapshot === "object" ? payload.revertSnapshot : {}),
+        JSON.stringify(payload.lastAppliedValues && typeof payload.lastAppliedValues === "object" ? payload.lastAppliedValues : {}),
+        now(),
+      ]);
+      this.#atomicPersist();
     });
   }
 

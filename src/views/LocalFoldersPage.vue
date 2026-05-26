@@ -3,12 +3,14 @@
     <VirtualSongList
       v-if="tracks.length"
       :tracks="tracks"
+      :metadata-status-map="localMusicStore.state.metadataStatusMap"
       :now-playing-id="nowPlayingId"
       :highlighted-id="localMusicStore.state.locatedTrackId"
       @play="playTrack"
       @play-next="playNext"
       @add-to-playlist="addToPlaylist"
       @show-in-folder="showInFolder"
+      @match-metadata="openLyricMatch"
       @show-local-album="showLocalAlbum"
       @show-online-album="showOnlineAlbum"
       @upload-to-cloud="uploadToCloud"
@@ -21,6 +23,11 @@
       @confirm="confirmPlaylistPicker"
       @cancel="cancelPlaylistPicker"
     />
+    <LocalLyricMatchDialog
+      :visible="showLyricMatchDialog"
+      :track="pendingMetadataTrack"
+      @close="closeMetadataDialogs"
+    />
   </section>
 </template>
 
@@ -30,6 +37,7 @@ import { useLocalMusicStore } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
 import VirtualSongList from '../components/VirtualSongList.vue'
 import PlaylistPickerDialog from '../components/PlaylistPickerDialog.vue'
+import LocalLyricMatchDialog from '../components/LocalLyricMatchDialog.vue'
 import { useLocalTrackActions } from '../composables/useLocalTrackActions'
 
 const tracks = computed(() => localMusicStore.selectedFolderTracks)
@@ -43,6 +51,10 @@ const {
   confirmPlaylistPicker,
   cancelPlaylistPicker,
   showInFolder,
+  openLyricMatch,
+  closeMetadataDialogs,
+  showLyricMatchDialog,
+  pendingMetadataTrack,
   showLocalAlbum,
   showOnlineAlbum,
   uploadToCloud,

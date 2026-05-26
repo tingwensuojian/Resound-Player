@@ -42,6 +42,11 @@
         </div>
         <div class="playlist-card-info">
           <span class="playlist-card-name" :title="pl.name">{{ pl.name }}</span>
+          <LocalMetadataStatusBadge
+            v-if="playlistStatusOf(pl)"
+            :result="playlistStatusOf(pl)"
+            compact
+          />
           <span class="playlist-card-count">{{ pl.tracks?.length || 0 }} 首</span>
         </div>
         <button class="playlist-card-settings" @click.stop="openSettings(pl)" title="歌单设置">⚙</button>
@@ -76,6 +81,7 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted } from 'vue'
 import { useLocalMusicStore } from '../stores/localMusic'
+import LocalMetadataStatusBadge from '../components/ui/LocalMetadataStatusBadge.vue'
 const localMusicStore = useLocalMusicStore()
 import PlaylistSettingsModal from '../components/ui/PlaylistSettingsModal.vue'
 
@@ -104,8 +110,20 @@ async function submitCreate() {
 onMounted(() => {
   if (localMusicStore.hasLocalSupport) {
     localMusicStore.loadPlaylists()
+    const playlistTracks = localMusicStore.state.playlists.flatMap((playlist: any) => playlist?.tracks || [])
+    if (playlistTracks.length) {
+      localMusicStore.refreshMetadataStatuses(playlistTracks)
+    }
   }
 })
+
+function playlistStatusOf(playlist: any) {
+  for (const track of playlist?.tracks || []) {
+    const status = localMusicStore.metadataStatusOf(track)
+    if (status) return status
+  }
+  return null
+}
 
 function openSettings(pl: any) {
   settingsPlaylist.value = pl

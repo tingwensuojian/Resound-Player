@@ -42,6 +42,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
         <span>定位到目录</span>
       </button>
+      <button class="more-menu__item" type="button" @click="emitAction('match-metadata')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span>匹配歌词/标签</span>
+      </button>
       <button class="more-menu__item" type="button" @click="emitAction('show-local-album')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
         <span>查看本地专辑</span>
@@ -67,6 +71,7 @@ const emit = defineEmits<{
   'play-next': []
   'add-to-playlist': []
   'show-in-folder': []
+  'match-metadata': []
   'show-local-album': []
   'show-online-album': []
   'upload-to-cloud': []
@@ -89,7 +94,7 @@ function updateMoreMenuPosition() {
   if (!el) return
   const rect = el.getBoundingClientRect()
   const gap = 6
-  const estimatedHeight = 4 * 42 + 12
+  const estimatedHeight = 5 * 42 + 12
   const spaceBelow = window.innerHeight - rect.bottom
   const spaceAbove = rect.top
   let top: number

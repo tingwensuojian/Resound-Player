@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { reactive, computed, toRaw } from 'vue';
 import { platform, type LocalLyricMatch } from '../utils/platform';
+import { usePlayerStore } from './player';
 
 export interface LocalTrack {
   id: string
@@ -14,6 +15,29 @@ export interface LocalTrack {
   hasLyrics: boolean
   source: 'local'
   createdAt: string
+}
+
+export type LocalMetadataStatus =
+  | 'unmatched'
+  | 'matched_not_written'
+  | 'written'
+  | 'written_duplicate'
+  | 'revertible'
+  | 'partially_reverted'
+  | 'reverted'
+  | 'conflicted'
+  | 'no_missing_fields'
+
+export interface LocalMetadataStatusResult {
+  status: LocalMetadataStatus
+  hasMatch: boolean
+  hasWrittenMetadata: boolean
+  canRevert: boolean
+  hasEmbeddedArtwork: boolean
+  coverSource: 'embedded' | 'match-cache' | 'placeholder'
+  message: string
+  filePath?: string
+  localTrackId?: string
 }
 
 export type LocalLyricMatchPayload = LocalLyricMatch
@@ -30,6 +54,7 @@ export interface FolderNode {
 }
 
 export const useLocalMusicStore = defineStore('localMusic', () => {
+  const playerStore = usePlayerStore()
   const state = reactive({
     tracks: [] as LocalTrack[],
     directories: [] as string[],
@@ -50,6 +75,8 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     activePlaylistDetail: null as any,
     locatedTrackId: '',
     _statsRefresh: 0,
+    metadataStatusMap: {} as Record<string, LocalMetadataStatusResult>,
+    currentMetadataStatus: null as LocalMetadataStatusResult | null,
   });
 
   const hasLocalSupport = computed(() => platform.hasLocalMusicSupport);
@@ -343,7 +370,13 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
           const paths = chunk.map(t => t.path)
           const covers = await platform.localApi.getCoversBatch(paths)
           for (let i = 0; i < chunk.length; i++) {
-            if (covers[i]) chunk[i].coverUrl = covers[i]
+            const batchCover = String(covers[i] || '')
+            if (batchCover) {
+              chunk[i].coverUrl = batchCover
+              continue
+            }
+            const matchedCover = String((await getLyricMatch(chunk[i]))?.cloudAlbumPicUrl || '').trim()
+            if (matchedCover) chunk[i].coverUrl = matchedCover
           }
           // 每片完成立即递增版本号，触发 UI 逐批刷新
           state._coverVersion++
@@ -351,7 +384,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       } else {
         for (const track of uncached) {
           try {
-            const cover = await platform.localApi.getCover(track.path)
+            const cover = await resolveTrackCover(track)
             if (cover) track.coverUrl = cover
           } catch { /* ignore single failure */ }
         }
@@ -366,11 +399,30 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
   }
 
   async function lazyLoadPlaylistCovers() {
+    let changed = false
     for (const pl of state.playlists) {
+      if (Array.isArray(pl.tracks)) {
+        for (const track of pl.tracks) {
+          if (!track?.coverUrl) {
+            const cover = await resolveTrackCover(track)
+            if (cover) {
+              track.coverUrl = cover
+              changed = true
+            }
+          }
+        }
+      }
       if (pl.coverUrl) continue
       if (!pl.tracks?.length) continue
       const coverUrl = await synthesizeCover(pl.tracks.slice(0, 6))
-      if (coverUrl) pl.coverUrl = coverUrl
+      if (coverUrl) {
+        pl.coverUrl = coverUrl
+        changed = true
+      }
+    }
+    if (changed) {
+      state._coverVersion++
+      savePlaylists()
     }
   }
 
@@ -519,6 +571,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       await restoreDirectoriesFromTracks()
       // 异步加载封面（不阻塞）
       lazyLoadCovers()
+      refreshMetadataStatuses(state.tracks)
     } catch (e) {
       console.warn('[localMusic] loadTracks failed:', e)
     } finally {
@@ -590,6 +643,10 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     }
   }
 
+  function metadataStatusKey(track: any): string {
+    return String(track?.path || '').replace(/\\/g, '/')
+  }
+
   async function getLyricMatch(track: any): Promise<LocalLyricMatch | null> {
     if (!platform.localApi?.getLyricMatch) return null
     const { localTrackId, localPath } = getLocalTrackIdentity(track)
@@ -597,16 +654,265 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     return platform.localApi.getLyricMatch(localTrackId, localPath)
   }
 
+  async function getMetadataStatus(track: any): Promise<LocalMetadataStatusResult | null> {
+    if (!platform.localApi?.getMetadataStatus) return null
+    const { localTrackId, localPath } = getLocalTrackIdentity(track)
+    if (!localPath) return null
+    const result = await platform.localApi.getMetadataStatus({
+      filePath: localPath,
+      localTrackId,
+    })
+    if (result?.filePath) {
+      state.metadataStatusMap[result.filePath] = result
+    }
+    return result || null
+  }
+
+  async function refreshMetadataStatus(track: any): Promise<LocalMetadataStatusResult | null> {
+    const status = await getMetadataStatus(track)
+    if (status) state.currentMetadataStatus = status
+    return status
+  }
+
+  async function refreshMetadataStatuses(tracks: any[]): Promise<void> {
+    if (!platform.localApi?.getMetadataStatusBatch) return
+    const items = (tracks || [])
+      .filter(track => track?.path)
+      .map(track => {
+        const { localTrackId, localPath } = getLocalTrackIdentity(track)
+        return { filePath: localPath, localTrackId }
+      })
+    if (!items.length) return
+    const result = await platform.localApi.getMetadataStatusBatch({ items })
+    if (!result || typeof result !== 'object') return
+    state.metadataStatusMap = {
+      ...state.metadataStatusMap,
+      ...result,
+    }
+  }
+
+  function metadataStatusOf(track: any): LocalMetadataStatusResult | null {
+    const key = metadataStatusKey(track)
+    return state.metadataStatusMap[key] || null
+  }
+
+  async function resolveTrackCover(track: any): Promise<string> {
+    if (!platform.localApi) return ''
+    try {
+      const embeddedCover = await platform.localApi.getCover(track.path)
+      if (embeddedCover) return embeddedCover
+    } catch {
+      /* ignore */
+    }
+    try {
+      const match = await getLyricMatch(track)
+      return String(match?.cloudAlbumPicUrl || '').trim()
+    } catch {
+      return ''
+    }
+  }
+
   async function saveLyricMatch(payload: LocalLyricMatchPayload): Promise<{ success: boolean; error?: string }> {
     if (!platform.localApi?.saveLyricMatch) return { success: false, error: '当前环境不支持歌词匹配保存' }
-    return platform.localApi.saveLyricMatch(payload)
+    const result = await platform.localApi.saveLyricMatch(payload)
+    await refreshMetadataStatus({ id: payload.localTrackId, path: payload.localPath })
+    return result
+  }
+
+  async function previewMetadataWrite(track: any, overrides?: Record<string, any>): Promise<any> {
+    if (!platform.localApi?.previewMetadataWrite) throw new Error('当前环境不支持标签补全')
+    return platform.localApi.previewMetadataWrite({
+      filePath: String(track?.path || ''),
+      localTrackId: String(track?.id || ''),
+      overrides,
+    })
+  }
+
+  async function writeMetadata(track: any, overrides?: Record<string, any>): Promise<any> {
+    if (!platform.localApi?.writeMetadata) throw new Error('当前环境不支持标签补全')
+    const result = await platform.localApi.writeMetadata({
+      filePath: String(track?.path || ''),
+      localTrackId: String(track?.id || ''),
+      mode: 'fill-missing',
+      overrides,
+    })
+    await applyMetadataWriteResult(track, result)
+    await refreshMetadataStatus(track)
+    return result
+  }
+
+  async function revertMetadata(track: any): Promise<any> {
+    if (!platform.localApi?.revertMetadata) throw new Error('当前环境不支持标签回滚')
+    const result = await platform.localApi.revertMetadata({
+      filePath: String(track?.path || ''),
+      localTrackId: String(track?.id || ''),
+    })
+    await refreshTrackCover(track)
+    await refreshMetadataStatus(track)
+    return result
+  }
+
+  function isSameLocalTrack(target: any, candidate: any) {
+    const targetId = String(target?.id || '')
+    const targetPath = String(target?.path || '')
+    return (
+      (targetId && String(candidate?.id || '') === targetId) ||
+      (targetPath && String(candidate?.path || '') === targetPath)
+    )
+  }
+
+  function writePlanValueMap(result: any): Record<string, any> {
+    const map: Record<string, any> = {}
+    for (const item of result?.writePlan?.toWrite || []) {
+      if (item?.key) map[String(item.key)] = item.value
+    }
+    return map
+  }
+
+  function applyTrackFieldWrites(target: any, result: any) {
+    const valueMap = writePlanValueMap(result)
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'title')) {
+      const nextTitle = String(valueMap.title || '').trim()
+      if (nextTitle) target.title = nextTitle
+      if (target.name !== undefined && nextTitle) target.name = nextTitle
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'artists')) {
+      const artists = Array.isArray(valueMap.artists)
+        ? valueMap.artists.map((item: any) => String(item || '').trim()).filter(Boolean)
+        : String(valueMap.artists || '').split('/').map((item) => item.trim()).filter(Boolean)
+      const artistText = artists.join('/')
+      target.artist = artistText
+      if (target.ar !== undefined) {
+        target.ar = artists.map((name) => ({ name }))
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'album')) {
+      const nextAlbum = String(valueMap.album || '').trim()
+      target.album = nextAlbum
+      if (target.al !== undefined) {
+        target.al = { ...(target.al || {}), name: nextAlbum }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'albumArtist')) {
+      target.albumArtist = String(valueMap.albumArtist || '').trim()
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'genre')) {
+      target.genre = String(valueMap.genre || '').trim()
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'year')) {
+      target.year = Number(valueMap.year || 0)
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'trackNo')) {
+      target.trackNo = Number(valueMap.trackNo || 0)
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'discNo')) {
+      target.discNo = Number(valueMap.discNo || 0)
+    }
+    if (Object.prototype.hasOwnProperty.call(valueMap, 'lyrics')) {
+      target.hasLyrics = Boolean(String(valueMap.lyrics || '').trim())
+    }
+  }
+
+  async function refreshTrackCover(track: any) {
+    const nextCover = await resolveTrackCover(track)
+    for (const localTrack of state.tracks) {
+      if (!isSameLocalTrack(track, localTrack)) continue
+      localTrack.coverUrl = nextCover
+    }
+    for (const playlist of state.playlists) {
+      if (!Array.isArray(playlist?.tracks)) continue
+      for (const playlistTrack of playlist.tracks) {
+        if (!isSameLocalTrack(track, playlistTrack)) continue
+        playlistTrack.coverUrl = nextCover
+      }
+    }
+    const currentTrack = playerStore.state.currentTrack as any
+    if (currentTrack && isSameLocalTrack(track, currentTrack)) {
+      currentTrack.al = { ...(currentTrack.al || {}), picUrl: nextCover, name: currentTrack.al?.name || currentTrack.album || '' }
+    }
+    for (const playlistTrack of playerStore.state.playlist as any[]) {
+      if (!isSameLocalTrack(track, playlistTrack)) continue
+      playlistTrack.al = { ...(playlistTrack.al || {}), picUrl: nextCover, name: playlistTrack.al?.name || playlistTrack.album || '' }
+    }
+    state._coverVersion++
+    savePlaylists()
+  }
+
+  async function applyMetadataWriteResult(track: any, result: any) {
+    if (!result || result.skipped) return
+    for (const localTrack of state.tracks) {
+      if (!isSameLocalTrack(track, localTrack)) continue
+      applyTrackFieldWrites(localTrack, result)
+    }
+    for (const playlist of state.playlists) {
+      if (!Array.isArray(playlist?.tracks)) continue
+      for (const playlistTrack of playlist.tracks) {
+        if (!isSameLocalTrack(track, playlistTrack)) continue
+        applyTrackFieldWrites(playlistTrack, result)
+      }
+    }
+    const currentTrack = playerStore.state.currentTrack as any
+    if (currentTrack && isSameLocalTrack(track, currentTrack)) {
+      applyTrackFieldWrites(currentTrack, result)
+      currentTrack.name = currentTrack.title || currentTrack.name
+      currentTrack.al = {
+        ...(currentTrack.al || {}),
+        name: currentTrack.album || currentTrack.al?.name || '',
+      }
+      currentTrack.ar = String(currentTrack.artist || '')
+        .split('/')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((name) => ({ name }))
+    }
+    for (const playlistTrack of playerStore.state.playlist as any[]) {
+      if (!isSameLocalTrack(track, playlistTrack)) continue
+      applyTrackFieldWrites(playlistTrack, result)
+      playlistTrack.name = playlistTrack.title || playlistTrack.name
+      playlistTrack.al = {
+        ...(playlistTrack.al || {}),
+        name: playlistTrack.album || playlistTrack.al?.name || '',
+      }
+      playlistTrack.ar = String(playlistTrack.artist || '')
+        .split('/')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((name) => ({ name }))
+    }
+    await refreshTrackCover(track)
+  }
+
+  function applyLyricMatchCover(track: any, match: any) {
+    const localTrackId = String(track?.id || '')
+    const localPath = String(track?.path || '')
+    const nextCover = String(match?.cloudAlbumPicUrl || '').trim()
+    if (!nextCover) return
+    const target = state.tracks.find(item =>
+      String(item.id || '') === localTrackId || String(item.path || '') === localPath
+    )
+    if (!target) return
+    target.coverUrl = nextCover
+    if (!target.album && match?.cloudAlbum) target.album = String(match.cloudAlbum)
+    for (const playlist of state.playlists) {
+      if (!Array.isArray(playlist?.tracks)) continue
+      for (const playlistTrack of playlist.tracks) {
+        const sameTrack = String(playlistTrack?.id || '') === localTrackId || String(playlistTrack?.path || '') === localPath
+        if (!sameTrack) continue
+        playlistTrack.coverUrl = nextCover
+        if (!playlistTrack.album && match?.cloudAlbum) playlistTrack.album = String(match.cloudAlbum)
+      }
+    }
+    state._coverVersion++
+    savePlaylists()
   }
 
   async function removeLyricMatch(track: any): Promise<{ success: boolean; error?: string }> {
     if (!platform.localApi?.removeLyricMatch) return { success: false, error: '当前环境不支持歌词匹配移除' }
     const { localTrackId, localPath } = getLocalTrackIdentity(track)
     if (!localTrackId && !localPath) return { success: true }
-    return platform.localApi.removeLyricMatch(localTrackId, localPath)
+    const result = await platform.localApi.removeLyricMatch(localTrackId, localPath)
+    await refreshMetadataStatus(track)
+    return result
   }
 
   return {
@@ -644,7 +950,17 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     removeDirectoryPath,
     expandFolderAncestors,
     getLyricMatch,
+    getMetadataStatus,
+    refreshMetadataStatus,
+    refreshMetadataStatuses,
+    metadataStatusOf,
     saveLyricMatch,
+    previewMetadataWrite,
+    writeMetadata,
+    revertMetadata,
+    applyLyricMatchCover,
+    applyMetadataWriteResult,
+    resolveTrackCover,
     removeLyricMatch,
   };
 });

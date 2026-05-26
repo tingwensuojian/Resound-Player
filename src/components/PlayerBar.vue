@@ -24,6 +24,12 @@
           <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="title">{{ playerStore.state.currentTrack?.name || '未在播放' }}</AnimatedAppear>
         </div>
         <AnimatedAppear tag="div" variant="text" rhythm="body" :index="1" class-name="artist"><template v-if="playerStore.state.isPlaying && currentLyricText && lyricsSettings.state.showBarLyric"><span class="lyric-text" :title="currentLyricText">{{ currentLyricText }}</span></template><template v-else>{{ artistText }}<span v-if="uiStore.state.unblockEnabled && playerStore.state.currentTrack" class="source-badge">{{ sourceLabel }}</span></template></AnimatedAppear>
+        <LocalMetadataStatusBadge
+          v-if="isLocalCurrentTrack && localMetadataStatus"
+          class="player-local-status"
+          :result="localMetadataStatus"
+          compact
+        />
       </div>
     </AnimatedAppear>
 
@@ -207,9 +213,12 @@ import { clearCacheEntry } from '../stores/unblock-cache';
 import AnimatedAppear from './AnimatedAppear.vue';
 import EqPanel from './EqPanel.vue';
 import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
+import LocalMetadataStatusBadge from './ui/LocalMetadataStatusBadge.vue';
+import { useLocalMusicStore } from '../stores/localMusic'
 import { useLyrics } from '../composables/useLyrics';
 import { useLoginModalStore } from '../stores/loginModal';
 const loginModalStore = useLoginModalStore();
+const localMusicStore = useLocalMusicStore()
 import { useLyricsSelectionStore } from '../stores/lyricsSelection';
 import { useBgLoaded } from '../composables/useBgLoaded';
 import { formatTime } from '../utils/formatTime';
@@ -586,6 +595,11 @@ const coverStyle = computed(() => {
   return { backgroundImage: `url(${url})` };
 });
 const isLocalCurrentTrackWithoutCover = computed(() => playerStore.state.currentTrack?.source === 'local' && !playerStore.state.currentTrack?.al?.picUrl);
+const isLocalCurrentTrack = computed(() => playerStore.state.currentTrack?.source === 'local');
+const localMetadataStatus = computed(() => {
+  if (!isLocalCurrentTrack.value || !playerStore.state.currentTrack) return null
+  return localMusicStore.metadataStatusOf(playerStore.state.currentTrack)
+})
 const coverLoaded = useBgLoaded(() => playerStore.state.currentTrack?.al?.picUrl || '');
 
 const playModeTooltip = computed(() => {

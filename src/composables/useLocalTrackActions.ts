@@ -53,6 +53,8 @@ export function useLocalTrackActions(tracks: ComputedRef<any[]>) {
   // ── add-to-playlist ──
   const showPlaylistPicker = ref(false)
   const pendingTrackForPlaylist = ref<any>(null)
+  const showLyricMatchDialog = ref(false)
+  const pendingMetadataTrack = ref<any>(null)
 
   async function addToPlaylist(track: any) {
     if (!localMusicStore.state.playlists.length) {
@@ -181,6 +183,16 @@ export function useLocalTrackActions(tracks: ComputedRef<any[]>) {
     }
   }
 
+  function openLyricMatch(track: any) {
+    pendingMetadataTrack.value = track
+    showLyricMatchDialog.value = true
+  }
+
+  function closeMetadataDialogs() {
+    showLyricMatchDialog.value = false
+    pendingMetadataTrack.value = null
+  }
+
   return {
     nowPlayingId,
     playTrack,
@@ -191,6 +203,10 @@ export function useLocalTrackActions(tracks: ComputedRef<any[]>) {
     confirmPlaylistPicker,
     cancelPlaylistPicker,
     showInFolder,
+    openLyricMatch,
+    closeMetadataDialogs,
+    showLyricMatchDialog,
+    pendingMetadataTrack,
     showLocalAlbum,
     showOnlineAlbum,
     uploadToCloud,

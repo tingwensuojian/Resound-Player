@@ -15,6 +15,12 @@
       <div class="song-info" @click="onFullscreen">
         <div class="song-title">{{ playerStore.state.currentTrack?.name || '未在播放' }}</div>
         <div class="song-artist">{{ artistText }}</div>
+        <LocalMetadataStatusBadge
+          v-if="isLocalCurrentTrack && localMetadataStatus"
+          class="mini-local-status"
+          :result="localMetadataStatus"
+          compact
+        />
       </div>
 
       <!-- 播放控制按钮 -->
@@ -145,9 +151,12 @@ import { useUiStore } from '../stores/ui';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
 import { useBgLoaded } from '../composables/useBgLoaded';
 import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
+import LocalMetadataStatusBadge from './ui/LocalMetadataStatusBadge.vue'
+import { useLocalMusicStore } from '../stores/localMusic'
 
 const playerStore = usePlayerStore();
 const uiStore = useUiStore();
+const localMusicStore = useLocalMusicStore()
 
 // 收藏逻辑
 const { isCurrentLiked, likeLoading, toggleCurrentLike } = useCurrentTrackLike();
@@ -209,7 +218,12 @@ const coverStyle = computed(() => {
   return { backgroundImage: `url(${currentPicUrl.value})` };
 });
 const isLocalCurrentTrackWithoutCover = computed(() => playerStore.state.currentTrack?.source === 'local' && !currentPicUrl.value);
+const isLocalCurrentTrack = computed(() => playerStore.state.currentTrack?.source === 'local');
 const coverLoaded = useBgLoaded(currentPicUrl);
+const localMetadataStatus = computed(() => {
+  if (!isLocalCurrentTrack.value || !playerStore.state.currentTrack) return null
+  return localMusicStore.metadataStatusOf(playerStore.state.currentTrack)
+})
 
 // 艺术家文本
 const artistText = computed(() => {
@@ -312,6 +326,9 @@ function onFullscreen() {
   text-overflow: ellipsis;
   color: var(--text-sub);
   margin-top: 1px;
+}
+.mini-local-status {
+  margin-top: 3px;
 }
 
 /* ── 播放控制 ── */

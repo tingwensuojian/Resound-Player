@@ -350,6 +350,20 @@ export function notifyLocalLyricMatchUpdated(detail: Omit<LocalLyricMatchUpdate,
   };
 }
 
+function applyLocalMatchCoverToCurrentTrack(track: any, match: any) {
+  if (!track || track.source !== 'local') return
+  const coverUrl = String(match?.cloudAlbumPicUrl || '').trim()
+  if (!coverUrl) return
+  if (!track.al) track.al = {}
+  if (track.al.picUrl === coverUrl) return
+  track.al = {
+    ...track.al,
+    picUrl: coverUrl,
+    name: track.al?.name || match?.cloudAlbum || track.al?.name || '',
+    id: match?.cloudAlbumId || track.al?.id,
+  }
+}
+
 async function loadOnlineLyricsById(songId: number): Promise<LyricLine[]> {
   if (!Number.isFinite(songId) || songId <= 0) return [];
   try {
@@ -464,6 +478,7 @@ export function useLyrics() {
           const match = await localApi?.getLyricMatch?.(String(id), filePath || '')
           if (match?.cloudSongId) {
             onlineLyricId = Number(match.cloudSongId)
+            applyLocalMatchCoverToCurrentTrack(track, match)
             console.debug('[lyrics] local cloud match loaded:', {
               localTrackId: String(id),
               localPath: filePath || '',

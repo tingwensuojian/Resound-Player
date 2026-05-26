@@ -76,13 +76,21 @@
               </TooltipWrapper>
               {{ track.title }}
             </span>
-            <span class="local-song-artist" :title="track.artist">{{ track.artist }}</span>
+            <span class="local-song-artist-row">
+              <span class="local-song-artist" :title="track.artist">{{ track.artist }}</span>
+              <LocalMetadataStatusBadge
+                v-if="localMusicStore.metadataStatusOf(track)"
+                :result="localMusicStore.metadataStatusOf(track)"
+                compact
+              />
+            </span>
           </div>
           <LocalSongActions
             @play="playTrack(track, idx)"
             @play-next="addToQueue(track)"
             @add-to-playlist="addToPlaylist(track)"
             @show-in-folder="showInFolder(track)"
+            @match-metadata="openLyricMatch(track)"
             @show-local-album="showLocalAlbum(track)"
             @show-online-album="showOnlineAlbum(track)"
             @upload-to-cloud="uploadToCloud(track)"
@@ -116,6 +124,11 @@
       @confirm="onAddTrackConfirm"
       @cancel="showAddTrackModal = false"
       @update:open="showAddTrackModal = $event"
+    />
+    <LocalLyricMatchDialog
+      :visible="showLyricMatchDialog"
+      :track="pendingMetadataTrack"
+      @close="closeMetadataDialogs"
     />
   </AnimatedAppear>
 
@@ -158,6 +171,8 @@ import LocalContextMenu, { type ContextMenuItem } from '../components/LocalConte
 import PromptModal from '../components/ui/PromptModal.vue'
 import LocalSongActions from '../components/ui/LocalSongActions.vue'
 import TooltipWrapper from '../components/ui/TooltipWrapper.vue'
+import LocalMetadataStatusBadge from '../components/ui/LocalMetadataStatusBadge.vue'
+import LocalLyricMatchDialog from '../components/LocalLyricMatchDialog.vue'
 import { useLoginModalStore } from '../stores/loginModal'
 const loginModalStore = useLoginModalStore()
 import { useUserStore } from '../stores/user'
@@ -204,6 +219,8 @@ const { refresh } = useDetailStickyState(coverUrl)
 // ── Modal state ──
 const showRenameModal = ref(false)
 const showAddTrackModal = ref(false)
+const showLyricMatchDialog = ref(false)
+const pendingMetadataTrack = ref<LocalTrack | null>(null)
 
 // ── 行 hover / 播放暂停音浪 ──
 const hoveredIdx = ref(-1)
@@ -389,6 +406,16 @@ function cancelPlaylistPicker() {
   pendingTrackForPlaylist.value = null
 }
 
+function openLyricMatch(track: LocalTrack) {
+  pendingMetadataTrack.value = track
+  showLyricMatchDialog.value = true
+}
+
+function closeMetadataDialogs() {
+  showLyricMatchDialog.value = false
+  pendingMetadataTrack.value = null
+}
+
 /** 定位到目录 */
 function showInFolder(track: LocalTrack) {
   if (!track.path) {
@@ -568,6 +595,12 @@ async function uploadToCloud(track: LocalTrack) {
 .local-song-artist {
   color: var(--text-sub); font-size: var(--text-label-sm);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.local-song-artist-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 /* 封面马赛克（无自定义封面时使用） */

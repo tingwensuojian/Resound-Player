@@ -77,6 +77,11 @@
                   <template v-else>{{ artistText }}</template>
                   <span v-if="playerStore.state.playbackRate !== 1" class="rate-badge">{{ playerStore.state.playbackRate.toFixed(2).replace(/\.00$/, '.0') }}x</span>
                 </AnimatedAppear>
+                <LocalMetadataStatusBadge
+                  v-if="isLocalCurrentTrack && localMetadataStatus"
+                  class="expanded-local-status"
+                  :result="localMetadataStatus"
+                />
               </div>
               <div v-if="showLeftZone" class="left-zone" :class="{ 'mode-cover': lyricsSettings.state.displayMode === 'cover', 'mode-record': lyricsSettings.state.displayMode === 'record', 'l-only-cover': !lyricsSettings.state.showLyrics }">
                 <!-- 封面模式 -->
@@ -334,6 +339,8 @@ import LyricsSelectionModal from './LyricsSelectionModal.vue';
 import LocalLyricMatchDialog from './LocalLyricMatchDialog.vue';
 import CommentPanel from './CommentPanel.vue';
 import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
+import LocalMetadataStatusBadge from './ui/LocalMetadataStatusBadge.vue'
+import { useLocalMusicStore } from '../stores/localMusic'
 import * as api from '../api/music';
 import { useLyricsSelectionStore } from '../stores/lyricsSelection';
 import FancySwitch from './ui/FancySwitch.vue';
@@ -346,6 +353,7 @@ import { platform } from '../utils/platform';
 import { resolveSizedImageUrl } from '../utils/image';
 
 const emit = defineEmits<{ 'open-artist': [artist: Record<string, any>]; 'open-album': [albumId: number]; 'open-user': [userId: number]; 'open-podcast-detail': [item: any] }>();
+const localMusicStore = useLocalMusicStore()
 
 const artistText = computed(() => { const ar = playerStore.state.currentTrack?.ar || []; return ar.length ? ar.map((a) => a.name).join('/') : 'Unknown Artist'; });
 function openArtist(artist: Record<string, any>) { const id = Number(artist?.id || artist?.artistId || 0); if (id) emit('open-artist', artist); }
@@ -367,6 +375,10 @@ const currentArtistList = computed(() => playerStore.state.currentTrack?.ar || [
 const currentAlbumName = computed(() => playerStore.state.currentTrack?.al?.name || '');
 const currentAlbumId = computed(() => { const al: any = playerStore.state.currentTrack?.al; return al?.id ? Number(al.id) : 0; });
 const isLocalCurrentTrackWithoutCover = computed(() => playerStore.state.currentTrack?.source === 'local' && !currentCover.value);
+const localMetadataStatus = computed(() => {
+  if (!isLocalCurrentTrack.value || !playerStore.state.currentTrack) return null
+  return localMusicStore.metadataStatusOf(playerStore.state.currentTrack)
+})
 
 const palette = ref({ c1: 'rgb(28, 33, 53)', c2: 'rgb(84, 110, 126)', c3: 'rgb(195, 156, 118)', c4: 'rgb(20, 24, 36)' });
 const showPlaylistPopup = ref(false);
@@ -736,6 +748,7 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .song-name-center { margin: 0; color: #fff !important; font-size: var(--text-headline-lg); font-weight: 700; line-height: 1.2; }
 .song-artist-center { margin: var(--space-1) 0 0; color: rgba(255,255,255,0.82) !important; font-size: var(--text-body-lg); }
 .song-artist-center .rate-badge { margin-left: 8px; }
+.expanded-local-status { margin-top: 10px; }
 .ghost { height: 32px; border-radius: 10px; border: 1px solid var(--line-muted); background: var(--card-bg-2); color: #fff; padding: 0 var(--space-3); }
 .artist-inline-btn { background: none; border: none; color: inherit; padding: 0; font: inherit; cursor: pointer; outline: none; }
 .artist-inline-btn:focus-visible { outline: none; }
