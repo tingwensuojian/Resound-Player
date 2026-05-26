@@ -5,7 +5,7 @@
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
-    "postinstall": "patch-package",
+    "postinstall": "node scripts/postinstall-fixes.mjs",
     "dev:web": "vite",
     "dev:api": "node scripts/start-api.cjs",
     "dev:web:full": "concurrently -k \"PORT=38761 npm run dev:api\" \"npm run dev:unblock\" \"npm run dev:unblock-match\" \"VITE_API_PROXY_TARGET=http://127.0.0.1:38761 npm run dev:web\"",
@@ -73,7 +73,6 @@
     "concurrently": "^9.1.2",
     "electron": "42.1.0",
     "electron-builder": "^25.1.8",
-    "patch-package": "^8.0.1",
     "pngjs": "^5.0.0",
     "typescript": "^5.8.2",
     "vite": "^6.2.0",

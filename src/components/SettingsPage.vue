@@ -610,7 +610,7 @@ const graphicsPkgs: AboutPkg[] = [
 const networkPkgs: AboutPkg[] = [
   { name: 'axios', version: '1.15.0', license: 'MIT', author: 'Matt Zabriskie — 基于 Promise 的 HTTP 客户端，承载所有 API 请求', url: 'https://github.com/axios/axios', icon: 'https://github.com/axios.png?size=48' },
   { name: 'Binaryify/NeteaseCloudMusicApi', version: '-', license: 'MIT', author: 'Binaryify — 网易云音乐 Node.js API 服务，为本项目的 API 层提供基础支持', url: 'https://github.com/Binaryify/NeteaseCloudMusicApi', icon: 'https://github.com/Binaryify.png?size=48' },
-  { name: '@neteasecloudmusicapienhanced/api', version: '4.31.0', license: 'MIT', author: 'MoeFurina — 🎉 全网收集最全的网易云音乐 api 接口，基于 <a href=\"https://github.com/binaryify/NeteaseCloudMusicApi\" target=\"_blank\" rel=\"noopener\">NeteaseCloudMusicAPI</a> 的复刻版本。', url: 'https://github.com/neteasecloudmusicapienhanced/api-enhanced', icon: 'https://github.com/neteasecloudmusicapienhanced.png?size=48' },
+  { name: '@neteasecloudmusicapienhanced/api', version: '4.32.1', license: 'MIT', author: 'MoeFurina — 🎉 全网收集最全的网易云音乐 api 接口，基于 <a href=\"https://github.com/binaryify/NeteaseCloudMusicApi\" target=\"_blank\" rel=\"noopener\">NeteaseCloudMusicAPI</a> 的复刻版本。', url: 'https://github.com/neteasecloudmusicapienhanced/api-enhanced', icon: 'https://github.com/neteasecloudmusicapienhanced.png?size=48' },
 ];
 
 const desktopPkgs: AboutPkg[] = [
