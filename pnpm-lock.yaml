@@ -50,6 +50,9 @@ importers:
       '@ungap/structured-clone':
         specifier: ^1.3.0
         version: 1.3.1
+      '@yortyrh/tagpilot-lib':
+        specifier: ^1.0.27
+        version: 1.0.27(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
       axios:
         specifier: ^1.8.2
         version: 1.16.1
@@ -236,6 +239,15 @@ packages:
   '@electron/universal@2.0.1':
     resolution: {integrity: sha512-fKpv9kg4SPmt+hY7SVBnIYULE9QJl8L3sCfcBsnqbJwwBwAeTLokJ9TRt9y7bK0JAzIW2y78TVVjvnQEms/yyA==}
     engines: {node: '>=16.4'}
+
+  '@emnapi/core@1.10.0':
+    resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
+
+  '@emnapi/runtime@1.10.0':
+    resolution: {integrity: sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA==}
+
+  '@emnapi/wasi-threads@1.2.1':
+    resolution: {integrity: sha512-uTII7OYF+/Mes/MrcIOYp5yOtSMLBWSIoLPpcgwipoiKbli6k322tcoFsxoIIxPDqW01SQGAgko4EzZi2BNv2w==}
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -436,6 +448,12 @@ packages:
   '@malept/flatpak-bundler@0.4.0':
     resolution: {integrity: sha512-9QOtNffcOF/c1seMCDnjckb3R9WHcG34tky+FHpNKKCW0wc/scYLwMtO+ptyGUfMW0/b/n4qRiALlaFHc9Oj7Q==}
     engines: {node: '>= 10.0.0'}
+
+  '@napi-rs/wasm-runtime@1.1.4':
+    resolution: {integrity: sha512-3NQNNgA1YSlJb/kMH1ildASP9HW7/7kYnRI2szWJaofaS1hWmbGI4H+d3+22aGzXXN9IJ+n+GiFVcGipJP18ow==}
+    peerDependencies:
+      '@emnapi/core': ^1.7.1
+      '@emnapi/runtime': ^1.7.1
 
   '@neteasecloudmusicapienhanced/api@4.32.1':
     resolution: {integrity: sha512-2w5ZKg5/sz15JQ5zyl7yqrTqn5ksqLZ//bRG3ENLvri6dTNdOs/muVPH4CvhNP2zYvFA9GXQzd6E/EpXyKs7JA==}
@@ -692,6 +710,9 @@ packages:
   '@tootallnate/quickjs-emscripten@0.23.0':
     resolution: {integrity: sha512-C5Mc6rdnsaJDjO3UpGW/CQTHtCKaYlScZTly4JIu97Jxo/odCiH0ITnDXSJPTOrEKk/ycSZ0AOgTmkDtkOsvIA==}
 
+  '@tybys/wasm-util@0.10.2':
+    resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
+
   '@types/cacheable-request@6.0.3':
     resolution: {integrity: sha512-IQ3EbTzGxIigb1I3qPZc1rWJnH0BmSKv5QYTalEwweFvyBDLSAe24zP0le/hyi7ecGfZVlIVAg4BZqb8WBwKqw==}
 
@@ -799,6 +820,97 @@ packages:
 
   '@yarnpkg/lockfile@1.1.0':
     resolution: {integrity: sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ==}
+
+  '@yortyrh/tagpilot-lib-android-arm-eabi@1.0.27':
+    resolution: {integrity: sha512-gzj7+Gq/8o+u+4ElbBTdJ6wHyWHHfXIjoW0PTJZUOTjKBU5GvKrYyvp9Iz/60feomFRv0R47PSS7s1HL2MzvKA==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [arm]
+    os: [android]
+
+  '@yortyrh/tagpilot-lib-android-arm64@1.0.27':
+    resolution: {integrity: sha512-xn62u1Nou/0jVY3z56aZyEGqK1br3p2Rr8Caqywffbs5PlQqWh/eiim3kP/FGEojaZ+/pdDWIBKbE3tMFqyEaA==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [arm64]
+    os: [android]
+
+  '@yortyrh/tagpilot-lib-darwin-arm64@1.0.27':
+    resolution: {integrity: sha512-ENdIKaRlzQ67Gb9OaO+QpCggjm2fjAoSVBej4f2xhGBpfK7BISms2uRMAkqXrQox8uUyXok+Nn3RsKbAH77T0g==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@yortyrh/tagpilot-lib-darwin-x64@1.0.27':
+    resolution: {integrity: sha512-S+xkLPEV8+IjiH1loED9WSIKDgKDrzM2z2TQ7a63ljERBql7gj6Fcsf7Et6462fpTmDXTQ+VMc/OUxMkN5KDEw==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@yortyrh/tagpilot-lib-freebsd-x64@1.0.27':
+    resolution: {integrity: sha512-7Vc0CZ6i78QwUjvkevWViGmYR+7IH94CxwB2HJbjAdqRy70LGl3iRyRUk8E8YC2EWZYB3exAZlnJrtEu7g/K0A==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@yortyrh/tagpilot-lib-linux-arm-gnueabihf@1.0.27':
+    resolution: {integrity: sha512-cS5pKuJtekZ43eL1npLeUpR2c3fePDNOYbWdVn8q8gZURjmsZuUVG5FHwfWMaCv7zfZmrGA4aTb5MSinqV0e9Q==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@yortyrh/tagpilot-lib-linux-arm64-gnu@1.0.27':
+    resolution: {integrity: sha512-XLLs8KffEDhH0PPWbBEIwNwx4Ayt1I6isyHvIN5RCa1lQp4SiGJ04Tqw6sPoEpRPp7YmGKUziMkCzrlJo34hUg==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@yortyrh/tagpilot-lib-linux-arm64-musl@1.0.27':
+    resolution: {integrity: sha512-8adiof8u5S7tWUAPG5z5Ml1f8rQ0tPjcXJGMAHCR8iEFhZc+gMqRmQWy2m0TjbTKjDHDlXLVdGMFCkbOcUwO2g==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@yortyrh/tagpilot-lib-linux-x64-gnu@1.0.27':
+    resolution: {integrity: sha512-Q1vbNgz2pD/YmgwRnkU44hUzu78xPIAlmvwXqcbJ8Bjz+axKr6fC1Mrhz4kdbsSZolznX0WbJhE3OfZ+ARZTZg==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@yortyrh/tagpilot-lib-linux-x64-musl@1.0.27':
+    resolution: {integrity: sha512-W3UZY1h/TH0bZ7F35E160CE/CeHCy5ruHbap53NdMae+p0pcrTIofbPIP9Iq5xJCqfi7v1v5PSJPF88e17bm1w==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@yortyrh/tagpilot-lib-wasm32-wasi@1.0.27':
+    resolution: {integrity: sha512-rrYvgW4sNSDIkYmTNCcaQgihmJHzCCwihZyYcPiVJC7uR9TBALJyna46NfZZMhNeipxZbNTL+XzCLNXsWAp6Ug==}
+    engines: {node: '>=14.0.0'}
+    cpu: [wasm32]
+
+  '@yortyrh/tagpilot-lib-win32-arm64-msvc@1.0.27':
+    resolution: {integrity: sha512-42OkGGXaGuHkMh3lyN22eP5OdhrseaykAaY+lijsuTd7fnJG9W0CIGPNGFds5LDyhus8wOv8BRjJW/x7woWdvQ==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@yortyrh/tagpilot-lib-win32-ia32-msvc@1.0.27':
+    resolution: {integrity: sha512-mTiz83Q2H8yy2VWsQQKKDpSruNKmszW7PgsFfAZxEqEDY1ZU9fNtCW8wqnUcMC/l8ttfGqf52O/yC51RWpY/0g==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@yortyrh/tagpilot-lib-win32-x64-msvc@1.0.27':
+    resolution: {integrity: sha512-Evf6KozU5o9aH52qU/RBeLWxeVOT3vNW0yeO92im+lCYZ2sM4ZJiHdvoYvrn4NvbcShqHwBZYICHVBN9u2YXRg==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
+    cpu: [x64]
+    os: [win32]
+
+  '@yortyrh/tagpilot-lib@1.0.27':
+    resolution: {integrity: sha512-ZSzl5AS6/Wp6meBt+49tP9bFq3rV6KuqRpn/mj8e/wxwo2T547CcjC0pVLzeAQskFPH+4eXBUe1FMe4erjfhFw==}
+    engines: {node: '>= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0'}
 
   abbrev@1.1.1:
     resolution: {integrity: sha512-nne9/IiQ/hzIhY6pdDnbBtz7DjPTKrY00P/zvPSm5pOFkl6xuGrGnXn/VtTNNfNtAfZ9/1RtehkszU9qcTii0Q==}
@@ -3125,6 +3237,22 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@emnapi/core@1.10.0':
+    dependencies:
+      '@emnapi/wasi-threads': 1.2.1
+      tslib: 2.8.1
+    optional: true
+
+  '@emnapi/runtime@1.10.0':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
+  '@emnapi/wasi-threads@1.2.1':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
 
@@ -3246,6 +3374,13 @@ snapshots:
       tmp-promise: 3.0.3
     transitivePeerDependencies:
       - supports-color
+
+  '@napi-rs/wasm-runtime@1.1.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
+    dependencies:
+      '@emnapi/core': 1.10.0
+      '@emnapi/runtime': 1.10.0
+      '@tybys/wasm-util': 0.10.2
+    optional: true
 
   '@neteasecloudmusicapienhanced/api@4.32.1':
     dependencies:
@@ -3466,6 +3601,11 @@ snapshots:
 
   '@tootallnate/quickjs-emscripten@0.23.0': {}
 
+  '@tybys/wasm-util@0.10.2':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
   '@types/cacheable-request@6.0.3':
     dependencies:
       '@types/http-cache-semantics': 4.2.0
@@ -3613,6 +3753,73 @@ snapshots:
   '@xmldom/xmldom@0.9.10': {}
 
   '@yarnpkg/lockfile@1.1.0': {}
+
+  '@yortyrh/tagpilot-lib-android-arm-eabi@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-android-arm64@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-darwin-arm64@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-darwin-x64@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-freebsd-x64@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-linux-arm-gnueabihf@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-linux-arm64-gnu@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-linux-arm64-musl@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-linux-x64-gnu@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-linux-x64-musl@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-wasm32-wasi@1.0.27(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
+    dependencies:
+      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
+    transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
+    optional: true
+
+  '@yortyrh/tagpilot-lib-win32-arm64-msvc@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-win32-ia32-msvc@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib-win32-x64-msvc@1.0.27':
+    optional: true
+
+  '@yortyrh/tagpilot-lib@1.0.27(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
+    optionalDependencies:
+      '@yortyrh/tagpilot-lib-android-arm-eabi': 1.0.27
+      '@yortyrh/tagpilot-lib-android-arm64': 1.0.27
+      '@yortyrh/tagpilot-lib-darwin-arm64': 1.0.27
+      '@yortyrh/tagpilot-lib-darwin-x64': 1.0.27
+      '@yortyrh/tagpilot-lib-freebsd-x64': 1.0.27
+      '@yortyrh/tagpilot-lib-linux-arm-gnueabihf': 1.0.27
+      '@yortyrh/tagpilot-lib-linux-arm64-gnu': 1.0.27
+      '@yortyrh/tagpilot-lib-linux-arm64-musl': 1.0.27
+      '@yortyrh/tagpilot-lib-linux-x64-gnu': 1.0.27
+      '@yortyrh/tagpilot-lib-linux-x64-musl': 1.0.27
+      '@yortyrh/tagpilot-lib-wasm32-wasi': 1.0.27(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)
+      '@yortyrh/tagpilot-lib-win32-arm64-msvc': 1.0.27
+      '@yortyrh/tagpilot-lib-win32-ia32-msvc': 1.0.27
+      '@yortyrh/tagpilot-lib-win32-x64-msvc': 1.0.27
+    transitivePeerDependencies:
+      - '@emnapi/core'
+      - '@emnapi/runtime'
 
   abbrev@1.1.1: {}
 

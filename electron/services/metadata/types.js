@@ -1,6 +1,6 @@
 export const METADATA_POLICY_VERSION = "v1-fill-missing";
 
-export const SUPPORTED_METADATA_EXTENSIONS = new Set([".mp3", ".flac"]);
+export const SUPPORTED_METADATA_EXTENSIONS = new Set([".mp3", ".flac", ".m4a", ".aac"]);
 
 export function createEmptyNormalizedMetadata() {
   return {
@@ -21,4 +21,3 @@ export function createEmptyNormalizedMetadata() {
     cloudSongId: 0,
   };
 }
-

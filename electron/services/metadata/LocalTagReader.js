@@ -30,6 +30,13 @@ function parseLyricsFromNative(native = {}) {
   return blocks.find(Boolean) || "";
 }
 
+function parseComment(common = {}) {
+  if (Array.isArray(common.comment) && common.comment.length) {
+    return String(common.comment[0] || "").trim();
+  }
+  return String(common.comment || "").trim();
+}
+
 function normalizeArtwork(picture) {
   if (!picture?.data) return null;
   const buffer = Buffer.isBuffer(picture.data) ? picture.data : Buffer.from(picture.data);
@@ -60,7 +67,9 @@ export class LocalTagReader {
       year: parseNumberish(common.year),
       trackNo: parseNumberish(common.track?.no),
       discNo: parseNumberish(common.disk?.no || common.disc?.no),
-      lyrics: Array.isArray(common.lyrics) && common.lyrics.length ? String(common.lyrics[0] || "").trim() : parseLyricsFromNative(metadata.native),
+      lyrics: Array.isArray(common.lyrics) && common.lyrics.length
+        ? String(common.lyrics[0] || "").trim()
+        : (parseLyricsFromNative(metadata.native) || parseComment(common)),
       hasArtwork: Boolean(artwork),
       artwork,
     };
