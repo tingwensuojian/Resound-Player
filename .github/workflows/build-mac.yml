@@ -43,7 +43,7 @@ jobs:
           find dist-build -maxdepth 2 -name "*.dmg" -print || true
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Resound-Player-macOS-dmg
           path: dist-build/*.dmg
