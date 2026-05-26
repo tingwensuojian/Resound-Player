@@ -78,6 +78,43 @@ export function runNodeScript(scriptPath) {
   runCommand('node', [scriptPath]);
 }
 
+function collectMacAppBundles(dir) {
+  if (!fs.existsSync(dir)) return [];
+
+  const results = [];
+  const queue = [dir];
+
+  while (queue.length > 0) {
+    const current = queue.pop();
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (!entry.isDirectory()) continue;
+
+      if (entry.name.endsWith('.app')) {
+        results.push(fullPath);
+        continue;
+      }
+
+      queue.push(fullPath);
+    }
+  }
+
+  return results;
+}
+
+function postprocessMacBundles() {
+  if (process.platform !== 'darwin') return;
+
+  const appBundles = collectMacAppBundles(outputDir);
+  for (const appBundle of appBundles) {
+    runCommand('xattr', ['-cr', appBundle]);
+    runCommand('codesign', ['--force', '--deep', '--sign', '-', '--timestamp=none', appBundle]);
+    runCommand('codesign', ['--verify', '--deep', '--strict', '--verbose=2', appBundle]);
+  }
+}
+
 export function runDesktopBuild({ builderArgs, prepareScripts = [] }) {
   cleanDesktopDist();
 
@@ -89,4 +126,5 @@ export function runDesktopBuild({ builderArgs, prepareScripts = [] }) {
 
   buildRenderer();
   runElectronBuilder([...builderArgs, ...publishArgs]);
+  postprocessMacBundles();
 }

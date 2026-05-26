@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { resolveServicePorts } from './port-manager.js';
 import { startAllServices, waitApiReady, killAllServices } from './serviceManager.js';
@@ -13,6 +14,28 @@ import zlib from 'node:zlib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const mainLogFile = path.join(os.tmpdir(), 'resound-player-main.log');
+
+function writeMainLog(...parts) {
+  const line = `[${new Date().toISOString()}] ${parts.map((part) => {
+    if (part instanceof Error) return `${part.name}: ${part.message}\n${part.stack || ''}`;
+    if (typeof part === 'string') return part;
+    try { return JSON.stringify(part); } catch { return String(part); }
+  }).join(' ')}\n`;
+  try {
+    fs.appendFileSync(mainLogFile, line, 'utf8');
+  } catch {
+    // ignore
+  }
+}
+
+writeMainLog('[module-load]', {
+  platform: process.platform,
+  cwd: process.cwd(),
+  execPath: process.execPath,
+  resourcesPath: process.resourcesPath,
+  argv: process.argv,
+});
 
 app.commandLine.appendSwitch('no-sandbox');
 
@@ -25,6 +48,7 @@ if (process.env.RESOUND_WAV_METADATA_E2E === '1') {
 
 // ── 全局 EPIPE 保护：stdout/stderr 关闭后 console.log 不会崩溃 ──
 process.on('uncaughtException', (err) => {
+  writeMainLog('[uncaughtException]', err);
   if (err && (err.code === 'EPIPE' || err.message?.includes('EPIPE'))) return;
   console.error('[uncaught]', err);
 });
@@ -499,6 +523,7 @@ function createMiniWindow(ports) {
  * Show an error window when startup fails.
  */
 async function createErrorWindow(errorMessage) {
+  writeMainLog('[createErrorWindow]', errorMessage);
   console.error('[main] 启动失败:', errorMessage);
 
   const errorWin = new BrowserWindow({
@@ -530,6 +555,7 @@ p{color:rgba(255,255,255,0.65);line-height:1.6;font-size:14px}
 }
 
 async function bootstrap() {
+  writeMainLog('[bootstrap] start');
   console.log('[main] 应用启动中...');
   console.log('[main] 平台:', process.platform, 'cwd:', process.cwd());
 
@@ -552,8 +578,10 @@ async function bootstrap() {
   if (!ports) {
     try {
       ports = await resolveServicePorts();
+      writeMainLog('[bootstrap] resolved ports', ports);
       console.log('[main] 自动探测端口:', ports);
     } catch (err) {
+      writeMainLog('[bootstrap] resolveServicePorts failed', err);
       await createErrorWindow(`端口探测失败: ${err.message}`);
       return;
     }
@@ -566,26 +594,31 @@ async function bootstrap() {
   // In production (packaged app), all services are started here.
   const isDev = !!process.env.SERVICE_PORTS;
   try {
+    writeMainLog('[bootstrap] startAllServices', { ports, isDev });
     serviceChildren = startAllServices({
       api: ports.api,
       unblockProxy: ports.unblockProxy,
       unblockMatch: ports.unblockMatch,
     }, isDev);  // pass flag to skip unblock in dev mode
   } catch (err) {
+    writeMainLog('[bootstrap] startAllServices failed', err);
     await createErrorWindow(`启动后端服务失败: ${err.message}`);
     return;
   }
 
   // ── Wait for API to be ready ──
   const timeoutMs = process.platform === 'win32' ? 60000 : 45000;
+  writeMainLog('[bootstrap] waitApiReady', { apiPort: ports.api, timeoutMs });
   console.log(`[main] 等待 API 就绪 (:${ports.api}, 超时 ${timeoutMs}ms)...`);
   const ready = await waitApiReady(`http://127.0.0.1:${ports.api}`, timeoutMs);
 
   if (!ready) {
+    writeMainLog('[bootstrap] waitApiReady timeout', { apiPort: ports.api });
     killAllServices(serviceChildren);
     await createErrorWindow(`API 服务未能在 ${timeoutMs / 1000} 秒内就绪。<br>请检查端口 ${ports.api} 是否被占用。`);
     return;
   }
+  writeMainLog('[bootstrap] api ready', { apiPort: ports.api });
 
   // ── 注册 local:// 协议（本地文件播放）──
   protocol.registerFileProtocol('local', (request, callback) => {
@@ -607,8 +640,10 @@ async function bootstrap() {
     await localMusicDb.init();
     localMusicScanner = new NodeMusicScanner();
     registerLocalMusicIpc(localMusicScanner, localMusicDb);
+    writeMainLog('[bootstrap] local music ready');
     console.log('[main] 本地音乐服务就绪');
   } catch (err) {
+    writeMainLog('[bootstrap] local music init failed', err);
     console.warn('[main] 本地音乐服务初始化失败:', err.message);
   }
 
@@ -618,6 +653,7 @@ async function bootstrap() {
   loadDesktopLyricConfig();
   loadTrayLyricConfig(); // 加载持久化的托盘歌词配置
   await createMainWindow(ports);
+  writeMainLog('[bootstrap] main window created');
   if (desktopLyricConfig.enabled) createDesktopLyricWin();
 
   // ── 初始化系统托盘 ──
@@ -627,6 +663,7 @@ async function bootstrap() {
   }
 
   console.log('[main] 启动流程完成，端口:', ports);
+  writeMainLog('[bootstrap] done', ports);
 }
 
 app.whenReady().then(bootstrap);

@@ -3,15 +3,31 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const serviceLogFile = path.join(os.tmpdir(), 'resound-player-service.log');
+
+function writeServiceLog(...parts) {
+  const line = `[${new Date().toISOString()}] ${parts.map((part) => {
+    if (part instanceof Error) return `${part.name}: ${part.message}\n${part.stack || ''}`;
+    if (typeof part === 'string') return part;
+    try { return JSON.stringify(part); } catch { return String(part); }
+  }).join(' ')}\n`;
+  try {
+    fs.appendFileSync(serviceLogFile, line, 'utf8');
+  } catch {
+    // ignore log write failures
+  }
+}
 
 // ── Health check ──
 
 function checkHealth(apiBaseUrl) {
   return new Promise((resolve) => {
-    const req = http.get(`${apiBaseUrl}/banner`, (res) => {
+    const req = http.get(`${apiBaseUrl}/`, (res) => {
       resolve(Boolean(res.statusCode && res.statusCode < 500));
       res.resume();
     });
@@ -21,12 +37,17 @@ function checkHealth(apiBaseUrl) {
 }
 
 export async function waitApiReady(apiBaseUrl, timeoutMs = 25000) {
+  writeServiceLog('[waitApiReady] start', { apiBaseUrl, timeoutMs });
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     const ok = await checkHealth(apiBaseUrl);
-    if (ok) return true;
+    if (ok) {
+      writeServiceLog('[waitApiReady] ready', { apiBaseUrl, elapsedMs: Date.now() - startedAt });
+      return true;
+    }
     await new Promise((r) => setTimeout(r, 500));
   }
+  writeServiceLog('[waitApiReady] timeout', { apiBaseUrl, timeoutMs });
   return false;
 }
 
@@ -59,8 +80,8 @@ function getAppRoot() {
 function getPackagedRoots() {
   if (!isPackaged() || !process.resourcesPath) return [];
   return [
-    path.join(process.resourcesPath, 'app.asar.unpacked'),
     path.join(process.resourcesPath, 'app.asar'),
+    path.join(process.resourcesPath, 'app.asar.unpacked'),
   ];
 }
 
@@ -127,13 +148,32 @@ function resolveApiEntrypath(pkgRoot) {
 function resolveApiPackageRoot() {
   const roots = [...getPackagedRoots(), getAppRoot()];
   for (const root of roots) {
-    const basePath = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
-    const pkgRoot = resolveApiEntrypath(basePath);
-    if (pkgRoot) {
+    const pkgRoot = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
+    if (isFile(path.join(pkgRoot, 'package.json'))) {
       return pkgRoot;
     }
   }
+
+   const fallbackRoots = [...getPackagedRoots(), getAppRoot()];
+  for (const root of fallbackRoots) {
+    const basePath = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
+    const resolved = resolveApiEntrypath(basePath);
+    if (resolved) {
+      return resolved;
+    }
+  }
   throw new Error('Cannot resolve api-enhanced package root');
+}
+
+function resolvePackageRoot(packageParts) {
+  const roots = [...getPackagedRoots(), getAppRoot()];
+  for (const root of roots) {
+    const pkgRoot = path.join(root, ...packageParts);
+    if (isFile(path.join(pkgRoot, 'package.json'))) {
+      return pkgRoot;
+    }
+  }
+  return null;
 }
 
 function findEntry(pkgRoot) {
@@ -155,27 +195,51 @@ function findEntry(pkgRoot) {
 function spawnNeteaseApi(port) {
   const apiPkgRoot = resolveApiPackageRoot();
   const appRoot = getAppRoot();
-  const bootstrap = `
+const bootstrap = `
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const logFile = process.env.RESOUND_SERVICE_LOG_FILE;
+function writeLog(...parts) {
+  if (!logFile) return;
+  const line = '[' + new Date().toISOString() + '] ' + parts.map((part) => {
+    if (part instanceof Error) return String(part.stack || part.message || part);
+    if (typeof part === 'string') return part;
+    try { return JSON.stringify(part); } catch { return String(part); }
+  }).join(' ') + '\\n';
+  try {
+    fs.appendFileSync(logFile, line, 'utf8');
+  } catch {}
+}
 
 (async () => {
   const pkgRoot = process.env.RESOUND_API_PKG_ROOT;
+  writeLog('[api-wrapper] boot', { pkgRoot, cwd: process.cwd(), resourcesPath: process.resourcesPath });
   const tokenFile = path.resolve(os.tmpdir(), 'anonymous_token');
   if (!fs.existsSync(tokenFile)) {
     fs.writeFileSync(tokenFile, '', 'utf8');
   }
 
   const generateConfig = require(path.join(pkgRoot, 'generateConfig'));
-  await generateConfig();
-
   const { serveNcmApi } = require(path.join(pkgRoot, 'server'));
+  writeLog('[api-wrapper] serveNcmApi:start');
   serveNcmApi({ checkVersion: true }).catch((err) => {
+    writeLog('[api-wrapper] serveNcmApi:error', err);
     console.error('[api-wrapper] serveNcmApi error:', err);
     process.exit(1);
   });
+
+  writeLog('[api-wrapper] generateConfig:start');
+  generateConfig()
+    .then(() => {
+      writeLog('[api-wrapper] generateConfig:done');
+    })
+    .catch((err) => {
+      writeLog('[api-wrapper] generateConfig:error', err);
+      console.error('[api-wrapper] generateConfig error:', err);
+    });
 })().catch((err) => {
+  writeLog('[api-wrapper] startup:error', err);
   console.error('[api-wrapper] startup error:', err);
   process.exit(1);
 });
@@ -186,6 +250,7 @@ if (process.stdin && !process.stdin.isTTY) {
 `.trim();
 
   console.log('[serviceManager] resolved api package root:', apiPkgRoot);
+  writeServiceLog('[spawnNeteaseApi] resolved api package root', apiPkgRoot);
 
   const child = spawn(process.execPath, ['-e', bootstrap], {
     cwd: appRoot,
@@ -195,53 +260,75 @@ if (process.stdin && !process.stdin.isTTY) {
       PORT: String(port),
       CORS_ALLOW_ORIGIN: '*',
       RESOUND_API_PKG_ROOT: apiPkgRoot,
+      RESOUND_SERVICE_LOG_FILE: serviceLogFile,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
   child.stdout.on('data', (chunk) => {
     console.log(`[netease-api] ${chunk.toString().trim()}`);
+    writeServiceLog('[netease-api:stdout]', chunk.toString());
   });
   child.stdout.on('error', () => {});
   child.stderr.on('data', (chunk) => {
     console.error(`[netease-api:err] ${chunk.toString().trim()}`);
+    writeServiceLog('[netease-api:stderr]', chunk.toString());
   });
   child.stderr.on('error', () => {});
   child.on('exit', (code, signal) => {
     console.log(`[netease-api] exited code=${code} signal=${signal}`);
+    writeServiceLog('[netease-api:exit]', { code, signal });
   });
   return child;
 }
 
 function spawnUnblockProxy(port) {
-  const appScript = resolveSpawnPath('node_modules/@unblockneteasemusic/server/app.js');
+  const appPkgRoot = resolvePackageRoot(['node_modules', '@unblockneteasemusic', 'server']);
   const appRoot = getAppRoot();
-  const child = spawn(process.execPath, [
-    appScript,
-    '-p', String(port),
-    '-o', 'bodian', 'kugou', 'migu', 'qq', 'bilibili',
-    '-s',
-  ], {
+  if (!appPkgRoot) {
+    throw new Error('Cannot resolve @unblockneteasemusic/server package root');
+  }
+
+  const bootstrap = `
+const path = require('node:path');
+const pkgRoot = process.env.RESOUND_UNBLOCK_PKG_ROOT;
+process.argv = [
+  process.argv[0],
+  path.join(pkgRoot, 'app.js'),
+  '-p', process.env.RESOUND_UNBLOCK_PORT,
+  '-o', 'bodian', 'kugou', 'migu', 'qq', 'bilibili',
+  '-s',
+];
+require(path.join(pkgRoot, 'app.js'));
+`.trim();
+
+  writeServiceLog('[spawnUnblockProxy] pkgRoot', appPkgRoot);
+  const child = spawn(process.execPath, ['-e', bootstrap], {
     cwd: appRoot,
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       ENABLE_FLAC: 'true',
       NODE_ENV: 'production',
+      RESOUND_UNBLOCK_PKG_ROOT: appPkgRoot,
+      RESOUND_UNBLOCK_PORT: String(port),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
   child.stdout.on('data', (chunk) => {
     console.log(`[unblock-proxy] ${chunk.toString().trim()}`);
+    writeServiceLog('[unblock-proxy:stdout]', chunk.toString());
   });
   child.stdout.on('error', () => {});
   child.stderr.on('data', (chunk) => {
     console.error(`[unblock-proxy:err] ${chunk.toString().trim()}`);
+    writeServiceLog('[unblock-proxy:stderr]', chunk.toString());
   });
   child.stderr.on('error', () => {});
   child.on('exit', (code, signal) => {
     console.log(`[unblock-proxy] exited code=${code} signal=${signal}`);
+    writeServiceLog('[unblock-proxy:exit]', { code, signal });
   });
   return child;
 }
@@ -249,6 +336,7 @@ function spawnUnblockProxy(port) {
 function spawnUnblockMatch(port, unblockProxyPort) {
   const appScript = resolveSpawnPath('server/unblock-match-server.mjs');
   const appRoot = getAppRoot();
+  writeServiceLog('[spawnUnblockMatch] script', appScript);
   const child = spawn(process.execPath, [appScript], {
     cwd: appRoot,
     env: {
@@ -263,14 +351,17 @@ function spawnUnblockMatch(port, unblockProxyPort) {
 
   child.stdout.on('data', (chunk) => {
     console.log(`[unblock-match] ${chunk.toString().trim()}`);
+    writeServiceLog('[unblock-match:stdout]', chunk.toString());
   });
   child.stdout.on('error', () => {});
   child.stderr.on('data', (chunk) => {
     console.error(`[unblock-match:err] ${chunk.toString().trim()}`);
+    writeServiceLog('[unblock-match:stderr]', chunk.toString());
   });
   child.stderr.on('error', () => {});
   child.on('exit', (code, signal) => {
     console.log(`[unblock-match] exited code=${code} signal=${signal}`);
+    writeServiceLog('[unblock-match:exit]', { code, signal });
   });
   return child;
 }
@@ -285,6 +376,7 @@ function spawnUnblockMatch(port, unblockProxyPort) {
  * @returns {{ apiChild, proxyChild, matchChild }}
  */
 export function startAllServices(ports, skipUnblock = false) {
+  writeServiceLog('[startAllServices]', { ports, skipUnblock, appRoot: getAppRoot(), resourcesPath: process.resourcesPath, packagedRoots: getPackagedRoots() });
   if (skipUnblock) {
     console.log(`[serviceManager] 开发模式：仅启动 Netease API (:${ports.api})`);
   } else {

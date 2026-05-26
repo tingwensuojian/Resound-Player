@@ -14,6 +14,11 @@
 
 `/dl-proxy` 是 Vite 开发服务器中间件，**仅在 dev 模式（`npm run dev:*`）下可用**。生产构建（`npm run build:web` / `npm run build:desktop`）后，Vite 不再运行，`/dl-proxy` 不存在，跨域音源将再次播放失败。
 
+这里需要区分两类“生产”：
+
+- Web 生产部署：仍然需要你自己提供 `/dl-proxy`
+- Electron 桌面打包版：应用会自行拉起本地 API / unblock 服务，但 **`/dl-proxy` 依旧不是内置 HTTP 路由**，因此桌面端如果继续依赖渲染层同源代理，也需要额外在桌面链路提供替代方案，而不能把 Vite dev 中间件当成打包能力
+
 生产环境自行实现 `/dl-proxy` 时必须同时覆盖两类能力：
 
 1. **CORS**：注入 `Access-Control-Allow-Origin: *`
@@ -115,3 +120,4 @@ self.addEventListener('fetch', (event) => {
 - `vite.config.ts` — `/dl-proxy` 中间件定义
 - `src/player/playbackResolver.ts` — 非官方音源 URL 代理路由逻辑
 - `src/stores/player.ts` — EQ 开启时远程音频代理、换源失败回滚
+- `electron/serviceManager.js` — 桌面打包版本地服务拉起逻辑（API / unblock / match）

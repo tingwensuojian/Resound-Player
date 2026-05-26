@@ -15,6 +15,11 @@ if (process.platform !== 'darwin') {
   process.exit(1);
 }
 
+if (fs.existsSync(outputIcon) && !process.env.RESOUND_FORCE_REBUILD_MAC_ICON) {
+  console.log(`Using existing ${path.relative(root, outputIcon)}.`);
+  process.exit(0);
+}
+
 if (!fs.existsSync(sourceIcon)) {
   console.error('Missing build/icon.png. Please copy the app PNG icon to build/icon.png first.');
   process.exit(1);
