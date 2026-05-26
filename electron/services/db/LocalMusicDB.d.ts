@@ -27,6 +27,11 @@ export class LocalMusicDB {
   listScanDirs(): Promise<string[]>
   removeScanDir(dirPath: string): Promise<void>
 
+  // Local lyric cloud match
+  getLocalLyricMatch(localTrackId: string, localPath?: string): Promise<any | null>
+  saveLocalLyricMatch(payload: any): Promise<{ success: boolean; error?: string }>
+  removeLocalLyricMatch(localTrackId: string, localPath?: string): Promise<{ success: boolean; error?: string }>
+
   // Playlist CRUD
   createPlaylist(name: string, description?: string): Promise<number>
   listPlaylists(): Promise<any[]>

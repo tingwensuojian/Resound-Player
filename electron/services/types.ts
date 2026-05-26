@@ -28,6 +28,19 @@ export interface TrackRecord {
   updatedAt: string
 }
 
+export interface LocalLyricMatchRecord {
+  localTrackId: string
+  localPath: string
+  cloudSongId: number
+  cloudSongName: string
+  cloudArtists: string
+  cloudAlbum: string
+  cloudDuration: number
+  matchMode?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface IMusicScanner {
   scanDir(dirPath: string, cachedMtimes?: Map<string, number>): AsyncIterable<ScanEvent>
   supportedExtensions: string[]
@@ -47,5 +60,8 @@ export interface IMetadataDB {
   upsertScanDir(path: string): Promise<void>
   listScanDirs(): Promise<string[]>
   removeScanDir(path: string): Promise<void>
+  getLocalLyricMatch?(localTrackId: string, localPath?: string): Promise<LocalLyricMatchRecord | null>
+  saveLocalLyricMatch?(payload: LocalLyricMatchRecord): Promise<{ success: boolean; error?: string }>
+  removeLocalLyricMatch?(localTrackId: string, localPath?: string): Promise<{ success: boolean; error?: string }>
   close(): Promise<void>
 }

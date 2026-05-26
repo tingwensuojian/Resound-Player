@@ -260,6 +260,7 @@
           </div>
           <div class="cc-right">
             <button class="con-btn" :class="{ active: showEqPanel }" title="均衡器" @click="showEqPanel = !showEqPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg></button>
+            <button v-if="isLocalCurrentTrack" class="con-btn lyric-match-btn" type="button" data-tooltip="歌词匹配" aria-label="歌词匹配" @click="showLyricMatchDialog = true">词</button>
             <button v-if="playerStore.state.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="con-btn intel-icon" type="button" aria-label="心动模式"><Sparkles :size="10" /></button>
             <button v-if="isPersonalFmCurrentTrack" class="con-btn con-fm-label" type="button" aria-label="当前为私人 FM" disabled>FM</button>
             <button v-else class="con-btn" @click="uiStore.togglePlayQueue()" data-tooltip="查看播放列表" aria-label="查看播放列表"><AlignJustify :size="14" /></button>
@@ -289,6 +290,7 @@
       <LyricsSettingsPanel :visible="showSettings" :anchor="settingsAnchor" :accent-color="palette.c3" @close="showSettings = false" />
       <LyricsSelectionModal />
       <EqPanel :visible="showEqPanel" @close="showEqPanel = false" />
+      <LocalLyricMatchDialog :visible="showLyricMatchDialog" :track="playerStore.state.currentTrack" @close="showLyricMatchDialog = false" />
     </div>
   </transition>
 </template>
@@ -321,6 +323,7 @@ import AnimatedAppear from './AnimatedAppear.vue';
 import LyricsPanel from './LyricsPanel.vue';
 import LyricsSettingsPanel from './LyricsSettingsPanel.vue';
 import LyricsSelectionModal from './LyricsSelectionModal.vue';
+import LocalLyricMatchDialog from './LocalLyricMatchDialog.vue';
 import CommentPanel from './CommentPanel.vue';
 import * as api from '../api/music';
 import { useLyricsSelectionStore } from '../stores/lyricsSelection';
@@ -361,6 +364,7 @@ const showOffsetPanel = ref(false);
 const showTransPanel = ref(false);
 const showComments = ref(false);
 const showEqPanel = ref(false);
+const showLyricMatchDialog = ref(false);
 const settingsAnchor = ref({ top: 0, right: 0 });
 const gearBtnRef = ref<HTMLElement | null>(null);
 const offsetPopoverStyle = ref<Record<string, string>>({});
@@ -380,6 +384,7 @@ const playerTransitionName = computed(() => {
 });
 
 const isFullscreen = ref(false);
+const isLocalCurrentTrack = computed(() => playerStore.state.currentTrack?.source === 'local');
 function toggleFullscreen() {
   if (platform.isDesktop) {
     document.title = (isFullscreen.value ? 'cmd:fullscreen-leave:' : 'cmd:fullscreen-enter:') + Date.now();
@@ -910,6 +915,7 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .con-vol-slider { width: 64px; height: 4px; accent-color: var(--accent, #c39c76); }
 .con-fav.saved { color: var(--accent) !important; }
 .con-fav.saved :deep(svg) { fill: currentColor; }
+.lyric-match-btn { font-size: 15px; font-weight: 800; color: var(--accent, #c39c76); }
 /* playlist popup */
 .playlist-popup-mask { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,0.38); display: grid; place-items: center; }
 .playlist-popup { width: min(620px, calc(100vw - 32px)); max-height: min(70vh, 680px); border-radius: 16px; border: 1px solid var(--line-muted); background: linear-gradient(165deg, color-mix(in srgb, var(--panel-bg) 78%, #111 22%) 0%, color-mix(in srgb, var(--panel-bg-soft) 66%, #151822 34%) 55%, color-mix(in srgb, var(--panel-bg) 72%, #0c1018 28%) 100%); padding: var(--space-3); display: grid; grid-template-rows: auto 1fr; gap: var(--space-2); box-shadow: 0 18px 45px rgba(0,0,0,0.38); }

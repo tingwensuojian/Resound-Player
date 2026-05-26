@@ -1,4 +1,4 @@
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { getCloudLyric, getSongLyric, getSongLyricNew } from '../api/music';
 import { usePlayerStore } from '../stores/player'
 
@@ -335,6 +335,34 @@ function trimTrailingEmptyLines(lines: LyricLine[]): LyricLine[] {
   return end < lines.length ? lines.slice(0, end) : lines;
 }
 
+type LocalLyricMatchUpdate = {
+  version: number;
+  localTrackId?: string;
+  localPath?: string;
+};
+
+const localLyricMatchUpdate = ref<LocalLyricMatchUpdate>({ version: 0 });
+
+export function notifyLocalLyricMatchUpdated(detail: Omit<LocalLyricMatchUpdate, 'version'>) {
+  localLyricMatchUpdate.value = {
+    ...detail,
+    version: localLyricMatchUpdate.value.version + 1,
+  };
+}
+
+async function loadOnlineLyricsById(songId: number): Promise<LyricLine[]> {
+  if (!Number.isFinite(songId) || songId <= 0) return [];
+  try {
+    const res = await getSongLyricNew(songId);
+    const newLines = parseLyricsNew(res.data);
+    if (newLines.length) return newLines;
+    throw new Error('new api returned empty');
+  } catch {
+    const data = (await getSongLyric(songId)).data;
+    return parseLyrics(data);
+  }
+}
+
 export function scrollToLyricLine(container: HTMLElement | null, lineEls: HTMLElement[], index: number, behavior: ScrollBehavior = 'smooth') {
   if (index < 0 || !container) return;
   const lyricsSettings = useLyricsSettingsStore();
@@ -406,12 +434,13 @@ export function useLyrics() {
     try {
       const source = track?.source;
       const cloudSid = track?.cloudSid;
+      let onlineLyricId: number | null = null;
 
-      // 本地歌曲：通过 IPC 获取外部歌词
+      // 本地歌曲：外部歌词优先；无外部歌词时只使用用户手动匹配的云端歌曲 ID。
       if (source === 'local') {
         const localApi = (window as any).localApi
+        const filePath = (track as any).path
         if (localApi?.getLyric) {
-          const filePath = (track as any).path
           if (filePath) {
             try {
               const result = await localApi.getLyric(filePath)
@@ -430,31 +459,57 @@ export function useLyrics() {
             } catch { /* fall through to online */ }
           }
         }
+
+        try {
+          const match = await localApi?.getLyricMatch?.(String(id), filePath || '')
+          if (match?.cloudSongId) {
+            onlineLyricId = Number(match.cloudSongId)
+            console.debug('[lyrics] local cloud match loaded:', {
+              localTrackId: String(id),
+              localPath: filePath || '',
+              cloudSongId: onlineLyricId,
+              cloudSongName: match.cloudSongName,
+            })
+          } else {
+            console.debug('[lyrics] local track has no lyric match:', {
+              localTrackId: String(id),
+              localPath: filePath || '',
+            })
+            lyricLines.value = []
+            return
+          }
+        } catch {
+          console.debug('[lyrics] failed to read local lyric match:', {
+            localTrackId: String(id),
+            localPath: filePath || '',
+          })
+          lyricLines.value = []
+          return
+        }
       }
 
       // 云盘歌词：优先走云盘专属 API
       if (source === 'cloud' && cloudSid) {
         const data = (await getCloudLyric(Number(track?.cloudOwnerId || track?.uid || 0), cloudSid)).data;
         lyricLines.value = parseLyrics(data);
+        onlineLyricId = Number(cloudSid);
       }
 
       // 云盘 API 无歌词 或 非云盘歌曲 → 走在线歌词
       if (!lyricLines.value.length) {
-        const lyricId = source === 'cloud' && cloudSid ? Number(cloudSid) : Number(id);
-        // 优先尝试 /lyric/new
-        try {
-          const res = await getSongLyricNew(lyricId);
-          const data = res.data;
-          const newLines = parseLyricsNew(data);
-          if (newLines.length) {
-            lyricLines.value = newLines;
-          } else {
-            throw new Error('new api returned empty');
-          }
-        } catch {
-          // 回退旧 API
-          const data = (await getSongLyric(lyricId)).data;
-          lyricLines.value = parseLyrics(data);
+        const lyricId = onlineLyricId ?? Number(id);
+        lyricLines.value = await loadOnlineLyricsById(lyricId);
+        console.debug('[lyrics] online lyrics loaded:', {
+          source,
+          lyricId,
+          lineCount: lyricLines.value.length,
+        })
+        if (source === 'local' && onlineLyricId && !lyricLines.value.length) {
+          console.warn('[lyrics] saved local lyric match has no parsable lyrics, please rematch:', {
+            localTrackId: String(id),
+            localPath: (track as any).path || '',
+            cloudSongId: onlineLyricId,
+          })
         }
       }
       lyricLines.value = trimTrailingEmptyLines(lyricLines.value);
@@ -474,7 +529,35 @@ export function useLyrics() {
     nextTick(() => scrollToCurrentLine('auto'));
   }
 
-  onUnmounted(() => { stopTick(); });
+  function onLocalLyricMatchUpdated(event: Event) {
+    const detail = (event as CustomEvent).detail || {};
+    notifyLocalLyricMatchUpdated(detail);
+  }
+
+  function reloadWhenLocalLyricMatchUpdated(detail: Partial<LocalLyricMatchUpdate>) {
+    const current = playerStore.state.currentTrack as any;
+    if (current?.source !== 'local') return;
+    const sameId = detail.localTrackId && String(current.id || '') === String(detail.localTrackId);
+    const samePath = detail.localPath && String(current.path || '') === String(detail.localPath);
+    if (sameId || samePath) {
+      console.debug('[lyrics] local lyric match updated, reload current track:', detail);
+      loadLyrics(current);
+    }
+  }
+
+  watch(localLyricMatchUpdate, (detail) => {
+    if (!detail.version) return;
+    reloadWhenLocalLyricMatchUpdated(detail);
+  }, { flush: 'post' });
+
+  onMounted(() => {
+    window.addEventListener('local-lyric-match-updated', onLocalLyricMatchUpdated);
+  });
+
+  onUnmounted(() => {
+    stopTick();
+    window.removeEventListener('local-lyric-match-updated', onLocalLyricMatchUpdated);
+  });
 
   return {
     lyricLines, currentLyricIndex, displayTime, effectiveTime, isLoading, error,

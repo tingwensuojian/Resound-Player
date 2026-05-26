@@ -144,6 +144,21 @@ export function registerLocalMusicIpc(scanner: IMusicScanner, db: IMetadataDB) {
     return null
   })
 
+  ipcMain.handle('local:get-lyric-match', async (_event, localTrackId: string, localPath?: string) => {
+    if (typeof (db as any).getLocalLyricMatch !== 'function') return null
+    return (db as any).getLocalLyricMatch(localTrackId || '', localPath || '')
+  })
+
+  ipcMain.handle('local:save-lyric-match', async (_event, payload: any) => {
+    if (typeof (db as any).saveLocalLyricMatch !== 'function') return { success: false, error: 'not supported' }
+    return (db as any).saveLocalLyricMatch(payload || {})
+  })
+
+  ipcMain.handle('local:remove-lyric-match', async (_event, localTrackId: string, localPath?: string) => {
+    if (typeof (db as any).removeLocalLyricMatch !== 'function') return { success: false, error: 'not supported' }
+    return (db as any).removeLocalLyricMatch(localTrackId || '', localPath || '')
+  })
+
   ipcMain.handle('local:get-cover', async (_event, filePath: string) => {
     return coverCache.getCover(filePath)
   })

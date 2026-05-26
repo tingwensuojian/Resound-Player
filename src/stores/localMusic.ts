@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { reactive, computed, toRaw } from 'vue';
-import { platform } from '../utils/platform';
+import { platform, type LocalLyricMatch } from '../utils/platform';
 
 export interface LocalTrack {
   id: string
@@ -15,6 +15,8 @@ export interface LocalTrack {
   source: 'local'
   createdAt: string
 }
+
+export type LocalLyricMatchPayload = LocalLyricMatch
 
 export type LocalView = 'songs' | 'artists' | 'albums' | 'folders' | 'playlists' | 'playlist-detail' | 'stats'
 export type SortField = 'title' | 'artist' | 'album' | 'duration'
@@ -581,6 +583,32 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     state.collapsedFolders = set
   }
 
+  function getLocalTrackIdentity(track: any): { localTrackId: string; localPath: string } {
+    return {
+      localTrackId: String(track?.id || ''),
+      localPath: String(track?.path || ''),
+    }
+  }
+
+  async function getLyricMatch(track: any): Promise<LocalLyricMatch | null> {
+    if (!platform.localApi?.getLyricMatch) return null
+    const { localTrackId, localPath } = getLocalTrackIdentity(track)
+    if (!localTrackId && !localPath) return null
+    return platform.localApi.getLyricMatch(localTrackId, localPath)
+  }
+
+  async function saveLyricMatch(payload: LocalLyricMatchPayload): Promise<{ success: boolean; error?: string }> {
+    if (!platform.localApi?.saveLyricMatch) return { success: false, error: '当前环境不支持歌词匹配保存' }
+    return platform.localApi.saveLyricMatch(payload)
+  }
+
+  async function removeLyricMatch(track: any): Promise<{ success: boolean; error?: string }> {
+    if (!platform.localApi?.removeLyricMatch) return { success: false, error: '当前环境不支持歌词匹配移除' }
+    const { localTrackId, localPath } = getLocalTrackIdentity(track)
+    if (!localTrackId && !localPath) return { success: true }
+    return platform.localApi.removeLyricMatch(localTrackId, localPath)
+  }
+
   return {
     state,
     hasLocalSupport,
@@ -615,5 +643,8 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     scanAll,
     removeDirectoryPath,
     expandFolderAncestors,
+    getLyricMatch,
+    saveLyricMatch,
+    removeLyricMatch,
   };
 });

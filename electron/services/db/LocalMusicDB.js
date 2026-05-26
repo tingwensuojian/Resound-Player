@@ -74,6 +74,21 @@ const SCHEMA = `
   );
 
   CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks(playlistId);
+
+  CREATE TABLE IF NOT EXISTS local_lyric_matches (
+    localTrackId TEXT PRIMARY KEY,
+    localPath TEXT NOT NULL,
+    cloudSongId INTEGER NOT NULL,
+    cloudSongName TEXT NOT NULL DEFAULT '',
+    cloudArtists TEXT NOT NULL DEFAULT '',
+    cloudAlbum TEXT NOT NULL DEFAULT '',
+    cloudDuration REAL NOT NULL DEFAULT 0,
+    matchMode TEXT NOT NULL DEFAULT 'manual',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_local_lyric_matches_path ON local_lyric_matches(localPath);
 `;
 
 class LocalMusicDB {
@@ -272,6 +287,15 @@ class LocalMusicDB {
     };
   }
 
+  #lyricMatchRow(row) {
+    if (!row) return null;
+    return {
+      ...row,
+      cloudSongId: Number(row.cloudSongId || 0),
+      cloudDuration: Number(row.cloudDuration || 0),
+    };
+  }
+
   // ── 写队列 + 原子持久化 ──
 
   #enqueueWrite(fn) {
@@ -379,6 +403,10 @@ class LocalMusicDB {
       if (ids.length > 0) {
         const idPh = ids.map(() => "?").join(",");
         this.#run(
+          `DELETE FROM local_lyric_matches WHERE localTrackId IN (${idPh})`,
+          ids
+        );
+        this.#run(
           `DELETE FROM playlist_tracks WHERE trackId IN (${idPh})`,
           ids
         );
@@ -394,6 +422,7 @@ class LocalMusicDB {
   clearAllTracks() {
     return this.#enqueueWrite(() => {
       this.#run("DELETE FROM playlist_tracks");
+      this.#run("DELETE FROM local_lyric_matches");
       this.#run("DELETE FROM scan_dirs");
       const count = this.#queryOne("SELECT COUNT(*) as cnt FROM tracks").cnt;
       this.#run("DELETE FROM tracks");
@@ -414,6 +443,7 @@ class LocalMusicDB {
 
       if (ids.length > 0) {
         const ph = ids.map(() => "?").join(",");
+        this.#run(`DELETE FROM local_lyric_matches WHERE localTrackId IN (${ph})`, ids);
         this.#run(`DELETE FROM playlist_tracks WHERE trackId IN (${ph})`, ids);
         this.#run(
           `DELETE FROM tracks WHERE LOWER(REPLACE(path, '\\\\', '/')) LIKE ?`,
@@ -473,6 +503,70 @@ class LocalMusicDB {
     return this.#enqueueWrite(() => {
       this.#run("DELETE FROM scan_dirs WHERE path = ?", [dirPath]);
       this.#atomicPersist();
+    });
+  }
+
+  // ── 本地歌曲云端歌词匹配 ──
+
+  getLocalLyricMatch(localTrackId, localPath = "") {
+    if (!localTrackId && !localPath) return Promise.resolve(null);
+    const normalizedPath = (localPath || "").replace(/\\\\/g, "/");
+    const row = localTrackId
+      ? this.#queryOne("SELECT * FROM local_lyric_matches WHERE localTrackId = ?", [String(localTrackId)])
+      : this.#queryOne("SELECT * FROM local_lyric_matches WHERE REPLACE(localPath, '\\\\', '/') = ?", [normalizedPath]);
+    if (row) return Promise.resolve(this.#lyricMatchRow(row));
+    if (!normalizedPath) return Promise.resolve(null);
+    const pathRow = this.#queryOne("SELECT * FROM local_lyric_matches WHERE REPLACE(localPath, '\\\\', '/') = ?", [normalizedPath]);
+    return Promise.resolve(this.#lyricMatchRow(pathRow));
+  }
+
+  saveLocalLyricMatch(payload) {
+    if (!payload?.localTrackId || !payload?.localPath || !payload?.cloudSongId) {
+      return Promise.resolve({ success: false, error: "invalid lyric match payload" });
+    }
+    return this.#enqueueWrite(() => {
+      const ts = now();
+      this.#run(`
+        INSERT INTO local_lyric_matches (
+          localTrackId, localPath, cloudSongId, cloudSongName, cloudArtists,
+          cloudAlbum, cloudDuration, matchMode, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(localTrackId) DO UPDATE SET
+          localPath=excluded.localPath,
+          cloudSongId=excluded.cloudSongId,
+          cloudSongName=excluded.cloudSongName,
+          cloudArtists=excluded.cloudArtists,
+          cloudAlbum=excluded.cloudAlbum,
+          cloudDuration=excluded.cloudDuration,
+          matchMode=excluded.matchMode,
+          updatedAt=excluded.updatedAt
+      `, [
+        String(payload.localTrackId),
+        payload.localPath,
+        Number(payload.cloudSongId),
+        payload.cloudSongName || "",
+        payload.cloudArtists || "",
+        payload.cloudAlbum || "",
+        Number(payload.cloudDuration || 0),
+        payload.matchMode || "manual",
+        ts,
+        ts,
+      ]);
+      this.#atomicPersist();
+      return { success: true };
+    });
+  }
+
+  removeLocalLyricMatch(localTrackId, localPath = "") {
+    if (!localTrackId && !localPath) return Promise.resolve({ success: true });
+    return this.#enqueueWrite(() => {
+      if (localTrackId) {
+        this.#run("DELETE FROM local_lyric_matches WHERE localTrackId = ?", [String(localTrackId)]);
+      } else {
+        this.#run("DELETE FROM local_lyric_matches WHERE REPLACE(localPath, '\\\\', '/') = ?", [(localPath || "").replace(/\\\\/g, "/")]);
+      }
+      this.#atomicPersist();
+      return { success: true };
     });
   }
 

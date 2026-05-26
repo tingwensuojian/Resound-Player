@@ -6,6 +6,19 @@
  */
 
 /** 本地歌曲 API 接口类型 */
+export interface LocalLyricMatch {
+  localTrackId: string
+  localPath: string
+  cloudSongId: number
+  cloudSongName: string
+  cloudArtists: string
+  cloudAlbum: string
+  cloudDuration: number
+  matchMode?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface LocalApi {
   selectDirectory(): Promise<string | null>
   scan(dirPath: string): Promise<{ success: boolean }>
@@ -17,6 +30,9 @@ export interface LocalApi {
   saveScanDir?(dirPath: string): Promise<{ success: boolean }>
   removeScanDir?(dirPath: string): Promise<{ success: boolean }>
   getLyric(filePath: string): Promise<{ text: string; format: string } | null>
+  getLyricMatch?(localTrackId: string, localPath?: string): Promise<LocalLyricMatch | null>
+  saveLyricMatch?(payload: LocalLyricMatch): Promise<{ success: boolean; error?: string }>
+  removeLyricMatch?(localTrackId: string, localPath?: string): Promise<{ success: boolean; error?: string }>
   getCover(filePath: string): Promise<string | null>
   getCoversBatch(filePaths: string[]): Promise<(string | null)[]>
   readFile(filePath: string): Promise<ArrayBuffer | null>

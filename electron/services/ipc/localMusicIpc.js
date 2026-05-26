@@ -146,6 +146,18 @@ function registerLocalMusicIpc(scanner, db) {
     }
     return null;
   });
+  ipcMain.handle("local:get-lyric-match", async (_event, localTrackId, localPath) => {
+    if (typeof db.getLocalLyricMatch !== "function") return null;
+    return db.getLocalLyricMatch(localTrackId || "", localPath || "");
+  });
+  ipcMain.handle("local:save-lyric-match", async (_event, payload) => {
+    if (typeof db.saveLocalLyricMatch !== "function") return { success: false, error: "not supported" };
+    return db.saveLocalLyricMatch(payload || {});
+  });
+  ipcMain.handle("local:remove-lyric-match", async (_event, localTrackId, localPath) => {
+    if (typeof db.removeLocalLyricMatch !== "function") return { success: false, error: "not supported" };
+    return db.removeLocalLyricMatch(localTrackId || "", localPath || "");
+  });
   ipcMain.handle("local:get-cover", async (_event, filePath) => {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked get-cover path:', filePath); return null; }
     return coverCache.getCover(filePath);
