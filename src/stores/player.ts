@@ -101,6 +101,23 @@ function cloneTrack(track: Track | null) {
 
 const VALID_QUALITIES = new Set(['标准', '较高', '极高(HQ)', '无损(SQ)', 'Hi-Res', '高清臻音', '高清环绕声', '沉浸环绕声', '杜比全景声', '超清母带']);
 
+function inferLocalAudioMime(ext: string) {
+  if (ext === 'flac') return 'audio/flac'
+  if (ext === 'wav') return 'audio/wav'
+  if (ext === 'ogg') return 'audio/ogg'
+  if (ext === 'opus') return 'audio/ogg; codecs=opus'
+  if (ext === 'm4a' || ext === 'aac') return 'audio/mp4'
+  if (ext === 'wma') return 'audio/x-ms-wma'
+  return 'audio/mpeg'
+}
+
+function canBrowserPlayLocalExt(ext: string) {
+  if (typeof document === 'undefined') return false
+  const probe = document.createElement('audio')
+  const mime = inferLocalAudioMime(ext)
+  return Boolean(probe.canPlayType(mime))
+}
+
 function getWindowRole(): 'main' | 'mini' {
   return window.appEnv?.windowRole === 'mini' ? 'mini' : 'main';
 }
@@ -950,7 +967,12 @@ export const usePlayerStore = defineStore('player', () => {
             if (requestSeq !== _playRequestSeq) return false;
             if (buffer) {
               const ext = (track as any).path?.split('.').pop()?.toLowerCase() || 'mp3';
-              const mime = ext === 'flac' ? 'audio/flac' : ext === 'wav' ? 'audio/wav' : ext === 'ogg' ? 'audio/ogg' : ext === 'm4a' ? 'audio/mp4' : 'audio/mpeg';
+              if (!canBrowserPlayLocalExt(ext)) {
+                useLoginModalStore().showGlobalToast(`当前桌面播放内核暂不支持 ${ext.toUpperCase()} 本地播放，请先转为 MP3/FLAC/M4A/WAV/OGG/OPUS`, 'warning', 4200);
+                rollbackPlaybackTransaction(previous, requestSeq, reason);
+                return false;
+              }
+              const mime = inferLocalAudioMime(ext);
               const blob = new Blob([buffer], { type: mime });
               playUrl = URL.createObjectURL(blob);
             }

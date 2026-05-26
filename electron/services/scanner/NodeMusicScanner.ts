@@ -8,7 +8,7 @@ import type { TrackRecord, ScanEvent, IMusicScanner } from '../types'
 
 const SUPPORTED = new Set([
   '.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac',
-  '.wma', '.ape', '.dsf', '.opus', '.aiff', '.alac',
+  '.ape', '.dsf', '.opus', '.aiff', '.alac',
 ])
 
 function md5(str: string): string {

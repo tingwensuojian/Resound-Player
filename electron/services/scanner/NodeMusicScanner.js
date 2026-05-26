@@ -7,7 +7,7 @@ import crypto from "crypto";
 
 const SUPPORTED = new Set([
   ".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac",
-  ".wma", ".ape", ".dsf", ".opus", ".aiff", ".alac"
+  ".ape", ".dsf", ".opus", ".aiff", ".alac"
 ]);
 
 function md5(str) {

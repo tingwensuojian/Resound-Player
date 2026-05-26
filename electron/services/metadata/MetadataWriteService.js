@@ -107,7 +107,7 @@ export class MetadataWriteService {
     if (!filePath) throw new Error("文件路径不能为空");
     const ext = path.extname(filePath).toLowerCase();
     if (!SUPPORTED_METADATA_EXTENSIONS.has(ext)) {
-      throw new Error(`当前仅支持 mp3/flac/m4a/aac/wav，暂不支持 ${ext || "该格式"}`);
+      throw new Error(`当前仅支持 mp3/flac/m4a/aac/wav/ogg/opus/wma，暂不支持 ${ext || "该格式"}`);
     }
 
     const localSnapshot = await this.localTagReader.read(filePath);

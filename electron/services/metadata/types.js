@@ -1,6 +1,6 @@
 export const METADATA_POLICY_VERSION = "v1-fill-missing";
 
-export const SUPPORTED_METADATA_EXTENSIONS = new Set([".mp3", ".flac", ".m4a", ".aac", ".wav"]);
+export const SUPPORTED_METADATA_EXTENSIONS = new Set([".mp3", ".flac", ".m4a", ".aac", ".wav", ".ogg", ".opus", ".wma"]);
 
 export function createEmptyNormalizedMetadata() {
   return {
