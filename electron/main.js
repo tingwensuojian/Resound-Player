@@ -8,12 +8,20 @@ import { LocalMusicDB } from './services/db/LocalMusicDB.js';
 import { NodeMusicScanner } from './services/scanner/NodeMusicScanner.js';
 import { registerLocalMusicIpc } from './services/ipc/localMusicIpc.js';
 import { loadTrayLyricConfig, getTrayLyricConfig, setTrayLyricConfig } from './tray-lyric-store.js';
+import { runWavMetadataE2E } from './wav-metadata-e2e.js';
 import zlib from 'node:zlib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.commandLine.appendSwitch('no-sandbox');
+
+if (process.env.RESOUND_WAV_METADATA_E2E === '1') {
+  app.whenReady().then(() => runWavMetadataE2E(app)).catch((err) => {
+    console.error('[wav-metadata-e2e]', err);
+    app.exit(1);
+  });
+}
 
 // ── 全局 EPIPE 保护：stdout/stderr 关闭后 console.log 不会崩溃 ──
 process.on('uncaughtException', (err) => {

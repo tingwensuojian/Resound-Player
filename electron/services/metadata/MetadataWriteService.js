@@ -107,7 +107,7 @@ export class MetadataWriteService {
     if (!filePath) throw new Error("文件路径不能为空");
     const ext = path.extname(filePath).toLowerCase();
     if (!SUPPORTED_METADATA_EXTENSIONS.has(ext)) {
-      throw new Error(`当前仅支持 mp3/flac/m4a/aac，暂不支持 ${ext || "该格式"}`);
+      throw new Error(`当前仅支持 mp3/flac/m4a/aac/wav，暂不支持 ${ext || "该格式"}`);
     }
 
     const localSnapshot = await this.localTagReader.read(filePath);
@@ -413,16 +413,16 @@ export class MetadataWriteService {
       ...dbTrack,
       id: localTrackId || dbTrack.id,
       path: filePath,
-      title: snapshot.title || dbTrack.title || "",
-      artist: snapshot.artists.join("/") || dbTrack.artist || "",
-      album: snapshot.album || dbTrack.album || "",
-      albumArtist: snapshot.albumArtist || dbTrack.albumArtist || "",
-      genre: snapshot.genre || dbTrack.genre || "",
-      year: snapshot.year || dbTrack.year || 0,
-      trackNo: snapshot.trackNo || dbTrack.trackNo || 0,
-      discNo: snapshot.discNo || dbTrack.discNo || 0,
-      fileSize: snapshot.fileSize || dbTrack.fileSize || 0,
-      mtime: snapshot.mtime || dbTrack.mtime || 0,
+      title: snapshot.title || "",
+      artist: snapshot.artists.join("/"),
+      album: snapshot.album || "",
+      albumArtist: snapshot.albumArtist || "",
+      genre: snapshot.genre || "",
+      year: Number(snapshot.year || 0),
+      trackNo: Number(snapshot.trackNo || 0),
+      discNo: Number(snapshot.discNo || 0),
+      fileSize: Number(snapshot.fileSize || 0),
+      mtime: Number(snapshot.mtime || 0),
       hasLyrics: Boolean(snapshot.lyrics),
     }]);
   }
