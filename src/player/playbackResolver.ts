@@ -59,6 +59,10 @@ const QUALITY_LABEL_BY_LEVEL: Record<string, string> = {
   jymaster: '超清母带',
 };
 
+const QUALITY_LEVEL_BY_LABEL = Object.fromEntries(
+  Object.entries(QUALITY_LABEL_BY_LEVEL).map(([level, label]) => [label, level]),
+) as Record<string, string>;
+
 /** 需要 VIP 的音质 API level（免费用户不可请求） */
 const VIP_ONLY_API_LEVELS = new Set([
   'lossless',
@@ -82,6 +86,16 @@ function formatQualityBr(br: number): string {
   if (br >= 192000) return '较高';
   if (br >= 128000) return '标准';
   return '';
+}
+
+function inferQualityLabel(level: string, br: number) {
+  const levelLabel = QUALITY_LABEL_BY_LEVEL[level] || '';
+  if (!levelLabel) return formatQualityBr(br);
+  const minBr = QUALITY_MIN_BR[level] || 0;
+  if (minBr > 0 && br > 0 && br < minBr) {
+    return formatQualityBr(br) || levelLabel;
+  }
+  return levelLabel;
 }
 
 function getFallbackLevels(level: string) {
@@ -192,7 +206,7 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
     if (direct.br > 0) currentQualityBr = direct.br;
     hasTrial = direct.hasTrial;
     deliveredLevel = direct.url ? level : '';
-    qualityLabel = deliveredLevel ? QUALITY_LABEL_BY_LEVEL[deliveredLevel] || formatQualityBr(currentQualityBr) : '';
+    qualityLabel = deliveredLevel ? inferQualityLabel(deliveredLevel, currentQualityBr) : '';
 
     isFreePlayable = direct.code === 200 && Boolean(playUrl) && !hasTrial;
 
@@ -215,11 +229,11 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
           fee = fallback.fee;
           hasTrial = fallback.hasTrial;
           deliveredLevel = fallbackLevel;
-          qualityLabel = QUALITY_LABEL_BY_LEVEL[fallbackLevel] || formatQualityBr(fallback.br);
+          qualityLabel = inferQualityLabel(fallbackLevel, fallback.br);
           isFreePlayable = true;
           downgradeInfo = {
             from: defaultQuality,
-            to: QUALITY_LABEL_BY_LEVEL[fallbackLevel] || formatQualityBr(fallback.br),
+            to: inferQualityLabel(fallbackLevel, fallback.br),
           };
           isDowngraded = true;
           console.warn(
@@ -231,11 +245,13 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
     }
 
     // 检测 API 静默降级
-    const minBr = QUALITY_MIN_BR[deliveredLevel || level] || 0;
+    const deliveredQualityLevel = QUALITY_LEVEL_BY_LABEL[qualityLabel] || deliveredLevel || level;
+    const minBr = QUALITY_MIN_BR[deliveredQualityLevel] || 0;
     const brDowngraded = minBr > 0 && currentQualityBr > 0 && currentQualityBr < minBr;
     if (!downgradeInfo && brDowngraded) {
       const actualQ = formatQualityBr(currentQualityBr);
       downgradeInfo = { from: defaultQuality, to: actualQ };
+      qualityLabel = actualQ || qualityLabel;
       isDowngraded = true;
       console.warn(
         `[quality-downgrade] API 静默降级: 请求 ${downgradeInfo.from} (level=${level}, delivered=${deliveredLevel || level}, minBr=${minBr}) → 实际 br=${currentQualityBr} ≥ 交付 ${actualQ}（用户偏好 ${defaultQuality} 未变）`

@@ -164,6 +164,53 @@ function restoreMainWindowFromMiniMode() {
   return win;
 }
 
+function enterMiniMode(alwaysOnTop = false) {
+  if (!win || win.isDestroyed() || preMiniState) return false;
+
+  preMiniState = {
+    x: win.getPosition()[0],
+    y: win.getPosition()[1],
+    width: win.getSize()[0],
+    height: win.getSize()[1],
+    isMaximized: win.isMaximized(),
+    wasFullScreen: win.isFullScreen(),
+  };
+
+  function openMiniWindow() {
+    const targetMiniWin = createMiniWindow(currentServicePorts);
+    applyMiniAlwaysOnTopToWindow(targetMiniWin, !!alwaysOnTop);
+    targetMiniWin.once('ready-to-show', () => {
+      targetMiniWin.show();
+      targetMiniWin.focus();
+      targetMiniWin.webContents.send('mini-mode:state-change', true);
+    });
+    if (targetMiniWin.isVisible()) targetMiniWin.focus();
+    win.hide();
+    win.webContents.send('mini-mode:state-change', true);
+    setTrayMenu(win);
+  }
+
+  if (win.isFullScreen()) {
+    win.once('leave-full-screen', () => {
+      openMiniWindow();
+    });
+    win.setFullScreen(false);
+  } else {
+    openMiniWindow();
+  }
+
+  return true;
+}
+
+function toggleMiniModeFromTray() {
+  if (preMiniState) {
+    restoreMainWindowFromMiniMode();
+    setTrayMenu(win);
+    return;
+  }
+  enterMiniMode(false);
+}
+
 function dispatchMainWindowTrayAction(action) {
   const target = restoreMainWindowFromMiniMode();
   if (!target || target.isDestroyed()) return;
@@ -641,44 +688,14 @@ function applyMiniAlwaysOnTop(enabled) {
 }
 
 ipcMain.on('mini-mode:enter', (_event, alwaysOnTop) => {
-  if (!win || preMiniState) return;
-
-  preMiniState = {
-    x: win.getPosition()[0],
-    y: win.getPosition()[1],
-    width: win.getSize()[0],
-    height: win.getSize()[1],
-    isMaximized: win.isMaximized(),
-    wasFullScreen: win.isFullScreen(),
-  };
-
-  function openMiniWindow() {
-    const targetMiniWin = createMiniWindow(currentServicePorts);
-    applyMiniAlwaysOnTopToWindow(targetMiniWin, !!alwaysOnTop);
-    targetMiniWin.once('ready-to-show', () => {
-      targetMiniWin.show();
-      targetMiniWin.focus();
-      targetMiniWin.webContents.send('mini-mode:state-change', true);
-    });
-    if (targetMiniWin.isVisible()) targetMiniWin.focus();
-    win.hide();
-    win.webContents.send('mini-mode:state-change', true);
-  }
-
-  if (win.isFullScreen()) {
-    win.once('leave-full-screen', () => {
-      openMiniWindow();
-    });
-    win.setFullScreen(false);
-  } else {
-    openMiniWindow();
-  }
+  enterMiniMode(!!alwaysOnTop);
 });
 
 ipcMain.on('mini-mode:exit', () => {
   if (!win || !preMiniState) return;
 
   restoreMainWindowFromMiniMode();
+  setTrayMenu(win);
 });
 
 ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
@@ -810,6 +827,10 @@ function buildTrayMenu(win) {
       click: () => getWin()?.webContents.send('tray:next'),
     },
     { type: 'separator' },
+    {
+      label: preMiniState ? '关闭迷你模式' : '打开迷你模式',
+      click: () => toggleMiniModeFromTray(),
+    },
     {
       label: '桌面歌词',
       type: 'checkbox',
