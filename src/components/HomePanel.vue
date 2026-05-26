@@ -225,7 +225,7 @@
 
     <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="home-grid">
       <AnimatedAppear
-        v-for="widget in widgets"
+        v-for="widget in visibleWidgets"
         :key="widget.id"
         tag="section"
         variant="content"
@@ -631,6 +631,8 @@ const defaultLayout = [
 ];
 
 const widgets = ref<any[]>(JSON.parse(JSON.stringify(defaultLayout)));
+const hasRealLogin = computed(() => userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr');
+const visibleWidgets = computed(() => widgets.value.filter((widget) => widget.id !== 'exclusive-recommend' || hasRealLogin.value));
 
 const tags = ['综艺', '流行', '影视原声', '华语', 'ACG', '摇滚', '民谣', '电子', '说唱', '轻音乐'];
 const hotList = ['周杰伦', '林俊杰', '邓紫棋', '告五人', '影视原声', '华语热歌', '王菲', '陈奕迅'];
