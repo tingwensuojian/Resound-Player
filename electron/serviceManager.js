@@ -51,10 +51,17 @@ const isPackaged = () => __dirname.includes('app.asar');
  */
 function getAppRoot() {
   if (isPackaged() && process.resourcesPath) {
-    // 打包后：Resources/app.asar.unpacked/ 的上级 = Resources/
-    return path.join(process.resourcesPath, 'app.asar.unpacked');
+    return process.resourcesPath;
   }
   return path.join(__dirname, '..');
+}
+
+function getPackagedRoots() {
+  if (!isPackaged() || !process.resourcesPath) return [];
+  return [
+    path.join(process.resourcesPath, 'app.asar.unpacked'),
+    path.join(process.resourcesPath, 'app.asar'),
+  ];
 }
 
 /**
@@ -62,21 +69,23 @@ function getAppRoot() {
  * 打包后优先从 app.asar.unpacked 解析，开发模式使用 __dirname 相对路径。
  */
 function resolveSpawnPath(relativeFilePath) {
-  const root = getAppRoot();
-  const fullPath = path.join(root, relativeFilePath);
-  if (isFile(fullPath)) return fullPath;
-  // 尝试解析为 node_modules 包入口
-  const parts = relativeFilePath.split('/');
-  const pkgIndex = parts.indexOf('node_modules');
-  if (pkgIndex !== -1) {
-    const pkgRoot = path.join(root, ...parts.slice(0, pkgIndex + 2));
-    const pkgJson = path.join(pkgRoot, 'package.json');
-    if (isFile(pkgJson)) {
-      const entry = findEntry(pkgRoot);
-      if (entry) return entry;
+  const roots = [...getPackagedRoots(), getAppRoot()];
+  for (const root of roots) {
+    const fullPath = path.join(root, relativeFilePath);
+    if (isFile(fullPath)) return fullPath;
+    // 尝试解析为 node_modules 包入口
+    const parts = relativeFilePath.split('/');
+    const pkgIndex = parts.indexOf('node_modules');
+    if (pkgIndex !== -1) {
+      const pkgRoot = path.join(root, ...parts.slice(0, pkgIndex + 2));
+      const pkgJson = path.join(pkgRoot, 'package.json');
+      if (isFile(pkgJson)) {
+        const entry = findEntry(pkgRoot);
+        if (entry) return entry;
+      }
     }
   }
-  return fullPath;
+  return path.join(getAppRoot(), relativeFilePath);
 }
 
 /**
@@ -115,31 +124,16 @@ function resolveApiEntrypath(pkgRoot) {
   return null;
 }
 
-function resolveApiEntrypoint() {
-  const root = getAppRoot();
-  const basePath = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
-
-  // 先检查根路径
-  const pkgRoot = resolveApiEntrypath(basePath);
-  if (pkgRoot) {
-    const entry = findEntry(pkgRoot);
-    if (entry) return entry;
-  }
-
-  // 打包后：也检查 app.asar.unpacked（与 root 不同时）
-  if (isPackaged() && process.resourcesPath) {
-    const unpackedRoot = path.join(process.resourcesPath, 'app.asar.unpacked');
-    if (unpackedRoot !== root) {
-      const up = path.join(unpackedRoot, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
-      const upPkgRoot = resolveApiEntrypath(up);
-      if (upPkgRoot) {
-        const entry = findEntry(upPkgRoot);
-        if (entry) return entry;
-      }
+function resolveApiPackageRoot() {
+  const roots = [...getPackagedRoots(), getAppRoot()];
+  for (const root of roots) {
+    const basePath = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
+    const pkgRoot = resolveApiEntrypath(basePath);
+    if (pkgRoot) {
+      return pkgRoot;
     }
   }
-
-  throw new Error('Cannot resolve api-enhanced entrypoint');
+  throw new Error('Cannot resolve api-enhanced package root');
 }
 
 function findEntry(pkgRoot) {
@@ -159,15 +153,48 @@ function findEntry(pkgRoot) {
 // ── Spawn functions ──
 
 function spawnNeteaseApi(port) {
-  const apiEntrypoint = resolveApiEntrypoint();
+  const apiPkgRoot = resolveApiPackageRoot();
   const appRoot = getAppRoot();
-  const child = spawn(process.execPath, [apiEntrypoint], {
+  const bootstrap = `
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+(async () => {
+  const pkgRoot = process.env.RESOUND_API_PKG_ROOT;
+  const tokenFile = path.resolve(os.tmpdir(), 'anonymous_token');
+  if (!fs.existsSync(tokenFile)) {
+    fs.writeFileSync(tokenFile, '', 'utf8');
+  }
+
+  const generateConfig = require(path.join(pkgRoot, 'generateConfig'));
+  await generateConfig();
+
+  const { serveNcmApi } = require(path.join(pkgRoot, 'server'));
+  serveNcmApi({ checkVersion: true }).catch((err) => {
+    console.error('[api-wrapper] serveNcmApi error:', err);
+    process.exit(1);
+  });
+})().catch((err) => {
+  console.error('[api-wrapper] startup error:', err);
+  process.exit(1);
+});
+
+if (process.stdin && !process.stdin.isTTY) {
+  process.stdin.resume();
+}
+`.trim();
+
+  console.log('[serviceManager] resolved api package root:', apiPkgRoot);
+
+  const child = spawn(process.execPath, ['-e', bootstrap], {
     cwd: appRoot,
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       PORT: String(port),
       CORS_ALLOW_ORIGIN: '*',
+      RESOUND_API_PKG_ROOT: apiPkgRoot,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
