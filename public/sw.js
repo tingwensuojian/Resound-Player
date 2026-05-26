@@ -71,13 +71,13 @@ async function writeToCache(request, response) {
   const headers = new Headers(response.headers)
   headers.set('x-sw-stored-at', String(Date.now()))
 
-  const cloned = new Response(response.clone().body, {
+  const cachedResponse = new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
     headers,
   })
 
-  await cache.put(request, cloned)
+  await cache.put(request, cachedResponse)
 }
 
 // ── 缓存优先策略 ──
@@ -99,7 +99,7 @@ self.addEventListener('fetch', (event) => {
 
       // 成功后异步写入缓存（用 event.waitUntil 延长生命周期）
       if (response && response.ok) {
-        event.waitUntil(writeToCache(event.request, response))
+        event.waitUntil(writeToCache(event.request, response.clone()))
       }
 
       return response

@@ -35,6 +35,30 @@ const QUALITY_MIN_BR: Record<string, number> = {
   'jymaster': 1920000,
 };
 
+const QUALITY_FALLBACK_ORDER = [
+  'jymaster',
+  'dolby',
+  'sky',
+  'jyeffect',
+  'hires',
+  'lossless',
+  'exhigh',
+  'higher',
+  'standard',
+];
+
+const QUALITY_LABEL_BY_LEVEL: Record<string, string> = {
+  standard: '标准',
+  higher: '较高',
+  exhigh: '极高(HQ)',
+  lossless: '无损(SQ)',
+  hires: 'Hi-Res',
+  jyeffect: '高清臻音',
+  sky: '沉浸环绕声',
+  dolby: '杜比全景声',
+  jymaster: '超清母带',
+};
+
 /** 需要 VIP 的音质 API level（免费用户不可请求） */
 const VIP_ONLY_API_LEVELS = new Set([
   'lossless',
@@ -60,6 +84,27 @@ function formatQualityBr(br: number): string {
   return '';
 }
 
+function getFallbackLevels(level: string) {
+  const idx = QUALITY_FALLBACK_ORDER.indexOf(level);
+  if (idx < 0) return [];
+  return QUALITY_FALLBACK_ORDER.slice(idx + 1);
+}
+
+async function fetchOfficialUrl(apiBaseUrl: string, trackId: number, level: string, loginCookie: string | undefined) {
+  const qs = `id=${trackId}&level=${level}${loginCookie ? '&cookie=' + encodeURIComponent(loginCookie) : ''}`;
+  const directRes = await fetch(`${apiBaseUrl}/song/url/v1?${qs}`);
+  const directData = await directRes.json();
+  const item = Array.isArray(directData?.data) ? directData.data[0] : null;
+  return {
+    item,
+    code: Number(item?.code || 0),
+    fee: Number(item?.fee ?? 0),
+    url: item?.url || '',
+    br: Number(item?.br || 0),
+    hasTrial: Boolean(item?.freeTrialInfo),
+  };
+}
+
 /* ── 类型定义 ── */
 
 export interface ResolveResult {
@@ -73,6 +118,8 @@ export interface ResolveResult {
   isDowngraded: boolean
   /** 音质降级信息（降级时才非 null） */
   downgradeInfo: { from: string; to: string } | null
+  /** 当前歌曲实际交付音质标签 */
+  qualityLabel: string
 }
 
 export interface ResolveContext {
@@ -111,6 +158,11 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
   let currentQualityBr = 0;
   let isDowngraded = false;
   let downgradeInfo: { from: string; to: string } | null = null;
+  let deliveredLevel = '';
+  let qualityLabel = '';
+  let officialCode = 0;
+  let officialBr = 0;
+  let officialUrlAvailable = false;
 
   // 1. 音质 level 计算（VIP 校验）
   let level = toApiLevel(defaultQuality);
@@ -120,8 +172,7 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
 
   // 2. 并行：fee 探测 + 缓存读取 + 音源匹配
   const nocookie = loginCookie || undefined;
-  const qs = `id=${trackId}&level=${level}${nocookie ? '&cookie=' + encodeURIComponent(nocookie) : ''}`;
-  const feePromise = fetch(`${apiBaseUrl}/song/url/v1?${qs}`);
+  const feePromise = fetchOfficialUrl(apiBaseUrl, trackId, level, nocookie);
   const cached = getCache(trackId);
   const matchPromise = (!cached && unblockEnabled)
     ? tryUnblockMatch(trackId, unblockSources)
@@ -132,25 +183,62 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
   let fee = 0;
   let hasTrial = false;
   try {
-    const directRes = await feePromise;
-    const directData = await directRes.json();
-    const officialItem = Array.isArray(directData?.data) ? directData.data[0] : null;
-    const officialCode = Number(officialItem?.code || 0);
-    fee = Number(officialItem?.fee ?? 0);
-    if (officialItem?.url) playUrl = officialItem.url;
-    if (officialItem?.br > 0) currentQualityBr = officialItem.br;
-    hasTrial = Boolean(officialItem?.freeTrialInfo);
+    const direct = await feePromise;
+    officialCode = direct.code;
+    officialBr = direct.br;
+    officialUrlAvailable = Boolean(direct.url);
+    fee = direct.fee;
+    if (direct.url) playUrl = direct.url;
+    if (direct.br > 0) currentQualityBr = direct.br;
+    hasTrial = direct.hasTrial;
+    deliveredLevel = direct.url ? level : '';
+    qualityLabel = deliveredLevel ? QUALITY_LABEL_BY_LEVEL[deliveredLevel] || formatQualityBr(currentQualityBr) : '';
 
-    isFreePlayable = officialCode === 200 && Boolean(playUrl) && !hasTrial;
+    isFreePlayable = direct.code === 200 && Boolean(playUrl) && !hasTrial;
+
+    if (!isFreePlayable) {
+      for (const fallbackLevel of getFallbackLevels(level)) {
+        const fallback = await fetchOfficialUrl(apiBaseUrl, trackId, fallbackLevel, nocookie);
+        console.debug('[quality-switch] official fallback probe:', {
+          trackId,
+          requested: level,
+          fallbackLevel,
+          code: fallback.code,
+          br: fallback.br,
+          hasUrl: Boolean(fallback.url),
+          hasTrial: fallback.hasTrial,
+          fee: fallback.fee,
+        });
+        if (fallback.code === 200 && fallback.url && !fallback.hasTrial) {
+          playUrl = fallback.url;
+          currentQualityBr = fallback.br || currentQualityBr;
+          fee = fallback.fee;
+          hasTrial = fallback.hasTrial;
+          deliveredLevel = fallbackLevel;
+          qualityLabel = QUALITY_LABEL_BY_LEVEL[fallbackLevel] || formatQualityBr(fallback.br);
+          isFreePlayable = true;
+          downgradeInfo = {
+            from: defaultQuality,
+            to: QUALITY_LABEL_BY_LEVEL[fallbackLevel] || formatQualityBr(fallback.br),
+          };
+          isDowngraded = true;
+          console.warn(
+            `[quality-downgrade] 请求 ${defaultQuality} (level=${level}) 无可播 URL，已回退到 ${downgradeInfo.to} (level=${fallbackLevel})`
+          );
+          break;
+        }
+      }
+    }
 
     // 检测 API 静默降级
-    const minBr = QUALITY_MIN_BR[level] || 0;
-    isDowngraded = minBr > 0 && currentQualityBr > 0 && currentQualityBr < minBr;
-    if (isDowngraded) {
+    const minBr = QUALITY_MIN_BR[deliveredLevel || level] || 0;
+    const brDowngraded = minBr > 0 && currentQualityBr > 0 && currentQualityBr < minBr;
+    if (!downgradeInfo && brDowngraded) {
       const actualQ = formatQualityBr(currentQualityBr);
       downgradeInfo = { from: defaultQuality, to: actualQ };
+      isDowngraded = true;
       console.warn(
-        `[quality-downgrade] API 静默降级: 请求 ${downgradeInfo.from} (level=${level}, minBr=${minBr}) → 实际 br=${currentQualityBr} ≥ 交付 ${actualQ}（用户偏好 ${defaultQuality} 未变）`
+        `[quality-downgrade] API 静默降级: 请求 ${downgradeInfo.from} (level=${level}, delivered=${deliveredLevel || level}, minBr=${minBr}) → 实际 br=${currentQualityBr} ≥ 交付 ${actualQ}（用户偏好 ${defaultQuality} 未变）`
       );
     }
   } catch (e) {
@@ -164,12 +252,14 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
     playUrl = cached.url;
     currentSource = cached.source;
     if (cached.br > 0) currentQualityBr = cached.br;
+    qualityLabel = formatQualityBr(currentQualityBr);
   } else if (matchPromise) {
     const result = await matchPromise;
     if (result?.url) {
       playUrl = result.url;
       currentSource = result.source || 'unblock';
       if (result.br > 0) currentQualityBr = result.br;
+      qualityLabel = formatQualityBr(currentQualityBr);
       setCache(trackId, {
         url: result.url,
         source: result.source || 'unblock',
@@ -186,16 +276,25 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
     playUrl = '/dl-proxy?url=' + encodeURIComponent(playUrl);
   }
 
+  const finalUrlKind = !playUrl
+    ? 'empty'
+    : playUrl.startsWith('/dl-proxy')
+      ? 'dl-proxy'
+      : playUrl.startsWith('http')
+        ? 'remote'
+        : 'relative';
+
   // 6. 决策日志
   console.log(
     '[quality-switch] ═══════════════════════════════\n' +
     `  歌曲 id: ${trackId}\n` +
     `  请求音质: ${downgradeInfo?.from || defaultQuality} → API level: ${level}\n` +
-    `  官方返回: br=${currentQualityBr}  fee=${fee}  hasTrial=${hasTrial}\n` +
+    `  首次官方返回: code=${officialCode}  br=${officialBr}  hasUrl=${officialUrlAvailable}  fee=${fee}  hasTrial=${hasTrial}\n` +
+    `  官方交付: ${deliveredLevel || '-'}  |  最终URL类型: ${finalUrlKind}\n` +
     `  可直播: ${isFreePlayable}  |  缓存命中: ${!!cached}  |  unblock启用: ${unblockEnabled}\n` +
     `  决策: ${isFreePlayable ? '✅ 使用官方音源' : cached ? '📦 命中缓存' : currentSource === 'official' ? '⚠️ 回退官方(无可替换)' : '🔀 unblock替换'}\n` +
     `  降级: ${downgradeInfo ? `⚠️ 是 (${downgradeInfo.from} → ${downgradeInfo.to})` : '否'}\n` +
-    `  最终音源: ${currentSource}  |  比特率: ${currentQualityBr}  |  显示音质: ${defaultQuality}\n` +
+    `  最终音源: ${currentSource}  |  比特率: ${currentQualityBr}  |  显示音质: ${qualityLabel || formatQualityBr(currentQualityBr) || defaultQuality}\n` +
     '[quality-switch] ═══════════════════════════════'
   );
 
@@ -205,5 +304,6 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
     br: currentQualityBr,
     isDowngraded,
     downgradeInfo,
+    qualityLabel: qualityLabel || formatQualityBr(currentQualityBr) || defaultQuality,
   };
 }

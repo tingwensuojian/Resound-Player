@@ -24,6 +24,7 @@ type PlayTrackOptions = { index?: number; reason?: PlayReason; fromPaidSkip?: bo
 type ResolvedSourceInfo = {
   source: string;
   br: number;
+  qualityLabel: string;
   isDowngraded: boolean;
   downgradeInfo: { from: string; to: string } | null;
 };
@@ -122,6 +123,7 @@ export const usePlayerStore = defineStore('player', () => {
   currentSongId: 0,
   miniLyricText: '',
   currentQualityBr: 0,
+  currentQualityLabel: '',
   currentQualityDowngraded: false,
   qualityDowngradeInfo: null as { from: string; to: string } | null,
   currentSource: 'official' as string,
@@ -176,6 +178,7 @@ export const usePlayerStore = defineStore('player', () => {
     state.loading = snapshot.loading;
     state.currentSource = snapshot.currentSource;
     state.currentQualityBr = snapshot.currentQualityBr;
+    state.currentQualityLabel = snapshot.currentQualityLabel || '';
     state.currentQualityDowngraded = snapshot.currentQualityDowngraded;
     state.qualityDowngradeInfo = snapshot.qualityDowngradeInfo;
     state.playMode = snapshot.playMode;
@@ -207,6 +210,7 @@ export const usePlayerStore = defineStore('player', () => {
     runtime.state.loading = state.loading;
     runtime.state.currentSource = state.currentSource;
     runtime.state.currentQualityBr = state.currentQualityBr;
+    runtime.state.currentQualityLabel = state.currentQualityLabel;
     runtime.state.currentQualityDowngraded = state.currentQualityDowngraded;
     runtime.state.qualityDowngradeInfo = state.qualityDowngradeInfo;
     runtime.notify();
@@ -709,6 +713,21 @@ export const usePlayerStore = defineStore('player', () => {
     apply();
   }
 
+  function shouldUseCorsProxy(playUrl: string) {
+    if (!playUrl || playUrl.startsWith('/dl-proxy')) return false;
+    if (playUrl.startsWith('blob:') || playUrl.startsWith('local:')) return false;
+    try {
+      const url = new URL(playUrl, window.location.href);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  function toCorsProxyUrl(playUrl: string) {
+    return '/dl-proxy?url=' + encodeURIComponent(playUrl);
+  }
+
   async function switchAudioSource(params: {
     playUrl: string;
     seekTo?: number;
@@ -722,6 +741,9 @@ export const usePlayerStore = defineStore('player', () => {
 
     const previousLocalObjectUrl = _activeLocalObjectUrl;
     const nextLocalObjectUrl = params.nextLocalObjectUrl || '';
+    const previousSrc = audio.currentSrc || audio.src;
+    const previousCrossOrigin = audio.crossOrigin || '';
+    const previousTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
 
     try {
       audio.pause();
@@ -734,9 +756,6 @@ export const usePlayerStore = defineStore('player', () => {
 
       if (nextLocalObjectUrl) _activeLocalObjectUrl = nextLocalObjectUrl;
       else _activeLocalObjectUrl = '';
-      if (previousLocalObjectUrl && previousLocalObjectUrl !== nextLocalObjectUrl) {
-        URL.revokeObjectURL(previousLocalObjectUrl);
-      }
 
       if (eqSettings.state.enabled) {
         enableEq(true);
@@ -757,12 +776,43 @@ export const usePlayerStore = defineStore('player', () => {
       if (typeof params.seekTo === 'number' && params.seekTo > 0) {
         await setAudioCurrentTimeWhenReady(params.seekTo);
       }
+      if (previousLocalObjectUrl && previousLocalObjectUrl !== nextLocalObjectUrl) {
+        URL.revokeObjectURL(previousLocalObjectUrl);
+      }
       return true;
-    } catch {
+    } catch (err) {
+      const mediaError = audio.error;
+      console.warn('[playback] switch audio source failed:', {
+        requestSeq: params.requestSeq,
+        sourceKind: params.sourceKind,
+        targetUrl: params.playUrl,
+        error: err instanceof Error ? err.message : String(err),
+        mediaError: mediaError ? { code: mediaError.code, message: mediaError.message } : null,
+        networkState: audio.networkState,
+        readyState: audio.readyState,
+      });
       if (nextLocalObjectUrl && _activeLocalObjectUrl === nextLocalObjectUrl) {
-        _activeLocalObjectUrl = '';
+        _activeLocalObjectUrl = previousLocalObjectUrl || '';
       }
       if (nextLocalObjectUrl) URL.revokeObjectURL(nextLocalObjectUrl);
+      if (previousSrc) {
+        try {
+          audio.pause();
+          audio.crossOrigin = previousCrossOrigin;
+          audio.src = previousSrc;
+          audio.load();
+          if (previousTime > 0) {
+            await setAudioCurrentTimeWhenReady(previousTime);
+          }
+          if (params.previousIsPlaying) {
+            state.isPlaying = true;
+            syncRuntimeState();
+            await audio.play();
+          }
+        } catch (restoreErr) {
+          console.warn('[playback] restore previous audio source failed:', restoreErr);
+        }
+      }
       return false;
     }
   }
@@ -784,6 +834,7 @@ export const usePlayerStore = defineStore('player', () => {
     state.currentSongId = Number(params.track.id || 0);
     state.currentSource = params.sourceInfo.source;
     state.currentQualityBr = params.sourceInfo.br;
+    state.currentQualityLabel = params.sourceInfo.qualityLabel;
     state.currentQualityDowngraded = params.sourceInfo.isDowngraded;
     state.qualityDowngradeInfo = params.sourceInfo.downgradeInfo;
     state.isPlaying = true;
@@ -885,6 +936,7 @@ export const usePlayerStore = defineStore('player', () => {
       let sourceInfo: ResolvedSourceInfo = {
         source: track.source === 'local' ? 'local' : 'official',
         br: 0,
+        qualityLabel: track.source === 'local' ? '本地' : '',
         isDowngraded: false,
         downgradeInfo: null,
       };
@@ -950,9 +1002,18 @@ export const usePlayerStore = defineStore('player', () => {
       });
       if (requestSeq !== _playRequestSeq) return false;
       playUrl = result.url;
+      if (eqSettings.state.enabled && shouldUseCorsProxy(playUrl)) {
+        console.debug('[playback] EQ enabled, proxy remote audio for CORS:', {
+          id: track.id,
+          source: result.source,
+          quality: result.qualityLabel,
+        });
+        playUrl = toCorsProxyUrl(playUrl);
+      }
       sourceInfo = {
         source: result.source,
         br: result.br,
+        qualityLabel: result.qualityLabel,
         isDowngraded: result.isDowngraded,
         downgradeInfo: result.downgradeInfo,
       };

@@ -15,6 +15,7 @@ export type RuntimeState = {
   loading: boolean;
   currentSource: string;
   currentQualityBr: number;
+  currentQualityLabel: string;
   currentQualityDowngraded: boolean;
   qualityDowngradeInfo: QualityDowngradeInfo | null;
   lastError: string | null;
@@ -36,6 +37,7 @@ export function createInitialRuntimeState(): RuntimeState {
     loading: false,
     currentSource: 'official',
     currentQualityBr: 0,
+    currentQualityLabel: '',
     currentQualityDowngraded: false,
     qualityDowngradeInfo: null,
     lastError: null,
@@ -58,6 +60,7 @@ export function toPlaybackSnapshot(state: RuntimeState): PlaybackSnapshot {
     loading: state.loading,
     currentSource: state.currentSource,
     currentQualityBr: state.currentQualityBr,
+    currentQualityLabel: state.currentQualityLabel,
     currentQualityDowngraded: state.currentQualityDowngraded,
     qualityDowngradeInfo: state.qualityDowngradeInfo,
     lastError: state.lastError,

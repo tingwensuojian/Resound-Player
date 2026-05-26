@@ -82,7 +82,7 @@ watch(() => playerStore.currentTrack, (track) => {
 | `title` | `playerStore.currentTrack.name` | "晴天" |
 | `artist` | `ar[]` 数组 join 为逗号分隔字符串 | "周杰伦" |
 | `album` | `al?.name` | "叶惠美" |
-| `artwork` | canvas 合成：封面图 + 品牌 Logo badge | `[{ src: 'data:image/jpeg;base64,...', sizes: '640x640' }]` |
+| `artwork` | canvas 合成：封面图 + 品牌 Logo badge | `[{ src: 'data:image/jpeg;base64,...', sizes: '512x512' }]` |
 
 ### 3.3 Action handlers
 
@@ -135,7 +135,9 @@ const BADGE_PADDING_SCALE = 0
 
 1. 加载封面图片，绘制到 canvas（居中填满正方形）
 2. 加载品牌 Logo SVG（源版，含深色圆角矩形背景），直接贴合绘制在 canvas 右下角
-3. 导出为 JPEG data URL，用作 `MediaMetadata` 的 `artwork`
+3. 固定导出为 `512x512` JPEG data URL，用作 `MediaMetadata` 的 `artwork`
+
+固定尺寸是为了避免本地歌曲内嵌大封面按原始分辨率导出，导致 Chromium 抛出 `MediaImage src exceeds maximum URL length`。当前实现使用 `ARTWORK_SIZE = 512`，并以较低 JPEG 质量导出，优先保证系统媒体信息稳定更新。
 
 **Logo 来源**：`docs/logo-guide.md` 的源版 SVG（绿色渐变耳机 + `#121317` 深色圆角背景），通过内联 data URL 加载，无需额外网络请求。
 

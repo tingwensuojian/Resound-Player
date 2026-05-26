@@ -364,16 +364,21 @@ function selectQuality(quality: string) {
     playerStore.playTrack(playerStore.state.currentTrack, currentTime).then((ok) => {
       const di = playerStore.state.qualityDowngradeInfo;
       if (!ok) {
-        console.log('[quality-switch] ❌ 切换失败，当前账号可能不支持此音质');
-        loginModalStore.showGlobalToast('当前账号不支持 ' + quality + ' 音质', 'warning');
+        console.log('[quality-switch] ❌ 切换失败，当前歌曲暂无可用音源');
+        loginModalStore.showGlobalToast('当前歌曲暂无可用音源，已保持当前播放', 'warning');
       } else if (di) {
         console.log(`[quality-switch] ⚠️ ${di.from} 不可用，已自动切换为 ${di.to}`);
         loginModalStore.showGlobalToast(di.from + ' 不可用，已自动切换为 ' + di.to, 'warning');
         playerStore.state.qualityDowngradeInfo = null;
+      } else {
+        const actualQuality = playerStore.state.currentQualityLabel || quality;
+        console.log('[quality-switch] ✅ 切换成功，当前音质:', actualQuality);
+        loginModalStore.showGlobalToast('已切换为 ' + actualQuality + ' 音质', 'success', 2200);
       }
     });
   } else {
     console.log('[quality-switch] 未在播放中，仅保存设置，下次播放时生效');
+    loginModalStore.showGlobalToast('默认音质已设为 ' + quality, 'success', 2200);
   }
 }
 
@@ -561,22 +566,16 @@ const sourceLabel = computed(() => {
 });
 
 const qualityLabel = computed(() => {
-  const br = playerStore.state.currentQualityBr;
-  // 官方音源且 API 确认交付了请求的音质 → 直接显示用户选择
-  if (
-    playerStore.state.currentSource === 'official' &&
-    br > 0 &&
-    !playerStore.state.currentQualityDowngraded
-  ) {
-    return playerStore.state.defaultQuality;
+  if (playerStore.state.currentQualityLabel) {
+    return playerStore.state.currentQualityLabel;
   }
-  // 降级 / unblock / 其他音源 → 根据实际 br 反推音质标签
+  const br = playerStore.state.currentQualityBr;
   if (br >= 1920000) return 'Hi-Res';
   if (br >= 999000) return '无损(SQ)';
   if (br >= 320000) return '极高(HQ)';
   if (br >= 192000) return '较高';
   if (br >= 128000) return '标准';
-  return playerStore.state.currentTrack ? playerStore.state.defaultQuality : '';
+  return '';
 });
 
 const coverStyle = computed(() => {

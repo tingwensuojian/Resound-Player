@@ -119,12 +119,15 @@ this.audio.src = savedSrc;   // 重新加载音频，带上 CORS 请求头
 this.audio.load();
 ```
 
-### 2.3 音源替换 URL 的 `/dl-proxy` Range 支持
+### 2.3 远程音频 URL 的 `/dl-proxy` Range 支持
 
-音源替换命中的非官方 URL 可能缺少可直接用于 Web Audio / `<audio>` 的 CORS 响应头。播放器在 `src/stores/player.ts` 中会把非官方音源包成开发期本地代理地址：
+音源替换命中的非官方 URL 可能缺少可直接用于 Web Audio / `<audio>` 的 CORS 响应头。开启 EQ 后，官方远程 URL 也可能因为 `crossOrigin="anonymous"` 与 CDN 响应头不匹配而被浏览器拒绝。因此播放器在 `src/stores/player.ts` 中会按两层规则处理：
+
+- `resolvePlayUrl()` 对非官方音源统一包装 `/dl-proxy?url=...`
+- `playTrack()` 在 EQ 开启且目标是远程 HTTP(S) URL 时，也会包装 `/dl-proxy?url=...`
 
 ```ts
-if (this.currentSource !== 'official' && !playUrl.startsWith(location.origin + '/')) {
+if (eqSettings.state.enabled && shouldUseCorsProxy(playUrl)) {
   playUrl = '/dl-proxy?url=' + encodeURIComponent(playUrl);
 }
 ```
@@ -137,6 +140,8 @@ if (this.currentSource !== 'official' && !playUrl.startsWith(location.origin + '
 - 暴露 `Content-Length, Content-Range, Accept-Ranges` 给浏览器读取
 
 如果代理只普通 `GET` 全量转发，而不支持 Range/206，浏览器拖动进度条后无法向上游请求目标时间点对应的音频片段，表现会变成“拖动进度条后从头播放”。因此后续修改 `/dl-proxy` 时，不能删除 Range 请求头转发和分段响应头透传。
+
+换源失败时，`switchAudioSource()` 会恢复旧 `audio.src`、播放进度和 `crossOrigin`。这保证音质切换失败不会破坏当前正在播放的音频。
 
 ---
 

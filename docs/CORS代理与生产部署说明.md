@@ -4,6 +4,8 @@
 
 播放非官方音源（unblock 匹配到的 `kuwo.cn`、`bodian` 等源）时，这些外部 CDN 的响应头不包含 `Access-Control-Allow-Origin`，浏览器会直接拦截音频加载。
 
+另外，均衡器开启后播放器会通过 Web Audio `MediaElementSourceNode` 读取音频数据，`<audio>` 必须带 `crossOrigin="anonymous"`。此时即使是官方远程 URL，如果 CDN 没有返回匹配的 CORS 头，也可能在 `audio.play()` 阶段失败。因此当前播放链路会在 EQ 开启时把远程 HTTP(S) 音频也包装成同源 `/dl-proxy`。
+
 当前方案：通过 Vite dev server 内置的 `/dl-proxy` 中间件转发请求，在响应中注入 `Access-Control-Allow-Origin: *`。
 
 同时，音频拖动进度条依赖 HTTP Range/206 分段请求。`/dl-proxy` 不能只解决 CORS，还必须透传浏览器的 `Range` 请求头，并把上游返回的 `Content-Range`、`Accept-Ranges`、`Content-Length` 暴露给浏览器。否则非官方音源虽然可以开始播放，但 seek 时会退回从头播放。
@@ -111,4 +113,5 @@ self.addEventListener('fetch', (event) => {
 ## 相关文件
 
 - `vite.config.ts` — `/dl-proxy` 中间件定义
-- `src/stores/player.ts` — `playTrack()` 中非官方音源 URL 代理路由逻辑（搜索 `非官方音源` 即可定位）
+- `src/player/playbackResolver.ts` — 非官方音源 URL 代理路由逻辑
+- `src/stores/player.ts` — EQ 开启时远程音频代理、换源失败回滚

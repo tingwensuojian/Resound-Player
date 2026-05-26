@@ -68,6 +68,7 @@ export type PlaybackSnapshot = {
   loading: boolean;
   currentSource: string;
   currentQualityBr: number;
+  currentQualityLabel: string;
   currentQualityDowngraded: boolean;
   qualityDowngradeInfo: QualityDowngradeInfo | null;
   lastError: string | null;

@@ -5,6 +5,8 @@ import { usePlayerStore } from '../stores/player'
 const BADGE_SCALE = 0.49
 /** badge 右下角距封面边缘的留白比例 */
 const BADGE_PADDING_SCALE = 0
+/** Media Session artwork 不宜使用超长 data URL，固定输出尺寸避免 Chromium 警告 */
+const ARTWORK_SIZE = 512
 
 /**
  * 源版 Logo SVG（完整版，含深色圆角矩形背景），用作 badge 图标。
@@ -35,7 +37,7 @@ function compositeBadge(coverUrl: string): Promise<string> {
     const cover = new Image()
     cover.crossOrigin = 'anonymous'
     cover.onload = () => {
-      const size = Math.max(cover.width, cover.height, 256)
+      const size = ARTWORK_SIZE
       const canvas = document.createElement('canvas')
       canvas.width = size
       canvas.height = size
@@ -44,9 +46,10 @@ function compositeBadge(coverUrl: string): Promise<string> {
       ctx.imageSmoothingQuality = 'high'
 
       // 绘制封面（居中填满正方形）
-      const sx = (size - cover.width) / 2
-      const sy = (size - cover.height) / 2
-      ctx.drawImage(cover, sx, sy, cover.width, cover.height)
+      const coverSize = Math.max(cover.width, cover.height)
+      const sx = (coverSize - cover.width) / 2
+      const sy = (coverSize - cover.height) / 2
+      ctx.drawImage(cover, -sx * size / coverSize, -sy * size / coverSize, cover.width * size / coverSize, cover.height * size / coverSize)
 
       // ── 右下角 badge ──
       const badgeSize = Math.round(size * BADGE_SCALE)
@@ -60,9 +63,9 @@ function compositeBadge(coverUrl: string): Promise<string> {
         const logoMargin = 0
         const logoSize = badgeSize
         ctx.drawImage(logoImg, bx + logoMargin, by + logoMargin, logoSize, logoSize)
-        resolve(canvas.toDataURL('image/jpeg', 0.85))
+        resolve(canvas.toDataURL('image/jpeg', 0.72))
       }
-      logoImg.onerror = () => resolve(canvas.toDataURL('image/jpeg', 0.85)) // 回退到无 badge 的封面
+      logoImg.onerror = () => resolve(canvas.toDataURL('image/jpeg', 0.72)) // 回退到无 badge 的封面
       logoImg.src = BADGE_LOGO_DATA_URL
     }
     cover.onerror = () => resolve(coverUrl) // 封面加载失败时回退到原图
@@ -82,7 +85,7 @@ async function resolveArtwork(picUrl?: string): Promise<MediaImage[]> {
   // 缓存同一封面 URL 的合成结果，避免重复 canvas 渲染
   if (_lastCompositeUrl === picUrl && _lastCompositeResult) {
     return [
-      { src: _lastCompositeResult, sizes: '640x640', type: 'image/jpeg' },
+      { src: _lastCompositeResult, sizes: `${ARTWORK_SIZE}x${ARTWORK_SIZE}`, type: 'image/jpeg' },
     ]
   }
 
@@ -91,7 +94,7 @@ async function resolveArtwork(picUrl?: string): Promise<MediaImage[]> {
   _lastCompositeResult = composed
 
   return [
-    { src: composed, sizes: '640x640', type: 'image/jpeg' },
+    { src: composed, sizes: `${ARTWORK_SIZE}x${ARTWORK_SIZE}`, type: 'image/jpeg' },
   ]
 }
 
