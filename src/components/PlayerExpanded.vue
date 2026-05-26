@@ -8,7 +8,12 @@
       @click.self="playerStore.closeExpanded()"
     >
       <!-- 全屏封面（独立层）：有自定义背景时隐藏，让自定义背景覆盖 -->
-      <div v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'fullscreen' && !isCustomBg" class="fullscreen-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle"></div>
+      <div
+        v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'fullscreen' && !isCustomBg && !isLocalCurrentTrackWithoutCover"
+        class="fullscreen-cover fade-in-bg"
+        :class="{ 'bg-loaded': coverLoaded }"
+        :style="coverStyle"
+      ></div>
       <Transition name="cover-switch" mode="out-in" appear>
         <div :key="trackId" class="cover-aura" :style="coverAuraStyle"></div>
       </Transition>
@@ -78,8 +83,9 @@
                 <template v-if="lyricsSettings.state.showCover && lyricsSettings.state.displayMode === 'cover'">
                   <Transition name="cover-switch" mode="out-in" appear>
                     <div :key="trackId" class="album-shell" :class="{ playing: playerStore.state.isPlaying }">
-                      <div class="album-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle"></div>
-                      <svg class="album-cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="30 30 140 140" width="100%" height="100%">
+                      <div v-if="!isLocalCurrentTrackWithoutCover" class="album-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle"></div>
+                      <LocalCoverPlaceholder v-else class="album-cover album-cover-placeholder" :size="'100%'" :icon-size="120" :rounded="18" />
+                      <svg v-if="!isLocalCurrentTrackWithoutCover" class="album-cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="30 30 140 140" width="100%" height="100%">
                         <defs>
                           <linearGradient id="logoGradExp" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
@@ -102,7 +108,8 @@
                         <img class="needle" src="/images/needle.png" alt="pointer" />
                       </div>
                       <div class="vinyl-disc" :class="{ playing: playerStore.state.isPlaying }">
-                        <div class="record-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle" />
+                        <div v-if="!isLocalCurrentTrackWithoutCover" class="record-cover fade-in-bg" :class="{ 'bg-loaded': coverLoaded }" :style="coverStyle" />
+                        <LocalCoverPlaceholder v-else class="record-cover record-cover-placeholder" :size="'64%'" :icon-size="88" circle />
                       </div>
                     </div>
                   </Transition>
@@ -157,7 +164,8 @@
           <div v-if="showComments" class="comments-overlay">
               <div class="comments-head">
                 <div class="comments-head-cover">
-                  <img v-if="currentCover" :src="currentCover + '?param=80y80'" :alt="playerStore.state.currentTrack?.name" />
+                  <img v-if="currentCover" :src="resolveSizedImageUrl(currentCover, 80)" :alt="playerStore.state.currentTrack?.name" />
+                  <LocalCoverPlaceholder v-else-if="isLocalCurrentTrackWithoutCover" :size="80" :icon-size="30" :rounded="12" />
                 </div>
                 <div class="comments-head-info">
                   <h3 class="comments-head-title">{{ playerStore.state.currentTrack?.name || '评论' }}</h3>
@@ -277,7 +285,7 @@
             <ul v-if="playerStore.state.playlist.length">
               <li v-for="(track, idx) in playerStore.state.playlist" :key="track.id" :class="{ active: idx === playerStore.state.currentIndex }" @click="playFromPopup(idx)">
                 <span class="track-num">{{ idx + 1 }}</span>
-                <img v-if="track.al?.picUrl" class="track-cover" :src="track.al.picUrl + '?param=48y48'" alt="" loading="lazy" />
+                <img v-if="track.al?.picUrl" class="track-cover" :src="resolveSizedImageUrl(track.al.picUrl, 48)" alt="" loading="lazy" />
                 <span class="track-info"><span class="t">{{ track.name }}</span><span class="a">{{ (track.ar || []).map((x) => x.name).join('/') }}</span></span>
                 <button class="track-remove-btn" title="移出列表" @click.stop="onRemoveTrack(idx)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
               </li>
@@ -325,6 +333,7 @@ import LyricsSettingsPanel from './LyricsSettingsPanel.vue';
 import LyricsSelectionModal from './LyricsSelectionModal.vue';
 import LocalLyricMatchDialog from './LocalLyricMatchDialog.vue';
 import CommentPanel from './CommentPanel.vue';
+import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
 import * as api from '../api/music';
 import { useLyricsSelectionStore } from '../stores/lyricsSelection';
 import FancySwitch from './ui/FancySwitch.vue';
@@ -334,6 +343,7 @@ import { useAutoHideUI } from '../composables/useAutoHideUI';
 import { formatTime } from '../utils/formatTime';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
 import { platform } from '../utils/platform';
+import { resolveSizedImageUrl } from '../utils/image';
 
 const emit = defineEmits<{ 'open-artist': [artist: Record<string, any>]; 'open-album': [albumId: number]; 'open-user': [userId: number]; 'open-podcast-detail': [item: any] }>();
 
@@ -356,6 +366,7 @@ const currentCover = computed(() => playerStore.state.currentTrack?.al?.picUrl |
 const currentArtistList = computed(() => playerStore.state.currentTrack?.ar || []);
 const currentAlbumName = computed(() => playerStore.state.currentTrack?.al?.name || '');
 const currentAlbumId = computed(() => { const al: any = playerStore.state.currentTrack?.al; return al?.id ? Number(al.id) : 0; });
+const isLocalCurrentTrackWithoutCover = computed(() => playerStore.state.currentTrack?.source === 'local' && !currentCover.value);
 
 const palette = ref({ c1: 'rgb(28, 33, 53)', c2: 'rgb(84, 110, 126)', c3: 'rgb(195, 156, 118)', c4: 'rgb(20, 24, 36)' });
 const showPlaylistPopup = ref(false);
@@ -734,6 +745,9 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .album-shell { width: 480px; height: 480px; border-radius: 24px; padding: 0; background: transparent; border: none; box-shadow: none; transform: scale(0.92); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); position: relative; }
 .album-shell.playing { transform: scale(1); }
 .album-cover { width: 100%; height: 100%; border-radius: 18px; background: #d9dee8 center/cover no-repeat; }
+.album-cover-placeholder {
+  background: transparent;
+}
 .album-cover-logo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 18px; }
 .album-cover.bg-loaded ~ .album-cover-logo { display: none; }
 .song-name { width: 480px; margin: var(--space-2) 0 0; color: #ffffff !important; font-size: var(--text-headline-lg); font-weight: 700; text-align: center;  }
@@ -1236,6 +1250,9 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
     0 4px 16px rgba(0,0,0,0.5);
   position: relative;
   z-index: 1;
+}
+.record-cover-placeholder {
+  background: transparent;
 }
 
 /* UI 自动显隐：隐藏时仅透明，保留布局占位 */

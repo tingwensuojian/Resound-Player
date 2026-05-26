@@ -51,6 +51,13 @@
                   :alt="track.name"
                   loading="lazy"
                 />
+                <LocalCoverPlaceholder
+                  v-else-if="track.source === 'local'"
+                  class="play-queue-cover play-queue-cover--placeholder"
+                  :size="40"
+                  :icon-size="16"
+                  :rounded="8"
+                />
                 <div v-else class="play-queue-cover play-queue-cover--placeholder">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                 </div>
@@ -101,6 +108,7 @@ import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 import PlayPauseButton from './ui/PlayPauseButton.vue';
+import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
 import VirtualTrackList from './VirtualTrackList.vue';
 
 const queueItems = computed(() => playerStore.state.playlist);

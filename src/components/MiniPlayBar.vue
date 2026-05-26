@@ -4,10 +4,12 @@
       <!-- 专辑封面 -->
       <div
         class="cover-wrap"
-        :class="{ 'fade-in-bg': !!playerStore.state.currentTrack, 'bg-loaded': coverLoaded }"
+        :class="{ 'fade-in-bg': !!playerStore.state.currentTrack && !isLocalCurrentTrackWithoutCover, 'bg-loaded': coverLoaded, 'cover-wrap--placeholder': isLocalCurrentTrackWithoutCover }"
         :style="coverStyle"
         @click="onFullscreen"
-      />
+      >
+        <LocalCoverPlaceholder v-if="isLocalCurrentTrackWithoutCover" :size="42" :icon-size="16" :rounded="8" />
+      </div>
 
       <!-- 歌曲信息 -->
       <div class="song-info" @click="onFullscreen">
@@ -98,9 +100,18 @@
             <svg v-else-if="showPause(track, idx)" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="mini-pl-pp__icon"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>
             <span v-else class="mini-pl-pp__wave" aria-hidden="true"><i></i><i></i><i></i></span>
             <div
+              v-if="track.al?.picUrl"
               class="mini-pl-cover"
-              :style="track.al?.picUrl ? { backgroundImage: `url(${track.al.picUrl})` } : {}"
+              :style="{ backgroundImage: `url(${track.al.picUrl})` }"
             />
+            <LocalCoverPlaceholder
+              v-else-if="track.source === 'local'"
+              class="mini-pl-cover mini-pl-cover--placeholder"
+              :size="28"
+              :icon-size="12"
+              :rounded="4"
+            />
+            <div v-else class="mini-pl-cover" />
             <div class="mini-pl-meta">
               <div class="mini-pl-title">{{ track.name }}</div>
               <div class="mini-pl-artist">{{ (track.ar || []).map((a: any) => a.name).join(' / ') || '-' }}</div>
@@ -133,6 +144,7 @@ import { usePlayerStore } from '../stores/player';
 import { useUiStore } from '../stores/ui';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
 import { useBgLoaded } from '../composables/useBgLoaded';
+import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
 
 const playerStore = usePlayerStore();
 const uiStore = useUiStore();
@@ -196,6 +208,7 @@ const coverStyle = computed(() => {
   if (!currentPicUrl.value) return {};
   return { backgroundImage: `url(${currentPicUrl.value})` };
 });
+const isLocalCurrentTrackWithoutCover = computed(() => playerStore.state.currentTrack?.source === 'local' && !currentPicUrl.value);
 const coverLoaded = useBgLoaded(currentPicUrl);
 
 // 艺术家文本
@@ -264,6 +277,13 @@ function onFullscreen() {
   border: none;
   cursor: pointer;
   -webkit-app-region: no-drag;
+}
+
+.cover-wrap--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
 }
 
 /* ── 歌名 / 歌手 ── */
@@ -521,6 +541,10 @@ function onFullscreen() {
   background: var(--bg-muted);
   background-size: cover;
   background-position: center;
+}
+
+.mini-pl-cover--placeholder {
+  background: transparent;
 }
 
 .mini-pl-meta {

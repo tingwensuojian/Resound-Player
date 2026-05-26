@@ -2,8 +2,9 @@
   <AnimatedAppear tag="footer" variant="content" rhythm="overlay" class-name="bar">
     <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="left">
       <AnimatedAppear tag="div" variant="media" rhythm="list" class-name="cover-wrap">
-        <button class="cover" :class="{ 'fade-in-bg': !!playerStore.state.currentTrack, 'bg-loaded': coverLoaded }" :style="coverStyle" @click="playerStore.openExpanded()">
-          <svg class="cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="30 30 140 140" width="100%" height="100%">
+        <button class="cover" :class="{ 'fade-in-bg': !!playerStore.state.currentTrack && !isLocalCurrentTrackWithoutCover, 'bg-loaded': coverLoaded, 'cover--placeholder': isLocalCurrentTrackWithoutCover }" :style="coverStyle" @click="playerStore.openExpanded()">
+          <LocalCoverPlaceholder v-if="isLocalCurrentTrackWithoutCover" class="cover-placeholder" :size="52" :icon-size="20" :rounded="12" />
+          <svg v-else class="cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="30 30 140 140" width="100%" height="100%">
             <defs>
               <linearGradient id="logoGradBar" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
@@ -205,6 +206,7 @@ const userStore = useUserStore();
 import { clearCacheEntry } from '../stores/unblock-cache';
 import AnimatedAppear from './AnimatedAppear.vue';
 import EqPanel from './EqPanel.vue';
+import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
 import { useLyrics } from '../composables/useLyrics';
 import { useLoginModalStore } from '../stores/loginModal';
 const loginModalStore = useLoginModalStore();
@@ -583,6 +585,7 @@ const coverStyle = computed(() => {
   if (!url) return {};
   return { backgroundImage: `url(${url})` };
 });
+const isLocalCurrentTrackWithoutCover = computed(() => playerStore.state.currentTrack?.source === 'local' && !playerStore.state.currentTrack?.al?.picUrl);
 const coverLoaded = useBgLoaded(() => playerStore.state.currentTrack?.al?.picUrl || '');
 
 const playModeTooltip = computed(() => {
@@ -787,6 +790,13 @@ function onSeek(e: Event) {
   transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
 }
 .cover:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 36%, var(--border)); }
+.cover--placeholder {
+  background: transparent;
+}
+.cover-placeholder {
+  position: absolute;
+  inset: 0;
+}
 .cover-logo { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .cover.bg-loaded .cover-logo { display: none; }
 .cover-fullscreen-btn {

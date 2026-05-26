@@ -5,7 +5,7 @@
     </div>
     <header class="comment-page-head">
       <div class="head-cover-wrap">
-        <img v-if="song?.al?.picUrl" class="head-cover" :src="song.al.picUrl + '?param=80y80'" :alt="song.name" />
+        <img v-if="song?.al?.picUrl" class="head-cover" :src="resolveSizedImageUrl(song.al.picUrl, 80)" :alt="song.name" />
         <button v-if="song?.id" class="head-play-btn" @click="togglePlayback" :title="isPlayingThis ? '暂停' : '播放这首歌'">
           <svg v-if="isPlayingThis" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
           <svg v-else width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -41,6 +41,7 @@ import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 import AnimatedAppear from './AnimatedAppear.vue';
 import CommentPanel from './CommentPanel.vue';
+import { resolveSizedImageUrl } from '../utils/image';
 
 const props = defineProps<{ songId: number }>();
 const emit = defineEmits<{ (e: 'back'): void; (e: 'open-artist', artist: any): void; (e: 'open-album', albumId: number): void; (e: 'play-song', songId: number): void; (e: 'open-user', userId: number): void }>();

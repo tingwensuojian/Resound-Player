@@ -166,7 +166,7 @@
         <div v-for="(song, idx) in topSongs.slice(0, 10)" :key="song.id" class="top-row top-row--clickable" :class="{ playing: Number(song.id) > 0 && Number(song.id) === Number(playerStore.state.currentSongId || 0) }" @dblclick="playSong(song, idx)">
           <PlayPauseButton :song-id="Number(song.id || 0)" :index-label="idx + 1" @play="playSong(song, idx)" />
           <div class="top-row__cover">
-            <img :src="song.picUrl + '?param=100y100'" :alt="song.name" loading="lazy" />
+            <img :src="resolveSizedImageUrl(song.picUrl, 100)" :alt="song.name" loading="lazy" />
           </div>
           <div class="top-row__info">
             <p class="top-row__name">{{ song.name }}</p>
@@ -190,6 +190,7 @@ const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 import PlayPauseButton from './ui/PlayPauseButton.vue';
+import { resolveSizedImageUrl } from '../utils/image';
 
 const emit = defineEmits<{
   (e: 'open-artist', artist: { id: number; name: string }): void;

@@ -14,7 +14,7 @@
             <img
               v-if="p.coverImgUrl"
               class="pp-cover"
-              :src="p.coverImgUrl + '?param=40y40'"
+              :src="resolveSizedImageUrl(p.coverImgUrl, 40)"
               alt=""
               loading="lazy"
             />
@@ -38,6 +38,8 @@
 </template>
 
 <script setup lang="ts">
+import { resolveSizedImageUrl } from '../../utils/image';
+
 defineProps<{
   visible: boolean;
   playlists: any[];

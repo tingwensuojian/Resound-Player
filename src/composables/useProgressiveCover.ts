@@ -1,5 +1,6 @@
 import { ref, computed, watch, type WatchSource } from 'vue'
 import { platform } from '../utils/platform'
+import { normalizeImageUrl } from '../utils/image'
 
 /**
  * 网易云封面 URL 尺寸参数映射。
@@ -15,8 +16,10 @@ const COVER_PARAMS = {
 
 function resolveUrl(base: string, param: string): string {
   if (!base) return ''
+  const normalized = normalizeImageUrl(base)
+  if (!/^https?:\/\//i.test(normalized)) return normalized
   // 去除已有 param 参数，避免叠加
-  const clean = base.split('?param=')[0].replace(/^http:\/\//, 'https://')
+  const clean = normalized.split('?param=')[0]
   return `${clean}?param=${param}`
 }
 
@@ -165,7 +168,9 @@ export function useProgressiveCover(
 
   // ── srcset 字符串（供 <img> 标签使用） ──
   const srcset = computed(() => {
-    const base = rawUrl.value ? rawUrl.value.split('?param=')[0].replace(/^http:\/\//, 'https://') : ''
+    const normalized = normalizeImageUrl(rawUrl.value || '')
+    if (!/^https?:\/\//i.test(normalized)) return ''
+    const base = normalized.split('?param=')[0]
     if (!base) return ''
     return [
       `${base}?param=100y100 100w`,
