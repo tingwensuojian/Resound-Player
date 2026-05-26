@@ -708,8 +708,7 @@ const { checkAuth, showToast } = useAuthAction(
   'like',
 );
 function playNext(song: any) {
-  const idx = playerStore.state.currentIndex + 1;
-  playerStore.state.playlist.splice(idx, 0, { ...song });
+  playerStore.insertNext({ ...song });
   showToast('已添加至播放列表', 'success', 3000);
 }
 const showPlaylistPicker = ref(false);

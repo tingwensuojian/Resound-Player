@@ -168,6 +168,7 @@ function playTrack(track: any) {
     ar: [{ name: t.artist }],
     al: { name: t.album, picUrl: t.coverUrl },
     source: 'local' as const, path: t.path,
+    duration: t.duration,
   }))
   playerStore.setPlaylist(playlist as any, idx)
   playerStore.playByIndex(idx)

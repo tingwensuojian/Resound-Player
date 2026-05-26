@@ -19,6 +19,14 @@ type TrackSource = 'song' | 'podcast' | 'cloud' | 'local';
 type PodcastMeta = { rid?: number; programId?: number; createTime?: number; feeBadge?: string; feeTone?: string };
 type ThemeMode = '浅色' | '深色' | '跟随系统';
 type PersonalFmFetcher = () => Promise<any[]>;
+type PlayReason = 'switch-track' | 'reload-source';
+type PlayTrackOptions = { index?: number; reason?: PlayReason; fromPaidSkip?: boolean };
+type ResolvedSourceInfo = {
+  source: string;
+  br: number;
+  isDowngraded: boolean;
+  downgradeInfo: { from: string; to: string } | null;
+};
 
 export type Track = {
   id: number;
@@ -42,6 +50,22 @@ export type Track = {
 
 const PLAYER_STORAGE_KEY = 'gm_player_state_v1';
 let _persistTimer: ReturnType<typeof setTimeout> | null = null;
+let _playRequestSeq = 0;
+let _activeLocalObjectUrl = '';
+
+export function getTrackPlaybackKey(track?: Track | null) {
+  if (!track) return '';
+  const id = Number(track.id || 0);
+  if (track.source === 'local') return `local:${id}:${track.path || ''}`;
+  if (track.source === 'podcast') return `podcast:${id}:${track.podcast?.programId || track.podcast?.rid || ''}`;
+  if (track.source === 'cloud') return `cloud:${id}:${track.cloudSid || ''}`;
+  return `song:${id}`;
+}
+
+function isSamePlaybackResource(a?: Track | null, b?: Track | null) {
+  const ak = getTrackPlaybackKey(a);
+  return !!ak && ak === getTrackPlaybackKey(b);
+}
 
 function formatTrack(raw: any): Track {
   return {
@@ -488,6 +512,18 @@ export const usePlayerStore = defineStore('player', () => {
     return unique.length;
   }
 
+  function insertNext(rawTrack: any) {
+    const track = formatTrack(rawTrack);
+    if (!track?.id) return -1;
+    const insertIndex = state.currentIndex >= 0
+      ? Math.min(state.currentIndex + 1, state.playlist.length)
+      : state.playlist.length;
+    state.playlist.splice(insertIndex, 0, track);
+    syncRuntimeState();
+    persist();
+    return insertIndex;
+  }
+
   async function playIntelligenceList() {
     let songId = state.currentSongId;
     const pid = state.currentPlaylistId;
@@ -632,6 +668,150 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
+  function parsePlayTrackArgs(seekToOrOptions?: number | PlayTrackOptions, options?: PlayTrackOptions) {
+    const seekTo = typeof seekToOrOptions === 'number' ? seekToOrOptions : undefined;
+    const parsedOptions = typeof seekToOrOptions === 'object' && seekToOrOptions
+      ? seekToOrOptions
+      : options || {};
+    return { seekTo, options: parsedOptions };
+  }
+
+  function findPlaylistIndexByPlaybackKey(track: Track) {
+    const key = getTrackPlaybackKey(track);
+    if (!key) return -1;
+    return state.playlist.findIndex((item) => getTrackPlaybackKey(item) === key);
+  }
+
+  async function setAudioCurrentTimeWhenReady(time: number) {
+    const audio = state.audio;
+    if (!audio || time <= 0) return;
+    const apply = () => {
+      try {
+        audio.currentTime = Math.max(0, Math.min(time, Number.isFinite(audio.duration) ? audio.duration : time));
+      } catch {
+        // Some streams reject seeking before metadata; play() path will continue without seek.
+      }
+    };
+    if (audio.readyState >= 1) {
+      apply();
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        audio.removeEventListener('loadedmetadata', done);
+        audio.removeEventListener('error', done);
+        resolve();
+      };
+      audio.addEventListener('loadedmetadata', done, { once: true });
+      audio.addEventListener('error', done, { once: true });
+      window.setTimeout(done, 1200);
+    });
+    apply();
+  }
+
+  async function switchAudioSource(params: {
+    playUrl: string;
+    seekTo?: number;
+    requestSeq: number;
+    nextLocalObjectUrl?: string;
+    sourceKind: TrackSource | string;
+    previousIsPlaying: boolean;
+  }) {
+    const audio = state.audio;
+    if (!audio || params.requestSeq !== _playRequestSeq) return false;
+
+    const previousLocalObjectUrl = _activeLocalObjectUrl;
+    const nextLocalObjectUrl = params.nextLocalObjectUrl || '';
+
+    try {
+      audio.pause();
+      state.isPlaying = params.previousIsPlaying;
+      if (eqSettings.state.enabled && params.sourceKind !== 'local' && audio.crossOrigin !== 'anonymous') {
+        audio.crossOrigin = 'anonymous';
+      }
+      audio.src = params.playUrl;
+      audio.load();
+
+      if (nextLocalObjectUrl) _activeLocalObjectUrl = nextLocalObjectUrl;
+      else _activeLocalObjectUrl = '';
+      if (previousLocalObjectUrl && previousLocalObjectUrl !== nextLocalObjectUrl) {
+        URL.revokeObjectURL(previousLocalObjectUrl);
+      }
+
+      if (eqSettings.state.enabled) {
+        enableEq(true);
+        setEqGains(eqSettings.state.gains);
+      }
+
+      if (typeof params.seekTo === 'number' && params.seekTo > 0) {
+        await setAudioCurrentTimeWhenReady(params.seekTo);
+      }
+
+      if (params.requestSeq !== _playRequestSeq) return false;
+      state.isPlaying = params.previousIsPlaying;
+      syncRuntimeState();
+      getRuntime().audioEngine.resumeIfSuspended();
+      await audio.play();
+      if (params.requestSeq !== _playRequestSeq) return false;
+
+      if (typeof params.seekTo === 'number' && params.seekTo > 0) {
+        await setAudioCurrentTimeWhenReady(params.seekTo);
+      }
+      return true;
+    } catch {
+      if (nextLocalObjectUrl && _activeLocalObjectUrl === nextLocalObjectUrl) {
+        _activeLocalObjectUrl = '';
+      }
+      if (nextLocalObjectUrl) URL.revokeObjectURL(nextLocalObjectUrl);
+      return false;
+    }
+  }
+
+  function commitPlaybackTransaction(params: {
+    track: Track;
+    index?: number;
+    requestSeq: number;
+    reason: PlayReason;
+    sourceInfo: ResolvedSourceInfo;
+  }) {
+    if (params.requestSeq !== _playRequestSeq) return false;
+    const resolvedIndex = typeof params.index === 'number' ? params.index : findPlaylistIndexByPlaybackKey(params.track);
+    if (params.reason === 'switch-track') {
+      state.miniLyricText = '';
+    }
+    state.currentTrack = params.track;
+    state.currentIndex = resolvedIndex;
+    state.currentSongId = Number(params.track.id || 0);
+    state.currentSource = params.sourceInfo.source;
+    state.currentQualityBr = params.sourceInfo.br;
+    state.currentQualityDowngraded = params.sourceInfo.isDowngraded;
+    state.qualityDowngradeInfo = params.sourceInfo.downgradeInfo;
+    state.isPlaying = true;
+    syncRuntimeState();
+    recordCurrentTrackToHistory();
+    persist();
+    return true;
+  }
+
+  function rollbackPlaybackTransaction(previous: {
+    track: Track | null;
+    index: number;
+    songId: number;
+    isPlaying: boolean;
+    currentTime: number;
+  }, requestSeq: number, reason: PlayReason) {
+    if (requestSeq !== _playRequestSeq) return;
+    if (reason === 'switch-track') {
+      state.currentTrack = previous.track;
+      state.currentIndex = previous.index;
+      state.currentSongId = previous.songId;
+      state.isPlaying = previous.isPlaying;
+      state.currentTime = previous.currentTime;
+      syncRuntimeState();
+    }
+    persist();
+  }
+
   async function playByIndex(index: number, options?: { fromRemote?: boolean }) {
     if (isMiniWindow() && !options?.fromRemote) {
       sendPlaybackCommand({ type: 'playByIndex', index });
@@ -643,30 +823,55 @@ export const usePlayerStore = defineStore('player', () => {
       }
       if (!state.playlist[index]) return;
     }
-    state.currentIndex = index;
-    state.currentTrack = state.playlist[index];
-    state.currentSongId = Number(state.currentTrack?.id || 0);
-    syncRuntimeState();
-    persist();
-    await playTrack(state.currentTrack);
-    if (isPersonalFmTrack(state.currentTrack)) {
+    const targetTrack = state.playlist[index];
+    const ok = await playTrack(targetTrack, { index, reason: 'switch-track' });
+    if (ok && isPersonalFmTrack(state.currentTrack)) {
       void ensurePersonalFmQueue();
     }
   }
 
-  async function playTrack(track: Track, seekTo?: number) {
+  function findNextPlayableIndexAfter(index: number) {
+    if (!state.playlist.length) return -1;
+    for (let step = 1; step <= state.playlist.length; step += 1) {
+      const idx = (index + step) % state.playlist.length;
+      const candidate = state.playlist[idx];
+      if (!(candidate?.source === 'podcast' && candidate.podcast?.feeTone === 'paid')) return idx;
+    }
+    return -1;
+  }
+
+  async function playTrack(track: Track, seekToOrOptions?: number | PlayTrackOptions, maybeOptions?: PlayTrackOptions) {
+    const { seekTo, options } = parsePlayTrackArgs(seekToOrOptions, maybeOptions);
+    const reason: PlayReason = options.reason || (isSamePlaybackResource(track, state.currentTrack) ? 'reload-source' : 'switch-track');
+    const targetIndex = typeof options.index === 'number' ? options.index : (reason === 'reload-source' ? state.currentIndex : findPlaylistIndexByPlaybackKey(track));
+    const requestSeq = ++_playRequestSeq;
+    const previous = {
+      track: state.currentTrack ? cloneTrack(state.currentTrack) : null,
+      index: state.currentIndex,
+      songId: state.currentSongId,
+      isPlaying: state.isPlaying,
+      currentTime: state.currentTime,
+    };
     // 付费播客提示
     if (track.source === 'podcast' && track.podcast?.feeTone === 'paid') {
       useLoginModalStore().showGlobalToast('该节目为付费内容，请前往播客详情页购买后收听', 'warning', 4000);
       state.loading = false;
       syncRuntimeState();
       if (state.paidContentSkip) {
-        await next();
+        const nextIndex = findNextPlayableIndexAfter(targetIndex >= 0 ? targetIndex : state.currentIndex);
+        if (nextIndex >= 0 && nextIndex !== targetIndex) {
+          await playByIndex(nextIndex);
+        }
       } else {
-        state.isPlaying = false;
+        state.currentTrack = previous.track;
+        state.currentIndex = previous.index;
+        state.currentSongId = previous.songId;
+        state.isPlaying = previous.isPlaying;
+        state.currentTime = previous.currentTime;
+        syncRuntimeState();
         persist();
       }
-      return;
+      return false;
     }
     state.qualityDowngradeInfo = null;
     // 切歌时重置播放速度为全局默认
@@ -677,15 +882,20 @@ export const usePlayerStore = defineStore('player', () => {
     syncRuntimeState();
     try {
       let playUrl = track.url || '';
+      let sourceInfo: ResolvedSourceInfo = {
+        source: track.source === 'local' ? 'local' : 'official',
+        br: 0,
+        isDowngraded: false,
+        downgradeInfo: null,
+      };
 
       // ── 本地歌曲：通过 IPC 读取文件 → blob URL，避免 local:// 跨协议 CORS 问题 ──
       if (track.source === 'local' && (track as any).path) {
-        state.currentSource = 'local';
-        state.loading = false;
         // 使用 IPC 读取文件内容，创建 blob URL 给 audio 播放
         if (platform.localApi) {
           try {
             const buffer = await platform.localApi.readFile((track as any).path);
+            if (requestSeq !== _playRequestSeq) return false;
             if (buffer) {
               const ext = (track as any).path?.split('.').pop()?.toLowerCase() || 'mp3';
               const mime = ext === 'flac' ? 'audio/flac' : ext === 'wav' ? 'audio/wav' : ext === 'ogg' ? 'audio/ogg' : ext === 'm4a' ? 'audio/mp4' : 'audio/mpeg';
@@ -694,26 +904,34 @@ export const usePlayerStore = defineStore('player', () => {
             }
           } catch {}
         }
+        if (requestSeq !== _playRequestSeq) {
+          if (playUrl.startsWith('blob:')) URL.revokeObjectURL(playUrl);
+          return false;
+        }
         if (!playUrl) {
           // 降级：直接使用 local://（桌面端可能支持，Web 端会报 CORS）
           playUrl = `local:///${(track as any).path}`;
         }
-        state.audio.src = playUrl;
-        try {
-          await state.audio.play();
-        } catch {
-          state.isPlaying = false;
-          if (playUrl.startsWith('blob:')) URL.revokeObjectURL(playUrl);
-          persist();
+        console.debug('[playback:local] switching audio source:', {
+          requestSeq,
+          id: track.id,
+          name: track.name,
+          path: (track as any).path,
+          sourceType: playUrl.startsWith('blob:') ? 'blob' : 'local-protocol',
+        });
+        const ok = await switchAudioSource({
+          playUrl,
+          seekTo,
+          requestSeq,
+          nextLocalObjectUrl: playUrl.startsWith('blob:') ? playUrl : '',
+          sourceKind: 'local',
+          previousIsPlaying: previous.isPlaying,
+        });
+        if (!ok) {
+          rollbackPlaybackTransaction(previous, requestSeq, reason);
           return false;
         }
-        state.isPlaying = true;
-        state.currentTrack = track;
-        state.currentSongId = Number(track.id || 0);
-        syncRuntimeState();
-        recordCurrentTrackToHistory();
-        persist();
-        return true;
+        return commitPlaybackTransaction({ track, index: targetIndex, requestSeq, reason, sourceInfo });
       }
 
       // URL 决议：fee 探测 → 音质选择 → 缓存 → unblock → 降级检测 → 代理回退
@@ -730,21 +948,24 @@ export const usePlayerStore = defineStore('player', () => {
         getCache,
         setCache,
       });
+      if (requestSeq !== _playRequestSeq) return false;
       playUrl = result.url;
-      state.currentSource = result.source;
-      state.currentQualityBr = result.br;
-      state.currentQualityDowngraded = result.isDowngraded;
-      state.qualityDowngradeInfo = result.downgradeInfo;
+      sourceInfo = {
+        source: result.source,
+        br: result.br,
+        isDowngraded: result.isDowngraded,
+        downgradeInfo: result.downgradeInfo,
+      };
 
       const wasPlaying = state.isPlaying;
       if (typeof seekTo === 'number') {
         console.log('[quality] playTrack with seekTo:', seekTo, '| wasPlaying:', wasPlaying, '| level:', state.defaultQuality);
       }
       // 背景获取歌曲详情，不阻塞播放
-      if (track.id) {
+      if (track.id && track.source !== 'podcast') {
         getSongDetail(track.id).then(res => {
           const detail = res?.data?.songs?.[0];
-          if (detail && state.currentSongId === track.id) {
+          if (detail && state.currentSongId === track.id && isSamePlaybackResource(state.currentTrack, track)) {
             const n = formatTrack(detail);
             state.currentTrack = {
               ...n, name: track.name || n.name,
@@ -762,59 +983,33 @@ export const usePlayerStore = defineStore('player', () => {
         }).catch(() => {});
       }
 
-      state.currentTrack = track;
-      state.currentSongId = Number(track.id || 0);
-      syncRuntimeState();
-      console.log("[playback] source:", state.currentSource, "| br:", state.currentQualityBr, "| id:", state.currentSongId, "| song:", track.name);
+      console.log("[playback] source:", sourceInfo.source, "| br:", sourceInfo.br, "| id:", Number(track.id || 0), "| song:", track.name);
       if (!playUrl) {
-        state.audio.removeAttribute('src');
-        state.audio.load();
-        state.isPlaying = false;
-        syncRuntimeState();
-        persist();
+        rollbackPlaybackTransaction(previous, requestSeq, reason);
         return false;
       }
 
-      if (eqSettings.state.enabled && state.audio.crossOrigin !== 'anonymous') {
-        state.audio.crossOrigin = 'anonymous';
-      }
-      state.audio.src = playUrl;
-      if (eqSettings.state.enabled) {
-        enableEq(true);
-        setEqGains(eqSettings.state.gains);
-      }
-      if (typeof seekTo === 'number' && seekTo > 0) {
-        state.audio.currentTime = seekTo;
-      }
-      // 确保 AudioContext 处于运行态（预创建时可能为 suspended）
-      getRuntime().audioEngine.resumeIfSuspended();
-      try {
-        await state.audio.play();
-      } catch {
-        state.isPlaying = false;
-        syncRuntimeState();
-        persist();
+      const ok = await switchAudioSource({
+        playUrl,
+        seekTo,
+        requestSeq,
+        sourceKind: track.source || 'song',
+        previousIsPlaying: previous.isPlaying,
+      });
+      if (!ok) {
+        rollbackPlaybackTransaction(previous, requestSeq, reason);
         return false;
       }
-      state.isPlaying = true;
-      syncRuntimeState();
 
       if (typeof seekTo === 'number' && seekTo > 0 && wasPlaying) {
         state.audio.currentTime = seekTo;
       }
-
-      recordCurrentTrackToHistory();
-
-      if (state.currentIndex === -1) {
-        const idx = state.playlist.findIndex((x) => x.id === state.currentSongId);
-        state.currentIndex = idx;
-      }
-
-      persist();
-      return true;
+      return commitPlaybackTransaction({ track, index: targetIndex, requestSeq, reason, sourceInfo });
     } finally {
-      state.loading = false;
-      syncRuntimeState();
+      if (requestSeq === _playRequestSeq) {
+        state.loading = false;
+        syncRuntimeState();
+      }
     }
   }
 
@@ -1211,7 +1406,7 @@ export const usePlayerStore = defineStore('player', () => {
     init, hydrate, persist, trimPlaylistForStorage,
     enableEq, setEqGains,
     playByIndex, playTrack, togglePlay, next, prev, dislikeCurrentPersonalFm,
-    setPlaylist, appendToQueue, removeFromPlaylist, clearPlaylist, moveTrack, clearPersistedState,
+    setPlaylist, appendToQueue, insertNext, removeFromPlaylist, clearPlaylist, moveTrack, clearPersistedState,
     setPersonalFmPlaylist, appendPersonalFmTracks, setPersonalFmFetcher, setFmMode,
     clearPersonalFmContext, ensurePersonalFmQueue, isPersonalFmTrack,
     playIntelligenceList,

@@ -63,7 +63,7 @@
 
 <script setup lang="ts">
 import { computed, watch, nextTick, ref, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue';
-import { usePlayerStore } from '../stores/player'
+import { getTrackPlaybackKey, usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
@@ -310,8 +310,10 @@ watch(currentLyricIndex, async (idx, prev) => {
   scrollToCurrentLine(prev === -1 ? 'auto' : 'smooth');
 });
 
-watch(() => playerStore.state.currentTrack?.id, async (id) => {
-  if (!id) return;
+const currentPlaybackKey = computed(() => getTrackPlaybackKey(playerStore.state.currentTrack));
+
+watch(currentPlaybackKey, async (key) => {
+  if (!key) return;
   await loadLyrics(playerStore.state.currentTrack);
   await nextTick();
   if (currentLyricIndex.value >= 0) scrollToCurrentLine('auto');

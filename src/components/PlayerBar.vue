@@ -196,7 +196,7 @@ import { useUiStore } from '../stores/ui';
 const uiStore = useUiStore();
 import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
-import { usePlayerStore } from '../stores/player'
+import { getTrackPlaybackKey, usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 import { getSongUrlV1, trashPersonalFm } from '../api/music';
 import { useCurrentTrackLike } from '../composables/useCurrentTrackLike';
@@ -510,9 +510,11 @@ onUnmounted(() => {
 /* 播放时显示当前歌词行 */
 const { lyricLines, currentLyricIndex, effectiveTime, startTick, isLoading, loadLyrics } = useLyrics();
 
+const currentPlaybackKey = computed(() => getTrackPlaybackKey(playerStore.state.currentTrack));
+
 /* 加载歌词 — watch 必须在 loadLyrics 之后声明，避免 TDZ */
-watch(() => playerStore.state.currentTrack?.id, async (id) => {
-  if (!id) return;
+watch(currentPlaybackKey, async (key) => {
+  if (!key) return;
   await loadLyrics(playerStore.state.currentTrack);
 }, { immediate: true });
 
@@ -595,14 +597,15 @@ const playModeTooltip = computed(() => {
 // ── 状态栏歌词：升级数据契约（完整歌词数组 + 精确进度） ──
 import { throttle } from '../utils/throttle';
 
-let trayLastTrackId = -1;
+let trayLastTrackKey = '';
 let trayLastSentLines = '';
 
 // 切歌时立即通知主进程清空旧歌词状态，即使新歌词尚未加载
-watch(() => playerStore.state.currentTrack, (track, oldTrack) => {
+watch(currentPlaybackKey, (key, oldKey) => {
   if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
-  if (!track || track.id === oldTrack?.id) return;
-  trayLastTrackId = track.id;
+  const track = playerStore.state.currentTrack;
+  if (!track || !key || key === oldKey) return;
+  trayLastTrackKey = key;
   trayLastSentLines = '';
   const artist = track.ar?.map((a: { name: string }) => a.name).join('/') || '';
   window.appEnv.trayLyric.syncState({
@@ -616,7 +619,7 @@ watch(() => lyricLines.value, (lines) => {
   if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
   const track = playerStore.state.currentTrack;
   if (!track || !lines.length) return;
-  if (track.id !== trayLastTrackId) return; // wait for track-change to fire first
+  if (getTrackPlaybackKey(track) !== trayLastTrackKey) return; // wait for track-change to fire first
   const linesJson = JSON.stringify(lines.map(l => ({ time: l.time, text: l.text })));
   if (linesJson === trayLastSentLines) return;
   trayLastSentLines = linesJson;
@@ -650,8 +653,8 @@ watch(() => playerStore.state.isPlaying, (playing) => {
 });
 
 // ── 桌面歌词：发送完整 LRC 时间轴 + 播放进度 ──
-let desktopLastTrackId = -1;
-watch([() => lyricLines.value, () => playerStore.state.currentTrack, () => playerStore.state.isPlaying, () => playerStore.state.currentTime], () => {
+let desktopLastTrackKey = '';
+watch([() => lyricLines.value, currentPlaybackKey, () => playerStore.state.isPlaying, () => playerStore.state.currentTime], () => {
   if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
   const track = playerStore.state.currentTrack;
   if (!track) {
@@ -662,8 +665,9 @@ watch([() => lyricLines.value, () => playerStore.state.currentTrack, () => playe
     return;
   }
   const lines = lyricLines.value;
-  if (!lines.length && track.id === desktopLastTrackId) return;
-  desktopLastTrackId = track.id;
+  const key = getTrackPlaybackKey(track);
+  if (!lines.length && key === desktopLastTrackKey) return;
+  desktopLastTrackKey = key;
   const lrcArray = lines.length ? lines.map((l) => ({ t: l.time, text: l.text, translation: l.translation, romalrc: l.romalrc })) : [];
   window.appEnv.desktopLyric.updateData({
     lrcArray,

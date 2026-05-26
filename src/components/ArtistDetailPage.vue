@@ -515,8 +515,7 @@ const playlistPickerList = ref<any[]>([]);
 const pickerTargetSong = ref<any>(null);
 const selectedPlaylistId = ref<number | null>(null);
 function playNext(song: any) {
-  const idx = playerStore.state.currentIndex + 1;
-  playerStore.state.playlist.splice(idx, 0, { ...song });
+  playerStore.insertNext({ ...song });
   showToast('已添加至播放列表', 'success', 3000);
 }
 async function showAddToPlaylist(song: any) {

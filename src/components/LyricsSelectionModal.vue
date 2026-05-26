@@ -55,7 +55,7 @@
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { useLyrics } from '../composables/useLyrics';
 import { useLyricsSelectionStore } from '../stores/lyricsSelection';
-import { usePlayerStore } from '../stores/player'
+import { getTrackPlaybackKey, usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 const lyricsSelection = useLyricsSelectionStore();
 
@@ -64,8 +64,10 @@ const backdropRef = ref<HTMLElement | null>(null);
 const artistText = computed(() => { const ar = playerStore.state.currentTrack?.ar || []; return ar.length ? ar.map((a: any) => a.name).join('/') : ''; });
 
 /* 加载歌词 */
-watch(() => playerStore.state.currentTrack?.id, async (id) => {
-  if (!id) return;
+const currentPlaybackKey = computed(() => getTrackPlaybackKey(playerStore.state.currentTrack));
+
+watch(currentPlaybackKey, async (key) => {
+  if (!key) return;
   await loadLyrics(playerStore.state.currentTrack);
 }, { immediate: true });
 
@@ -80,9 +82,9 @@ onMounted(() => document.addEventListener('keydown', onKeydown));
 onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
 /* 切歌时关闭浮窗重置状态 */
-watch(() => playerStore.state.currentTrack?.id, (newId) => {
+watch(currentPlaybackKey, () => {
   if (lyricsSelection.isOpen) {
-    lyricsSelection.currentTrackId = newId ?? null;
+    lyricsSelection.currentTrackId = playerStore.state.currentTrack?.id ?? null;
     lyricsSelection.selectedIndices = new Set();
     lyricsSelection.showTranslation = false;
   }

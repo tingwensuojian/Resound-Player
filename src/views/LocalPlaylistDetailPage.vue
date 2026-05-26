@@ -325,6 +325,7 @@ function playTrack(track: any, index: number) {
     ar: [{ name: t.artist }],
     al: { name: t.album, picUrl: t.coverUrl },
     source: 'local' as const, path: t.path,
+    duration: t.duration,
   }))
   playerStore.setPlaylist(playlist as any, index)
   playerStore.playByIndex(Number(index))
@@ -342,9 +343,9 @@ function addToQueue(track: LocalTrack) {
     ar: [{ name: track.artist }],
     al: { name: track.album, picUrl: track.coverUrl },
     source: 'local' as const, path: track.path,
+    duration: track.duration,
   }
-  const idx = playerStore.state.currentIndex + 1
-  playerStore.state.playlist.splice(idx, 0, song)
+  playerStore.insertNext(song)
   loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
 }
 
