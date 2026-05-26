@@ -37,7 +37,7 @@
     "@applemusic-like-lyrics/core": "file:_amll_dist/core/applemusic-like-lyrics-core-0.4.2.tgz",
     "@applemusic-like-lyrics/lyric": "^1.0.0",
     "@applemusic-like-lyrics/vue": "file:_amll_dist/vue/applemusic-like-lyrics-vue-0.4.2.tgz",
-    "@neteasecloudmusicapienhanced/api": "^4.31.0",
+    "@neteasecloudmusicapienhanced/api": "4.32.1",
     "@pixi/app": "^7.4.3",
     "@pixi/core": "^7.4.3",
     "@pixi/display": "^7.4.3",
