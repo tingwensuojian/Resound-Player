@@ -58,6 +58,11 @@ interface Window {
     window?: {
       setBackgroundColor?: (color: string) => void
     }
+    /** Electron 内置 unblock 匹配桥 */
+    unblockBridge?: {
+      matchSong: (id: number, sources?: string[]) => Promise<{ url: string | null; source: string | null; br: number; size: number; errors?: string[] }>
+      isReady: () => Promise<boolean>
+    }
     [key: string]: any
   }
 }

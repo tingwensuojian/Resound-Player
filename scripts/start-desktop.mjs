@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Dev desktop orchestrator — starts all 4 services with auto-detected ports.
+ * Dev desktop orchestrator — starts renderer/backend services with auto-detected ports.
  *
  * Usage: node scripts/start-desktop.mjs
  *
  * Flow:
  *   1. Detect available ports (vite, api, unblock-proxy, unblock-match)
- *   2. Spawn all 4 processes with the resolved ports
+ *   2. Spawn all services with the resolved ports
  *   3. Forward stdout/stderr, clean up on exit
+ *
+ * 桌面端音源替换链路：
+ *   渲染进程 → IPC → Electron 主进程内置 match（native bridge，优先）
+ *   渲染进程 → HTTP → 独立 match 服务（fallback，开发模式下仍启动以保证可用性）
  */
 
 import { spawn, execSync } from 'node:child_process';
@@ -45,14 +49,14 @@ for (const port of KILL_PORTS) killProcessOnPort(port);
 // ── Resolve ports ──
 const ports = await resolveServicePorts();
 console.log('');
-console.log('╔══════════════════════════════════════════╗');
-console.log('║   Resound-Player — 开发模式启动              ║');
-console.log('╠══════════════════════════════════════════╣');
-console.log(`║  Vite           → :${ports.vite}                    ║`);
-console.log(`║  Netease API    → :${ports.api}                    ║`);
-console.log(`║  Unblock Proxy  → :${ports.unblockProxy}                    ║`);
-console.log(`║  Unblock Match  → :${ports.unblockMatch}                    ║`);
-console.log('╚══════════════════════════════════════════╝');
+console.log('╔══════════════════════════════════════════════╗');
+console.log('║   Resound-Player — 开发模式启动                  ║');
+console.log('╠══════════════════════════════════════════════╣');
+console.log(`║  Vite           → :${ports.vite}                        ║`);
+console.log(`║  Netease API    → :${ports.api}                        ║`);
+console.log(`║  Unblock Proxy  → :${ports.unblockProxy}                        ║`);
+console.log(`║  Unblock Match  → :${ports.unblockMatch}  (fallback)          ║`);
+console.log('╚══════════════════════════════════════════════╝');
 console.log('');
 
 // ── Prepare env ──
@@ -87,9 +91,8 @@ const unblockProxyEnv = {
 const unblockMatchEnv = {
   ...commonEnv,
   PORT: String(ports.unblockMatch),
-  // 注意: 不设置 UNBLOCK_PROXY_URL — match 函数直接对外 HTTPS 请求
-  // 若走 unblock proxy 的 CONNECT 隧道会导致 TLS 握手失败
   UNBLOCK_SOURCES: 'bodian,kugou,migu,qq,bilibili',
+  ENABLE_FLAC: 'true',
 };
 
 // ── Spawn processes ──
@@ -132,7 +135,6 @@ if (process.platform === 'win32') {
 }
 
 // 2. Netease API server (port 38761)
-const apiEntry = path.resolve(root, 'node_modules/@neteasecloudmusicapienhanced/api/app.js');
 spawnProcess('netease-api', 'node', ['scripts/start-api.cjs'], { ...commonEnv, PORT: String(ports.api) });
 
 // 3. Unblock proxy
@@ -143,10 +145,14 @@ spawnProcess('unblock-proxy', 'node', [
   '-s',
 ], unblockProxyEnv);
 
-// 4. Unblock match server
-spawnProcess('unblock-match', 'node', ['server/unblock-match-server.mjs'], unblockMatchEnv);
+// 3.5. Unblock match server (fallback for native bridge)
+// Electron 主进程内置 match 能力（native bridge）是首选路径，
+// 但当 native bridge 因网络/DNS 等原因无结果时，渲染进程会回落到此 HTTP 服务。
+spawnProcess('unblock-match', 'node', [
+  'server/unblock-match-server.mjs',
+], unblockMatchEnv);
 
-// 5. Electron (waits for Vite)
+// 4. Electron (waits for Vite)
 // wait a moment for Vite to start, then launch Electron
 setTimeout(() => {
   spawnProcess('electron', 'npx', ['electron', '.'], electronEnv);

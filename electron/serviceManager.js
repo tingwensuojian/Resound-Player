@@ -333,47 +333,18 @@ require(path.join(pkgRoot, 'app.js'));
   return child;
 }
 
-function spawnUnblockMatch(port, unblockProxyPort) {
-  const appScript = resolveSpawnPath('server/unblock-match-server.mjs');
-  const appRoot = getAppRoot();
-  writeServiceLog('[spawnUnblockMatch] script', appScript);
-  const child = spawn(process.execPath, [appScript], {
-    cwd: appRoot,
-    env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: '1',
-      PORT: String(port),
-      UNBLOCK_PROXY_URL: `http://127.0.0.1:${unblockProxyPort}`,
-      UNBLOCK_SOURCES: 'bodian,kugou,migu,qq,bilibili',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  child.stdout.on('data', (chunk) => {
-    console.log(`[unblock-match] ${chunk.toString().trim()}`);
-    writeServiceLog('[unblock-match:stdout]', chunk.toString());
-  });
-  child.stdout.on('error', () => {});
-  child.stderr.on('data', (chunk) => {
-    console.error(`[unblock-match:err] ${chunk.toString().trim()}`);
-    writeServiceLog('[unblock-match:stderr]', chunk.toString());
-  });
-  child.stderr.on('error', () => {});
-  child.on('exit', (code, signal) => {
-    console.log(`[unblock-match] exited code=${code} signal=${signal}`);
-    writeServiceLog('[unblock-match:exit]', { code, signal });
-  });
-  return child;
-}
-
 // ── Public API ──
 
 /**
- * Start all 3 backend services with dynamically resolved ports.
+ * Start backend services with dynamically resolved ports.
  *
- * @param {{ api:number, unblockProxy:number, unblockMatch:number }} ports
+ * Match 服务已收敛到 Electron 主进程内部（unblock-native-match.js），
+ * 不再通过 serviceManager 启动外部 match 子进程。
+ * Web 端仍通过 `npm run dev:unblock-match` 独立启动。
+ *
+ * @param {{ api:number, unblockProxy:number }} ports
  * @param {boolean} [skipUnblock=false]  When true, only start the Netease API (dev mode)
- * @returns {{ apiChild, proxyChild, matchChild }}
+ * @returns {{ apiChild, proxyChild }}
  */
 export function startAllServices(ports, skipUnblock = false) {
   writeServiceLog('[startAllServices]', { ports, skipUnblock, appRoot: getAppRoot(), resourcesPath: process.resourcesPath, packagedRoots: getPackagedRoots() });
@@ -382,15 +353,13 @@ export function startAllServices(ports, skipUnblock = false) {
   } else {
     console.log(`[serviceManager] starting services:
     Netease API      → :${ports.api}
-    Unblock Proxy    → :${ports.unblockProxy}
-    Unblock Match    → :${ports.unblockMatch}`);
+    Unblock Proxy    → :${ports.unblockProxy}`);
   }
 
   const apiChild = spawnNeteaseApi(ports.api);
   const proxyChild = skipUnblock ? null : spawnUnblockProxy(ports.unblockProxy);
-  const matchChild = skipUnblock ? null : spawnUnblockMatch(ports.unblockMatch, ports.unblockProxy);
 
-  return { apiChild, proxyChild, matchChild };
+  return { apiChild, proxyChild };
 }
 
 /**

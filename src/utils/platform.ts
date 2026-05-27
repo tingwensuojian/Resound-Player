@@ -143,6 +143,17 @@ export const platform = {
     return import.meta.env.VITE_UNBLOCK_MATCH_TARGET || 'http://127.0.0.1:38763'
   },
 
+  /** 是否具备 Electron 内置 unblock 匹配桥 */
+  get hasNativeUnblockBridge(): boolean {
+    return this.isDesktop && typeof (window as any).appEnv?.unblockBridge?.matchSong === 'function'
+  },
+
+  /** Electron 内置 unblock 匹配桥 */
+  get unblockBridge() {
+    if (!this.isDesktop) return null
+    return (window as any).appEnv?.unblockBridge ?? null
+  },
+
   /** Electron 版本号（桌面端） */
   get electronVersion(): string {
     if (!this.isDesktop) return ''

@@ -11,6 +11,7 @@ import { registerLocalMusicIpc } from './services/ipc/localMusicIpc.js';
 import { loadTrayLyricConfig, getTrayLyricConfig, setTrayLyricConfig } from './tray-lyric-store.js';
 import { runWavMetadataE2E } from './wav-metadata-e2e.js';
 import zlib from 'node:zlib';
+import { initNativeUnblockMatch, isNativeUnblockMatchReady, nativeUnblockMatchSong } from './unblock-native-match.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -598,12 +599,23 @@ async function bootstrap() {
     serviceChildren = startAllServices({
       api: ports.api,
       unblockProxy: ports.unblockProxy,
-      unblockMatch: ports.unblockMatch,
     }, isDev);  // pass flag to skip unblock in dev mode
   } catch (err) {
     writeMainLog('[bootstrap] startAllServices failed', err);
     await createErrorWindow(`启动后端服务失败: ${err.message}`);
     return;
+  }
+
+  // ── 内置 unblock 匹配能力：优先走 Electron 原生桥 ──
+  try {
+    writeMainLog('[bootstrap] initNativeUnblockMatch start');
+    // 不传 proxyUrl：match 函数直连 HTTPS，走 proxy 的 CONNECT 隧道会导致 TLS 握手失败
+    await initNativeUnblockMatch();
+    writeMainLog('[bootstrap] initNativeUnblockMatch ready', isNativeUnblockMatchReady());
+    console.log('[main] 内置 unblock 匹配服务就绪:', isNativeUnblockMatchReady());
+  } catch (err) {
+    writeMainLog('[bootstrap] initNativeUnblockMatch failed', err);
+    console.warn('[main] 内置 unblock 匹配初始化失败，将回退独立服务:', err.message);
   }
 
   // ── Wait for API to be ready ──
@@ -646,6 +658,11 @@ async function bootstrap() {
     writeMainLog('[bootstrap] local music init failed', err);
     console.warn('[main] 本地音乐服务初始化失败:', err.message);
   }
+
+  ipcMain.handle('unblock:match-song', async (_event, id, sources) => {
+    return nativeUnblockMatchSong(Number(id || 0), Array.isArray(sources) ? sources : []);
+  });
+  ipcMain.handle('unblock:is-native-ready', async () => isNativeUnblockMatchReady());
 
   // ── 创建主窗口 ──
   console.log('[main] API 就绪，创建主窗口...');

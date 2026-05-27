@@ -33,6 +33,11 @@ contextBridge.exposeInMainWorld('appEnv', {
     setItem: (data) => ipcRenderer.invoke('cache:set', data),
     clear: () => ipcRenderer.invoke('cache:clear'),
   },
+  // ── 内置 unblock 匹配桥 ──
+  unblockBridge: {
+    matchSong: (id, sources) => ipcRenderer.invoke('unblock:match-song', id, sources),
+    isReady: () => ipcRenderer.invoke('unblock:is-native-ready'),
+  },
   // ── 系统托盘歌词 API ──
   trayLyric: {
     getConfig: () => ipcRenderer.invoke('tray-lyric:get-config'),

@@ -1,5 +1,5 @@
 // 音源替换 API 封装 + 异常降级
-// 自动检测服务器健康状态，不可用时跳过匹配
+// 桌面端优先走 Electron 原生桥，不可用或无结果时回落到独立 HTTP 服务。
 
 import { platform } from '../utils/platform';
 
@@ -24,15 +24,26 @@ let _serverAvailable: boolean | null = null; // null=未检测, true=可用, fal
 let _failureCount = 0;
 let _lastCheck = 0;
 
-/** 快速判断服务器是否可用（不发起网络请求） */
+/** 快速判断匹配能力是否可用（不发起网络请求） */
 export function isUnblockAvailable(): boolean {
+  if (platform.hasNativeUnblockBridge) return true;
   if (_serverAvailable === null) return true; // 尚未检测，乐观认为可用
   return _serverAvailable;
 }
 
 /** 检测服务器健康（可定期调用） */
 export async function checkUnblockHealth(): Promise<boolean> {
-  // 冷却期内直接返回缓存状态
+  // 桌面端：先检查 native bridge
+  if (platform.hasNativeUnblockBridge) {
+    try {
+      const nativeReady = await platform.unblockBridge!.isReady();
+      if (nativeReady) return true;
+    } catch {
+      // fall through to HTTP check
+    }
+  }
+
+  // 回落：走独立 match 服务 HTTP 接口
   const now = Date.now();
   if (now - _lastCheck < HEALTH_COOLDOWN && _serverAvailable !== null) {
     return _serverAvailable;
@@ -77,7 +88,30 @@ export async function tryUnblockMatch(id: number, sources: string[]): Promise<Un
 
   if (!id) return defaultResult;
 
-  // 快速失败：服务器已被标记不可用
+  // 桌面端：优先走 native bridge
+  if (platform.hasNativeUnblockBridge) {
+    try {
+      const result = await platform.unblockBridge!.matchSong(id, sources);
+      if (result?.url) {
+        _failureCount = 0;
+        console.log('[unblock] native bridge matched: source=%s br=%d', result.source, result.br);
+        return {
+          url: result.url,
+          source: result.source ?? 'unblock',
+          br: result.br ?? 0,
+          size: result.size ?? 0,
+          errors: result.errors,
+        };
+      }
+      // native bridge 无结果 → 继续走 HTTP 回落（不 return）
+      console.log('[unblock] native bridge returned no URL, falling through to HTTP match server. errors:', result?.errors);
+    } catch (err) {
+      console.warn('[unblock] native bridge error, falling through to HTTP:', err);
+      // fall through to HTTP
+    }
+  }
+
+  // HTTP 独立 match 服务（Web 端唯一路径 / 桌面端回落路径）
   if (_serverAvailable === false) {
     return defaultResult;
   }
@@ -96,6 +130,7 @@ export async function tryUnblockMatch(id: number, sources: string[]): Promise<Un
       reportFailure();
     } else {
       _failureCount = 0; // 成功一次重置计数
+      console.log('[unblock] HTTP match server matched: source=%s br=%d', result.source, result.br);
     }
     return result;
   } catch {

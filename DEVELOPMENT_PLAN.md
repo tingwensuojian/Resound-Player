@@ -6,7 +6,8 @@
 |------|------|------|
 | Netease API | 38761 | ✅ |
 | Unblock Proxy | 38762 | ✅ |
-| Unblock Match Server | 38763 | ✅ |
+| Unblock Match Server | 38763 | ✅ Web 端主路径 / 桌面端 fallback |
+| Native Bridge (Electron 主进程) | IPC | ✅ 桌面端首选路径 |
 | Vite 前端 | 5173 | ✅ |
 | 设置页开关 | - | ✅ |
 | 持久化 | - | ✅ |
@@ -57,14 +58,22 @@
 - [ ] 保持当前播放进度
 - [ ] 切换失败 Toast 提示
 
-## Phase 4 ⏳ 待开发
+## Phase 4 ✅ 已完成（Electron 深度集成）
 
-### 4.1 Electron 深度集成
-- [ ] `electron/main.js` 启动 Unblock Match Server
-- [ ] `electron/preload.js` 暴露 `match()` 到渲染进程
-- [ ] 渲染进程根据平台选择匹配方式（Web → proxy，Electron → native）
+### 4.1 Electron 内置 match 能力
+- [x] `electron/unblock-native-match.js`：内嵌 match 逻辑，使用 `@unblockneteasemusic/server`
+- [x] `electron/main.js`：启动链路中调用 `initNativeUnblockMatch()`，注册 IPC：
+  - `unblock:match-song` — 匹配歌曲
+  - `unblock:is-native-ready` — 查询就绪状态
+- [x] `electron/preload.js`：暴露 `window.appEnv.unblockBridge`（`matchSong` / `isReady`）
+- [x] `src/utils/platform.ts`：新增 `hasNativeUnblockBridge` / `unblockBridge` getter
 
-### 4.2 缓存匹配结果
+### 4.2 渲染层 match 路由（native bridge 优先 + HTTP fallback）
+- [x] `src/api/unblock.ts`：桌面端优先走 native bridge；native bridge 无结果时 **fall through** 到 HTTP match 服务
+- [x] `scripts/start-desktop.mjs`：桌面端开发模式仍启动外部 match 服务作为 fallback
+- [x] `electron/unblock-native-match.js`：增加 `mod.default` 类型检查 + 诊断日志
+
+### 4.3 缓存匹配结果
 - [ ] `Map<songId, {url, source, br, size}>`
 - [ ] 同一切歌不需要重复匹配
 - [ ] 缓存过期策略
@@ -120,7 +129,10 @@
 ## 启动方式
 
 ```bash
-# 开发环境一键启动（四个服务）
+# 桌面端开发（推荐）— 含 native bridge + HTTP fallback
+npm run dev:desktop
+
+# Web 全量开发 — 走独立 HTTP match 服务
 npm run dev:web:full
 
 # 或单独启动
@@ -130,21 +142,53 @@ npm run dev:unblock-match   # Match Server :38763
 npm run dev:web             # Vite :5173
 ```
 
-## 音源替换数据流
+## 当前桌面端与 Web 端路由说明
+
+### Electron 桌面端（native bridge 优先 + HTTP fallback）
 
 ```
-Vite 前端
+渲染进程 (renderer)
+  ├─ tryUnblockMatch(id, sources)
+  ├─ 1. 检测 hasNativeUnblockBridge → true
+  ├─ 2. IPC → unblock:match-song
+  │     └─ Electron 主进程 → nativeUnblockMatchSong()
+  │           └─ @unblockneteasemusic/server match()（内嵌）
   │
-  ├─ /api/song/url/v1?level=exhigh → Netease API(:38761) → 官方URL
-  │
-  └─ /unblock-api/match?source=kugou → Match Server(:38763) → match() → 替代URL
-       │
-       └─ @unblockneteasemusic/server
-            ├─ kugou     (默认优先)
-            ├─ migu      (第二优先)
-            ├─ bilibili  (第三优先)
-            └─ ...更多来源可配置
+  ├─ 有 URL → 使用，播放 ✓
+  └─ 无 URL → fall through → HTTP fallback
+        └─ fetch(http://127.0.0.1:{unblockMatch}/match)
+              └─ 独立 match 服务 → match() → 替代 URL
+```
 
-  设置页开关 → uiStore.unblockEnabled → apiClient interceptor
-                                      → playTrack 决定是否调用 tryUnblockMatch
+关键文件：
+
+| 文件 | 作用 |
+|------|------|
+| `electron/unblock-native-match.js` | 内置 match 核心：`initNativeUnblockMatch()` / `nativeUnblockMatchSong()` |
+| `electron/main.js` | 启动链路初始化 + IPC handler 注册 |
+| `electron/preload.js` | 暴露 `window.appEnv.unblockBridge` |
+| `src/utils/platform.ts` | `hasNativeUnblockBridge` / `unblockBridge` getter |
+| `src/api/unblock.ts` | 渲染层 match 路由（native bridge → HTTP fallback） |
+| `scripts/start-desktop.mjs` | 开发模式启动外部 match 服务作为 fallback |
+
+### Web 端（走独立 HTTP 服务）
+
+```
+渲染进程
+  ├─ tryUnblockMatch(id, sources)
+  ├─ hasNativeUnblockBridge → false
+  └─ HTTP → :38763/match?id=...&sources=...
+        └─ 独立 match 服务 → match() → 替代 URL
+```
+
+- Web 端没有 `window.appEnv.unblockBridge`
+- `src/api/unblock.ts` 直接走 `platform.unblockMatchUrl` 的 HTTP 接口
+- `dev:unblock-match` 给 Web 端使用；桌面端开发模式也会启动此服务作为 fallback
+
+### 两者共同的音频代理路径
+
+无论是 native bridge 还是 HTTP match 返回的替代 URL，播放时都通过 Vite 中间件代理：
+
+```
+unblock URL → /dl-proxy?url=... → Vite dev server 中间件（添加 CORS 头）→ 音频流
 ```
