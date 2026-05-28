@@ -94,6 +94,7 @@ const djDetailItems = ref<any[]>([]);
 const cloudPlaylists = ref<any[]>([]);
 const cloudDetailItems = ref<any[]>([]);
 const cloudLoading = ref(false);
+let loadUserDataSeq = 0;
 const cloudTitle = computed(() => '我的云盘');
 const cloudPseudoPlaylist = computed(() => ({
   name: '我的云盘',
@@ -343,8 +344,18 @@ function normalizeAlbumItems(payload: any) {
     : [];
 }
 
+function applyPlaylistBuckets(uid: number, playlists: any[]) {
+  createdPlaylists.value = playlists
+    .filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) === uid)
+    .map(normalizePlaylistItem);
+  collectedPlaylists.value = playlists
+    .filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) !== uid)
+    .map(normalizePlaylistItem);
+}
+
 async function loadUserData() {
   if (!userStore.state.profile?.userId) return;
+  const requestId = ++loadUserDataSeq;
   loading.value = true;
   try {
     const uid = userStore.state.profile.userId;
@@ -359,16 +370,13 @@ async function loadUserData() {
       playlistSubTab: playlistSubTab.value,
     });
     detail.value = detailRes.data || detailRes;
+    if (requestId !== loadUserDataSeq) return;
 
     if (isPublicUserMode.value) {
-      const playlistRes = await getUserPlaylist(uid);
+      const playlistRes = await getUserPlaylist(uid, authCookie || undefined);
+      if (requestId !== loadUserDataSeq) return;
       const publicPlaylists = normalizePlaylistArray(playlistRes);
-      createdPlaylists.value = publicPlaylists
-        .filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) === uid)
-        .map(normalizePlaylistItem);
-      collectedPlaylists.value = publicPlaylists
-        .filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) !== uid)
-        .map(normalizePlaylistItem);
+      applyPlaylistBuckets(uid, publicPlaylists);
       logUserPanelDebug('loadUserData:publicModePlaylists', {
         playlistCount: publicPlaylists.length,
         createdCount: createdPlaylists.value.length,
@@ -381,36 +389,32 @@ async function loadUserData() {
       activeTab.value = 'playlists';
       if (playlistSubTab.value === 'albums' || playlistSubTab.value === 'podcast') playlistSubTab.value = 'created';
     } else {
-      const [playlistRes, albumRes, cloudRes, djRes] = await Promise.allSettled([
-        getUserPlaylist(uid),
+      const cachedPlaylists = Array.isArray(userStore.state.playlists) ? userStore.state.playlists : [];
+      const [playlistRes, albumRes, djRes] = await Promise.allSettled([
+        cachedPlaylists.length
+          ? Promise.resolve(cachedPlaylists)
+          : getUserPlaylist(uid, authCookie || undefined).then(normalizePlaylistArray),
         getAlbumSublist({ limit: 25, offset: 0, cookie: authCookie }),
-        getCloudStorage({ limit: 1000, offset: 0, cookie: authCookie }),
         getDjSublist(authCookie),
       ]);
+      if (requestId !== loadUserDataSeq) return;
 
       logUserPanelDebug('loadUserData:cookieModeResponses', {
         playlistStatus: playlistRes.status,
         albumStatus: albumRes.status,
-        cloudStatus: cloudRes.status,
         albumCode: albumRes.status === 'fulfilled' ? albumRes.value?.data?.code ?? null : null,
-        cloudCode: cloudRes.status === 'fulfilled' ? cloudRes.value?.data?.code ?? null : null,
         albumKeys: albumRes.status === 'fulfilled' ? Object.keys(albumRes.value?.data || {}) : [],
-        cloudKeys: cloudRes.status === 'fulfilled' ? Object.keys(cloudRes.value?.data || {}) : [],
       });
 
-      const allPlaylists = playlistRes.status === 'fulfilled' ? normalizePlaylistArray(playlistRes.value) : [];
-      createdPlaylists.value = allPlaylists
-        .filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) === uid)
-        .map(normalizePlaylistItem);
-      collectedPlaylists.value = allPlaylists
-        .filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) !== uid)
-        .map(normalizePlaylistItem);
+      const allPlaylists = playlistRes.status === 'fulfilled' ? playlistRes.value : [];
+      applyPlaylistBuckets(uid, allPlaylists);
 
-      if (!createdPlaylists.value.length || !collectedPlaylists.value.length) {
+      if ((!createdPlaylists.value.length || !collectedPlaylists.value.length) && !cachedPlaylists.length) {
         const [createdRes, collectedRes] = await Promise.allSettled([
-          getUserCreatedPlaylist(uid, 100, 0),
-          getUserCollectedPlaylist(uid, 100, 0),
+          getUserCreatedPlaylist(uid, 100, 0, authCookie || undefined),
+          getUserCollectedPlaylist(uid, 100, 0, authCookie || undefined),
         ]);
+        if (requestId !== loadUserDataSeq) return;
 
         if (!createdPlaylists.value.length && createdRes.status === 'fulfilled') {
           const items = normalizeCreatedCollectedPayload(createdRes.value);
@@ -433,21 +437,12 @@ async function loadUserData() {
         : [];
       djSublist.value = Array.isArray(djData) ? djData : [];
 
-      const cloudList = cloudRes.status === 'fulfilled'
-        ? cloudRes.value.data?.data || cloudRes.value.data?.list || cloudRes.value.data?.songs || cloudRes.value.data || []
-        : [];
-      const normalizedCloud = Array.isArray(cloudList) ? cloudList.map(normalizeCloudItem) : [];
-      cloudDetailItems.value = normalizedCloud;
-      cloudPlaylists.value = await enrichCloudUrls(normalizedCloud);
-
       logUserPanelDebug('loadUserData:cookieModeParsed', {
         createdCount: createdPlaylists.value.length,
         collectedCount: collectedPlaylists.value.length,
         albumCount: albumItems.value.length,
         djCount: djSublist.value.length,
-        cloudCount: cloudPlaylists.value.length,
         firstAlbum: albumItems.value[0]?.name || null,
-        firstCloud: cloudPlaylists.value[0]?.name || null,
       });
     }
 
@@ -460,9 +455,13 @@ async function loadUserData() {
       selectedItem.value = currentPlaylistItems.value[0] || null;
     } else if (activeTab.value === 'cloud' && cloudPlaylists.value.length) {
       selectedItem.value = cloudPseudoPlaylist.value;
+    } else if (activeTab.value === 'cloud' && !isPublicUserMode.value) {
+      void loadCloudData();
     }
   } finally {
-    loading.value = false;
+    if (requestId === loadUserDataSeq) {
+      loading.value = false;
+    }
   }
 }
 
@@ -470,6 +469,7 @@ async function loadCloudData() {
   if (cloudLoading.value) return;
   const uid = userStore.state.profile?.userId;
   if (!uid) return;
+  const requestUid = uid;
   cloudLoading.value = true;
   try {
     const authCookie = userStore.state.loginMode === 'uid' ? '' : userStore.state.loginCookie || '';
@@ -498,8 +498,10 @@ async function loadCloudData() {
         detailed = normalizedCloud;
       }
     }
+    if (requestUid !== userStore.state.profile?.userId) return;
     cloudDetailItems.value = detailed;
     cloudPlaylists.value = await enrichCloudUrls(detailed);
+    if (requestUid !== userStore.state.profile?.userId) return;
     logUserPanelDebug('loadCloudData:parsed', {
       rawCount: Array.isArray(cloudList) ? cloudList.length : 0,
       detailedCount: detailed.length,
@@ -634,30 +636,27 @@ function openPlaylist(playlistId: number) {
 onMounted(loadUserData);
 
 watch(
-  () => userStore.state.profile?.userId,
-  () => {
-    selectedItem.value = null;
-    void loadUserData();
-  },
-);
-
-watch(
-  isPublicUserMode,
-  (enabled) => {
+  [() => userStore.state.profile?.userId, () => userStore.state.loginMode],
+  ([uid]) => {
+    detail.value = null;
+    createdPlaylists.value = [];
+    collectedPlaylists.value = [];
+    albumItems.value = [];
+    djSublist.value = [];
     selectedItem.value = null;
     cloudPlaylists.value = [];
     cloudDetailItems.value = [];
-    djSublist.value = enabled ? [] : djSublist.value;
-    albumItems.value = enabled ? [] : albumItems.value;
     djDetail.value = null;
     djDetailItems.value = [];
 
-    if (enabled) {
+    if (userStore.state.loginMode === 'uid') {
       activeTab.value = 'playlists';
       if (playlistSubTab.value === 'albums' || playlistSubTab.value === 'podcast') playlistSubTab.value = 'created';
     }
 
-    void loadUserData();
+    if (uid) {
+      void loadUserData();
+    }
   },
 );
 

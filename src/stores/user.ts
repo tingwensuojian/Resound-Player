@@ -122,6 +122,7 @@ export const useUserStore = defineStore('user', () => {
     state.vipInfo = null;
     state.level = 0;
     state.loginMode = 'none';
+    state.loginVerified = false;
     await saveCookie('');
   }
 
@@ -183,10 +184,11 @@ export const useUserStore = defineStore('user', () => {
     state.subscribedAlbumIds = [];
     state.subscribedArtistIds = [];
     state.subscribedUserIds = [];
+    state.level = data?.level ?? data?.data?.level ?? 0;
+    state.isVip = false;
+    state.vipInfo = null;
     state.loginMode = 'uid';
     await saveCookie('uid=' + String(profile.userId));
-    await Promise.allSettled([fetchPlaylists(profile.userId), fetchLikedSongs(profile.userId), fetchSubscribedDjs(), fetchSubscribedAlbums(), fetchSubscribedArtists(), fetchSubscribedPlaylists(), fetchSubscribedUsers(profile.userId)]);
-    fetchVipInfo();
   }
 
   async function restoreUidLogin(uid: number, requestId = ++state.authRequestSeq) {
@@ -206,9 +208,10 @@ export const useUserStore = defineStore('user', () => {
       state.subscribedAlbumIds = [];
       state.subscribedArtistIds = [];
       state.subscribedUserIds = [];
+      state.level = data?.level ?? data?.data?.level ?? 0;
+      state.isVip = false;
+      state.vipInfo = null;
       await saveCookie(UID_LOGIN_PREFIX + String(profile.userId));
-      await Promise.allSettled([fetchPlaylists(profile.userId), fetchLikedSongs(profile.userId), fetchSubscribedDjs(), fetchSubscribedAlbums(), fetchSubscribedArtists(), fetchSubscribedPlaylists(), fetchSubscribedUsers(profile.userId)]);
-      fetchVipInfo();
     } catch (error: any) {
       if (requestId === state.authRequestSeq) await resetSession();
     }
@@ -217,7 +220,11 @@ export const useUserStore = defineStore('user', () => {
   async function refreshLoginStatus(requestId = ++state.authRequestSeq) {
     if (state.loginCookie.startsWith(UID_LOGIN_PREFIX)) {
       const uid = Number(state.loginCookie.slice(UID_LOGIN_PREFIX.length));
-      if (Number.isFinite(uid) && uid > 0) { await restoreUidLogin(uid, requestId); return; }
+      if (Number.isFinite(uid) && uid > 0) {
+        await restoreUidLogin(uid, requestId);
+        if (requestId === state.authRequestSeq) state.loginVerified = true;
+        return;
+      }
     }
     const cookie = state.loginCookie || undefined;
     const { data } = await getLoginStatus(cookie);
