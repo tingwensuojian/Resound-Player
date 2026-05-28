@@ -53,15 +53,14 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   position: relative;
   width: min(560px, calc(100vw - 40px));
   max-height: 85vh;
-  border-radius: 16px;
-  background: var(--bg-solid);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  border-radius: 24px;
   display: flex;
   flex-direction: column;
 }
 .lm-wrapper :deep(.login-panel) {
   max-height: 85vh;
   overflow-y: auto;
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 .lm-close {

@@ -284,7 +284,9 @@ const apiReady = ref(false);
 const isNarrow = ref(false);
 const sidebarOpen = ref(true);
 const sidebarCollapsed = ref(false);
-const settingsInitialTab = ref<'playback' | 'appearance' | 'account'>('appearance');
+type SettingsInitialTab = 'playback' | 'appearance' | 'local' | 'account' | 'about';
+
+const settingsInitialTab = ref<SettingsInitialTab>('appearance');
 
 const layoutVars = computed<Record<string, string>>(() => {
   if (isNarrow.value) {
@@ -315,7 +317,7 @@ const isHeroStickyPage = computed(() => ['playlist-detail', 'rank-detail', 'arti
 const showBackToTop = computed(() => isHeroStickyPage.value || ['history', 'user', 'mv', 'playlist', 'rank', 'search', 'podcast-list', 'podcast-subscribed', 'podcast-category', 'song-comment'].includes(activePage.value));
 // 详情页（isHeroStickyPage）使用 .playlist-detail-page 作为滚动容器，非详情页使用 .content
 const backToTopScrollHost = computed(() => isHeroStickyPage.value ? '.playlist-detail-page' : '.content');
-const contentStyle = computed<Record<string, string>>(() => (isHeroStickyPage.value ? { '--cover-bg-url': 'none' } : { '--cover-bg-url': 'none' }));
+const contentStyle = computed<Record<string, string>>(() => ({}));
 
 // ── 页面缓存策略（方案二：KeepAlive + include 显式控制）──
 // 核心页面缓存，切换时不销毁重建；详情页每次进入重新加载
@@ -983,7 +985,7 @@ function openUserFromComment(userId: number) {
   openUserDetail(userId, activePage.value);
 }
 
-function openSettings(tab: 'playback' | 'appearance' | 'account' = 'appearance') {
+function openSettings(tab: SettingsInitialTab = 'appearance') {
   navHistory.push({ page: 'settings', params: { settingsTab: tab } });
   settingsInitialTab.value = tab;
   activePage.value = 'settings';
@@ -1126,6 +1128,10 @@ function handleOpenAlbumDetail(e: Event) {
   }
 }
 
+function flushApiCacheBeforeUnload() {
+  apiCache.flushPending()
+}
+
 onMounted(async () => {
   syncViewport();
   window.addEventListener('resize', syncViewport);
@@ -1138,6 +1144,8 @@ onMounted(async () => {
   playerStore.init();
   uiStore.init();
   apiCache.init();
+  // 桌面端退出前强制写入缓存（防抖窗口内可能丢失的写入）
+  window.addEventListener('beforeunload', flushApiCacheBeforeUnload);
 
   // 并行：登录验证和 API 就绪检测同时进行
   // refreshLoginStatus 首次调用可能因 API 未就绪而失败，静默处理
@@ -1164,6 +1172,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('local-navigate', handleLocalNavigate);
   window.removeEventListener('open-tray-settings', openTraySettings);
   window.removeEventListener('open-album-detail', handleOpenAlbumDetail);
+  window.removeEventListener('beforeunload', flushApiCacheBeforeUnload);
   document.removeEventListener('mini-mode-state', handleMiniModeState);
 });
 </script>

@@ -73,7 +73,19 @@
 - [x] `scripts/start-desktop.mjs`：桌面端开发模式仍启动外部 match 服务作为 fallback
 - [x] `electron/unblock-native-match.js`：增加 `mod.default` 类型检查 + 诊断日志
 
-### 4.3 缓存匹配结果
+### 4.3 IPC Structured Clone 安全加固
+
+Electron `ipcRenderer.send()` / `ipcRenderer.invoke()` 使用 structured clone 算法，无法序列化 Vue 响应式 Proxy、函数、DOM 节点等。项目中多处从 Pinia 响应式状态直接传递数据到 IPC 边界，导致桌面端运行时抛出 `An object could not be cloned`。
+
+| 文件 | 修复 | 说明 |
+|------|------|------|
+| `electron/preload.js` | `publishState` 增加 try-catch + JSON fallback | 首次 clone 失败后自动切换到 JSON 序列化路径，缓存标记避免重复异常 |
+| `electron/preload.js` | `matchSong` 参数 `[...sources]` 展开 | `unblockSources` 来自 Pinia 响应式数组，直接传入 IPC 会 clone 失败 |
+| `src/player/runtimeState.ts` | `sanitizeTrackForIPC()` + `toPlaybackSnapshot()` | 每次 snapshot 创建时剥离非可序列化属性；在 IPC snapshot 构造阶段保留原始 `id` 值（本地歌曲通常为 MD5 字符串），避免在这里提前 `Number()` 强转 |
+
+**同类问题防范**：任何从 Vue 响应式状态传入 IPC 的数据（`ipcRenderer.send` / `invoke`），都需要先转为纯对象。可通过 `JSON.parse(JSON.stringify(...))` 或手动展开。
+
+### 4.4 缓存匹配结果
 - [ ] `Map<songId, {url, source, br, size}>`
 - [ ] 同一切歌不需要重复匹配
 - [ ] 缓存过期策略

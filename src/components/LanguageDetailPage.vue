@@ -80,6 +80,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
+import { useDominantColor } from '../composables/useDominantColor';
 import { getTopPlaylists, getHighQualityPlaylists } from '../api/music';
 import { apiCache, CACHE_TTL } from '../stores/apiCache';
 import { resolvePlaylistCoverUrl } from '../utils/image';
@@ -127,9 +128,6 @@ const hasMore = ref(false);
 
 let fetchToken = 0;
 
-const { refresh } = useDetailStickyState();
-  // scrollHostSelector removed: useDetailStickyState doesn't accept this parameter
-
 /** 计算实际要查的歌单分类 */
 const playlistCategory = computed(() => {
   return LANGUAGE_TO_CATEGORY[props.languageName] || props.languageName;
@@ -145,6 +143,9 @@ const heroCoverUrl = computed(() => {
   if (!first) return '';
   return resolveCover(first);
 });
+
+useDominantColor(heroCoverUrl);
+const { refresh } = useDetailStickyState(heroCoverUrl, !!props.embedded);
 
 function resolveCover(item: any) {
   return resolvePlaylistCoverUrl(item.coverImgUrl || item.picUrl || '', 800);

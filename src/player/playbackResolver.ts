@@ -106,7 +106,9 @@ function getFallbackLevels(level: string) {
 
 async function fetchOfficialUrl(apiBaseUrl: string, trackId: number, level: string, loginCookie: string | undefined) {
   const qs = `id=${trackId}&level=${level}${loginCookie ? '&cookie=' + encodeURIComponent(loginCookie) : ''}`;
-  const directRes = await fetch(`${apiBaseUrl}/song/url/v1?${qs}`);
+  const directRes = await fetch(`${apiBaseUrl}/song/url/v1?${qs}`, {
+    signal: AbortSignal.timeout(8000),
+  });
   const directData = await directRes.json();
   const item = Array.isArray(directData?.data) ? directData.data[0] : null;
   return {

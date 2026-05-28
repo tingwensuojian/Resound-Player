@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 export type LoginIntent = 'like' | 'playlist' | 'subscribe' | 'none';
-export type ToastType = 'warning' | 'success' | 'error';
+export type ToastType = 'warning' | 'success' | 'error' | 'info';
 
 export const useLoginModalStore = defineStore('loginModal', () => {
   const visible = ref(false);

@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld('appEnv', {
   },
   // ── 内置 unblock 匹配桥 ──
   unblockBridge: {
-    matchSong: (id, sources) => ipcRenderer.invoke('unblock:match-song', id, sources),
+    matchSong: (id, sources) => ipcRenderer.invoke('unblock:match-song', id, Array.isArray(sources) ? [...sources] : []),
     isReady: () => ipcRenderer.invoke('unblock:is-native-ready'),
   },
   // ── 系统托盘歌词 API ──
@@ -77,7 +77,25 @@ contextBridge.exposeInMainWorld('appEnv', {
     },
   },
   playback: {
-    publishState: (snapshot) => ipcRenderer.send('playback:publish-state', snapshot),
+    // ── publishState: structured-clone-safe IPC ──
+    // ipcRenderer.send() uses structured clone which fails on Vue proxies / non-plain refs.
+    // On first failure, switch to JSON round-trip sanitised path and cache the flag.
+    publishState: (() => {
+      let _needsSanitize = false;
+      return (snapshot) => {
+        if (_needsSanitize) {
+          try { ipcRenderer.send('playback:publish-state', JSON.parse(JSON.stringify(snapshot))); } catch {}
+          return;
+        }
+        try {
+          ipcRenderer.send('playback:publish-state', snapshot);
+        } catch {
+          _needsSanitize = true;
+          console.warn('[preload] publishState structured-clone failed, falling back to JSON sanitise');
+          try { ipcRenderer.send('playback:publish-state', JSON.parse(JSON.stringify(snapshot))); } catch {}
+        }
+      };
+    })(),
     sendCommand: (command) => ipcRenderer.send('playback:command', command),
     getInitialSnapshot: () => ipcRenderer.invoke('playback:get-initial-snapshot'),
     onState: (cb) => {

@@ -789,31 +789,31 @@ ipcMain.handle('playback:get-initial-snapshot', () => latestPlaybackSnapshot);
 // ── 缓存持久化 IPC ──
 const CACHE_FILE = path.join(app.getPath('userData'), 'api-cache.json');
 
-ipcMain.handle('cache:get', () => {
+ipcMain.handle('cache:get', async () => {
   try {
-    const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
-    return JSON.parse(raw);
+    return await fs.promises.readFile(CACHE_FILE, 'utf-8');
   } catch {
     return null;
   }
 });
 
-ipcMain.handle('cache:set', (_event, data) => {
+ipcMain.handle('cache:set', async (_event, data) => {
   try {
     const dir = path.dirname(CACHE_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(CACHE_FILE, data, 'utf-8');
+    await fs.promises.mkdir(dir, { recursive: true });
+    await fs.promises.writeFile(CACHE_FILE, data, 'utf-8');
     return true;
   } catch {
     return false;
   }
 });
 
-ipcMain.handle('cache:clear', () => {
+ipcMain.handle('cache:clear', async () => {
   try {
-    if (fs.existsSync(CACHE_FILE)) fs.unlinkSync(CACHE_FILE);
+    await fs.promises.unlink(CACHE_FILE);
     return true;
-  } catch {
+  } catch (error) {
+    if (error && error.code === 'ENOENT') return true;
     return false;
   }
 });
@@ -1746,9 +1746,11 @@ function updateContent(d) {
   if (d.mode) _state.mode = d.mode;
   if (d.showTranslation !== undefined) _state.showTranslation = d.showTranslation;
   if (d.showRomalrc !== undefined) _state.showRomalrc = d.showRomalrc;
-  if (d.alwaysShowBg !== undefined) { _state.alwaysShowBg = d.alwaysShowBg; }
-  if (_state.alwaysShowBg) document.body.classList.add('show-bg');
-  else if (!_state.alwaysShowBg) document.body.classList.remove('show-bg');
+  if (d.alwaysShowBg !== undefined && d.alwaysShowBg !== _state.alwaysShowBg) {
+    _state.alwaysShowBg = d.alwaysShowBg;
+    if (_state.alwaysShowBg) document.body.classList.add('show-bg');
+    else document.body.classList.remove('show-bg');
+  }
   renderLines();
   updateModeBtn();
 }

@@ -387,9 +387,11 @@ onBeforeUnmount(() => {
   padding: 22px;
   border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
   border-radius: 24px;
+  background-color: var(--bg-solid);
   background:
     radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 38%),
-    linear-gradient(145deg, color-mix(in srgb, var(--bg-surface) 88%, rgba(15, 23, 42, 0.04)), color-mix(in srgb, var(--bg-muted) 92%, rgba(255, 255, 255, 0.02)));
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-solid) 96%, rgba(15, 23, 42, 0.05)), color-mix(in srgb, var(--bg-solid) 92%, rgba(255, 255, 255, 0.08))),
+    var(--bg-solid);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
 }
 
@@ -434,7 +436,7 @@ onBeforeUnmount(() => {
   padding: 7px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-solid));
   font-size: var(--text-label-sm);
   color: var(--text-main);
 }
@@ -446,7 +448,7 @@ onBeforeUnmount(() => {
   width: fit-content;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-muted) 92%, transparent);
+  background: color-mix(in srgb, var(--bg-solid) 96%, #fff);
 }
 
 .tab-btn {
@@ -461,7 +463,7 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn.active {
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-solid));
   color: var(--accent);
   font-weight: 700;
 }
@@ -472,7 +474,7 @@ onBeforeUnmount(() => {
   padding: var(--space-5);
   border: 1px solid var(--border);
   border-radius: 20px;
-  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  background: color-mix(in srgb, var(--bg-solid) 98%, #fff);
   min-height: 0;
   overflow: visible;
 }
@@ -501,7 +503,7 @@ onBeforeUnmount(() => {
   padding: 0 16px;
   border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-solid));
   color: var(--accent);
   font-weight: 700;
   cursor: pointer;
@@ -522,7 +524,7 @@ onBeforeUnmount(() => {
 .status-card {
   border: 1px solid var(--border);
   border-radius: 18px;
-  background: var(--bg-muted);
+  background: color-mix(in srgb, var(--bg-solid) 96%, #fff);
 }
 
 .qr-box {
@@ -588,7 +590,7 @@ onBeforeUnmount(() => {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--bg-muted);
+  background: color-mix(in srgb, var(--bg-solid) 96%, #fff);
   color: var(--text-main);
   box-sizing: border-box;
 }
@@ -631,7 +633,7 @@ onBeforeUnmount(() => {
   gap: var(--space-3);
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--bg-muted);
+  background: color-mix(in srgb, var(--bg-solid) 96%, #fff);
   color: var(--text-main);
   text-align: left;
   cursor: pointer;

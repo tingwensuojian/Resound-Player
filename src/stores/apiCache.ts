@@ -22,6 +22,8 @@ export interface CacheEntry {
   data: any;
   timestamp: number;
   ttl: number;
+  /** 最近一次访问时间，用于 LRU 淘汰。旧数据缺失时回退到 timestamp */
+  lastAccessed: number;
 }
 
 // ---- 缓存后端接口（支持 Web / Electron 双平台） ----
@@ -64,6 +66,7 @@ class MemoryBackend implements CacheBackend {
 
 class ElectronFileBackend implements CacheBackend {
   private cache = new Map<string, CacheEntry>();
+  private _persistTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.loadFromDisk();
@@ -73,10 +76,12 @@ class ElectronFileBackend implements CacheBackend {
     try {
       const raw = await window.appEnv?.cacheApi?.getItem();
       if (!raw) return;
-      const all = JSON.parse(raw) as Record<string, CacheEntry>;
+      const all = (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, CacheEntry>;
       const now = Date.now();
       for (const [key, entry] of Object.entries(all)) {
         if (now - entry.timestamp <= entry.ttl) {
+          // 兼容旧数据：缺失 lastAccessed 时回退到 timestamp
+          if (!entry.lastAccessed) entry.lastAccessed = entry.timestamp;
           this.cache.set(key, entry);
         }
       }
@@ -85,6 +90,7 @@ class ElectronFileBackend implements CacheBackend {
     }
   }
 
+  /** 立即写入磁盘 */
   private persistToDisk() {
     try {
       const all: Record<string, CacheEntry> = {};
@@ -92,10 +98,9 @@ class ElectronFileBackend implements CacheBackend {
         all[key] = entry;
       }
       const json = JSON.stringify(all);
-      // Limit to ~4MB; trim oldest entries if too large
       if (json.length > 4 * 1024 * 1024) {
         const sorted = [...this.cache.entries()]
-          .sort(([, a], [, b]) => b.timestamp - a.timestamp)
+          .sort(([, a], [, b]) => (b.lastAccessed ?? b.timestamp) - (a.lastAccessed ?? a.timestamp))
           .slice(0, 300);
         this.cache.clear();
         for (const [k, v] of sorted) this.cache.set(k, v);
@@ -110,21 +115,43 @@ class ElectronFileBackend implements CacheBackend {
     }
   }
 
+  /** 防抖写入（2s 合并多次写入） */
+  persistDebounced() {
+    if (this._persistTimer) clearTimeout(this._persistTimer);
+    this._persistTimer = setTimeout(() => {
+      this._persistTimer = null;
+      this.persistToDisk();
+    }, 2000);
+  }
+
+  /** 应用退出前强制写入 */
+  flushPending() {
+    if (this._persistTimer) {
+      clearTimeout(this._persistTimer);
+      this._persistTimer = null;
+      this.persistToDisk();
+    }
+  }
+
   get(key: string): CacheEntry | null {
     return this.cache.get(key) ?? null;
   }
 
   set(key: string, entry: CacheEntry): void {
     this.cache.set(key, entry);
-    this.persistToDisk();
+    this.persistDebounced();
   }
 
   delete(key: string): void {
     this.cache.delete(key);
-    this.persistToDisk();
+    this.persistDebounced();
   }
 
   clear(): void {
+    if (this._persistTimer) {
+      clearTimeout(this._persistTimer);
+      this._persistTimer = null;
+    }
     this.cache.clear();
     window.appEnv?.cacheApi?.clear();
   }
@@ -154,6 +181,11 @@ export const CACHE_MAX = {
   LIST_SMALL: 50,
 } as const;
 
+type CacheBucket = {
+  name: string;
+  max: number;
+};
+
 // ---- localStorage 持久化 ----
 
 const LOCALSTORAGE_KEY = 'gm_api_cache_v1';
@@ -168,7 +200,7 @@ function schedulePersist(data: Record<string, CacheEntry>) {
       if (json.length > 4 * 1024 * 1024) {
         // 超过 4MB 只保留最近的 100 条
         const entries = Object.entries(data)
-          .sort(([, a], [, b]) => b.timestamp - a.timestamp)
+          .sort(([, a], [, b]) => (b.lastAccessed ?? b.timestamp) - (a.lastAccessed ?? a.timestamp))
           .slice(0, 100);
         const slim: Record<string, CacheEntry> = {};
         for (const [k, v] of entries) slim[k] = v;
@@ -191,6 +223,8 @@ function hydrateFromStorage(backend: MemoryBackend) {
     const now = Date.now();
     for (const [key, entry] of Object.entries(all)) {
       if (now - entry.timestamp <= entry.ttl) {
+        // 兼容旧数据：缺失 lastAccessed 时回退到 timestamp
+        if (!entry.lastAccessed) entry.lastAccessed = entry.timestamp;
         (backend as any).cache.set(key, entry);
       }
     }
@@ -233,6 +267,30 @@ export function buildCacheKey(baseKey: string): string {
   const userStore = useUserStore();
   const uid = userStore.state.isLogin ? userStore.state.profile?.userId : undefined;
   return uid ? `${baseKey}@${uid}` : baseKey;
+}
+
+function stripUserScopeSuffix(key: string): string {
+  const at = key.lastIndexOf('@');
+  if (at < 0) return key;
+  const suffix = key.slice(at + 1);
+  return /^\d+$/.test(suffix) ? key.slice(0, at) : key;
+}
+
+function resolveCacheBucket(key: string): CacheBucket {
+  const rawKey = stripUserScopeSuffix(key);
+  if (rawKey.startsWith('song:')) return { name: 'song', max: CACHE_MAX.ENTITY };
+  if (rawKey.startsWith('album:')) return { name: 'album', max: CACHE_MAX.LIST };
+  if (rawKey.startsWith('artist:')) return { name: 'artist', max: CACHE_MAX.LIST };
+  if (rawKey.startsWith('podcast:')) return { name: 'podcast', max: CACHE_MAX.LIST };
+  if (rawKey.startsWith('playlist:highquality:')) return { name: 'playlist:highquality', max: CACHE_MAX.LIST_SMALL };
+  if (rawKey.startsWith('playlist:list:')) return { name: 'playlist:list', max: CACHE_MAX.LIST };
+  if (rawKey.startsWith('playlist:')) return { name: 'playlist', max: CACHE_MAX.LIST };
+  if (rawKey.startsWith('toplist:')) return { name: 'toplist', max: CACHE_MAX.LIST_SMALL };
+  if (rawKey.startsWith('mv:list:')) return { name: 'mv:list', max: CACHE_MAX.LIST_SMALL };
+  if (rawKey.startsWith('lang:playlist:')) return { name: 'lang:playlist', max: CACHE_MAX.LIST };
+  if (rawKey.startsWith('daily:')) return { name: 'daily', max: CACHE_MAX.LIST };
+  if (rawKey.startsWith('radar:')) return { name: 'radar', max: CACHE_MAX.LIST };
+  return { name: 'default', max: CACHE_MAX.LIST };
 }
 
 // ---- 定时清理 ----
@@ -279,7 +337,9 @@ export const apiCache = reactive({
       this._backend?.delete(fullKey);
       return null;
     }
-    // LRU：重新 set 更新访问顺序
+    // LRU：更新 lastAccessed 并重新 set
+    const now = Date.now();
+    entry.lastAccessed = now;
     this._backend?.delete(fullKey);
     this._backend?.set(fullKey, entry);
     return entry;
@@ -293,11 +353,13 @@ export const apiCache = reactive({
   /** 写入缓存 */
   set(key: string, data: any, ttl: number = CACHE_TTL.LIST): void {
     const fullKey = buildCacheKey(key);
+    const now = Date.now();
     this._backend?.delete(fullKey); // 先删后插，确保 LRU 顺序
     this._backend?.set(fullKey, {
       data,
-      timestamp: Date.now(),
+      timestamp: now,
       ttl,
+      lastAccessed: now,
     });
     // 内存后端同步到 localStorage
     if (this._backend instanceof MemoryBackend) {
@@ -326,37 +388,72 @@ export const apiCache = reactive({
     const uid = userStore.state.isLogin ? userStore.state.profile?.userId : undefined;
     if (!uid) return;
     const suffix = `@${uid}`;
-    // 不支持枚举所有 key 的后端（如 Electron 文件）需要整体清除
-    // 内存后端支持枚举
-    if (this._backend instanceof MemoryBackend) {
-      const map = (this._backend as any).cache as Map<string, CacheEntry>;
-      for (const key of map.keys()) {
+    // MemoryBackend 和 ElectronFileBackend 都有内部 Map，可枚举
+    const map = (this._backend as any)?.cache as Map<string, CacheEntry> | undefined;
+    if (map) {
+      let changed = false;
+      for (const key of [...map.keys()]) {
         if (key.includes(suffix)) {
           map.delete(key);
+          changed = true;
         }
       }
-      persistFromMemoryBackend(this._backend);
+      if (changed) {
+        if (this._backend instanceof MemoryBackend) {
+          persistFromMemoryBackend(this._backend);
+        } else if (this._backend instanceof ElectronFileBackend) {
+          this._backend.persistDebounced();
+        }
+      }
     } else {
-      // 非内存后端保守清除全部
+      // 未知后端：保守清除全部
       this._backend?.clear();
     }
   },
 
-  /** 清理过期条目 */
+  /** 清理过期条目 + LRU 容量淘汰 */
   _runCleanup() {
     if (!this._backend) return;
     const now = Date.now();
     if (now - this._lastCleanup < CLEANUP_INTERVAL) return;
     this._lastCleanup = now;
 
-    if (this._backend instanceof MemoryBackend) {
-      const map = (this._backend as any).cache as Map<string, CacheEntry>;
-      for (const [key, entry] of map) {
-        if (now - entry.timestamp > entry.ttl) {
-          map.delete(key);
-        }
+    const map = (this._backend as any)?.cache as Map<string, CacheEntry> | undefined;
+    if (!map) return;
+
+    // 1. 清理过期条目
+    for (const [key, entry] of map) {
+      if (now - entry.timestamp > entry.ttl) {
+        map.delete(key);
       }
+    }
+
+    // 2. CACHE_MAX 容量淘汰：按缓存族分别执行 LRU，避免全局 500 条误删
+    const bucketed = new Map<string, { max: number; entries: [string, CacheEntry][] }>();
+    for (const [key, entry] of map.entries()) {
+      const bucket = resolveCacheBucket(key);
+      const group = bucketed.get(bucket.name);
+      if (group) {
+        group.entries.push([key, entry]);
+      } else {
+        bucketed.set(bucket.name, { max: bucket.max, entries: [[key, entry]] });
+      }
+    }
+    for (const { max, entries } of bucketed.values()) {
+      if (entries.length <= max) continue;
+      const toRemove = entries
+        .sort(([, a], [, b]) => (a.lastAccessed ?? a.timestamp) - (b.lastAccessed ?? b.timestamp))
+        .slice(0, entries.length - max);
+      for (const [key] of toRemove) {
+        map.delete(key);
+      }
+    }
+
+    // 3. 持久化
+    if (this._backend instanceof MemoryBackend) {
       persistFromMemoryBackend(this._backend);
+    } else if (this._backend instanceof ElectronFileBackend) {
+      this._backend.persistDebounced();
     }
   },
 
@@ -364,5 +461,12 @@ export const apiCache = reactive({
     setInterval(() => {
       this._runCleanup();
     }, CLEANUP_INTERVAL);
+  },
+
+  /** 应用退出前强制写入（供 before-quit 调用） */
+  flushPending() {
+    if (this._backend instanceof ElectronFileBackend) {
+      this._backend.flushPending();
+    }
   },
 });

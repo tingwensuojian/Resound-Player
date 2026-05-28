@@ -451,7 +451,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
-type SettingsTabKey = 'playback' | 'appearance' | 'account' | 'about';
+type SettingsTabKey = 'playback' | 'appearance' | 'local' | 'account' | 'about';
 
 const props = withDefaults(
   defineProps<{
@@ -507,9 +507,18 @@ const allTabs = [
   { key: 'about', label: '关于' },
 ] as const;
 
-const tabs = computed(() => allTabs);
+function isTabAvailable(tab: SettingsTabKey) {
+  if (tab === 'local') return platform.isDesktop;
+  return true;
+}
 
-const activeTab = ref<SettingsTabKey>(props.initialTab);
+function normalizeTab(tab: SettingsTabKey): SettingsTabKey {
+  return isTabAvailable(tab) ? tab : 'appearance';
+}
+
+const tabs = computed(() => allTabs.filter((tab) => isTabAvailable(tab.key)));
+
+const activeTab = ref<SettingsTabKey>(normalizeTab(props.initialTab));
 
 const groupsMap: Record<string, SettingGroup[]> = {
   playback: [
@@ -658,7 +667,7 @@ const showEmptyAccountState = computed(() => activeTab.value === 'account' && !c
 watch(
   () => props.initialTab,
   (tab) => {
-    activeTab.value = tab;
+    activeTab.value = normalizeTab(tab);
   },
   { immediate: true },
 );

@@ -83,8 +83,7 @@ export const platform = {
    */
   get isDesktop(): boolean {
     if (typeof window === 'undefined') return false
-    if (!!(window as any).appEnv?.isDesktop) return true
-    return typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron')
+    return Boolean((window as any).appEnv?.isDesktop)
   },
 
   /**

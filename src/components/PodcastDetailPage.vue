@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[embedded && 'playlist-detail-page--embedded', 'podcast-detail-page']">
+  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[embedded && 'playlist-detail-page--embedded']">
     <div v-if="!embedded" class="playlist-detail-back">
       <button class="back-btn" type="button" @click="emit('back')">← 返回播客列表</button>
     </div>
@@ -12,7 +12,7 @@
       loading-text="播客详情加载中…"
     >
       <template #media>
-        <HeroCoverMedia :src="hero.coverUrl" :alt="heroTitle" />
+        <HeroCoverMedia :src="coverUrl" :alt="heroTitle" />
       </template>
       <template #title>
         <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="title">{{ heroTitle }}</AnimatedAppear>
@@ -127,6 +127,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
+import { useDominantColor } from '../composables/useDominantColor';
 import AnimatedAppear from './AnimatedAppear.vue';
 import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
 import HeroCoverMedia from './HeroCoverMedia.vue';
@@ -196,9 +197,11 @@ const hero = computed(() => {
 const heroTitle = computed(() => hero.value.name || props.title || '当前播客');
 const heroDescription = computed(() => hero.value.description || '暂无简介，后续可继续补充节目说明和更完整的播客元数据。');
 const shouldShowDescriptionToggle = computed(() => heroDescription.value.length > DESC_COLLAPSE_THRESHOLD);
+const coverUrl = computed(() => hero.value.coverUrl?.trim() || '');
+useDominantColor(coverUrl);
 
 const { refresh } = useDetailStickyState(
-  computed(() => hero.value.coverUrl?.trim() || ''),
+  coverUrl,
   !!props.embedded,
 );
 
@@ -402,10 +405,6 @@ watch(
 
 <style scoped>
 @import '../styles/detail-page.css';
-
-.podcast-detail-page {
-  /* 不再覆盖 display:grid，沿用 .playlist-detail-page 的 display:flex 以避免间距不一致 */
-}
 
 .podcast-song-item {
   display: grid;

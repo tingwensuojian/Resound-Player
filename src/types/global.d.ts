@@ -54,6 +54,11 @@ interface LocalApi {
 interface Window {
   localApi?: LocalApi
   appEnv?: {
+    cacheApi?: {
+      getItem: () => Promise<string | null>
+      setItem: (data: string) => Promise<boolean>
+      clear: () => Promise<boolean>
+    }
     windowRole?: 'main' | 'mini'
     window?: {
       setBackgroundColor?: (color: string) => void

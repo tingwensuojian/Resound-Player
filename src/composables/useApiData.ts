@@ -17,7 +17,7 @@
  * )
  * ```
  */
-import { ref, watch, readonly, type Ref } from 'vue';
+import { computed, readonly, ref, unref, watch, type Ref } from 'vue';
 import { apiCache, CACHE_TTL, type CacheEntry } from '../stores/apiCache';
 import { dedup } from '../utils/requestDedup';
 import { useUserStore } from '../stores/user';
@@ -25,9 +25,7 @@ import { useUserStore } from '../stores/user';
 export interface UseApiDataOptions<T> {
   /** 缓存 TTL（毫秒），默认使用缓存分组的默认 TTL */
   ttl?: number;
-  /** 请求去重窗口（毫秒），默认 2000 */
-  dedupMs?: number;
-  /** 是否启用，默认 true */
+  /** 是否启用，默认 true。设为 false 时不发起请求，切换为 true 时自动加载 */
   enabled?: boolean | Ref<boolean>;
   /** 一次性数据，启用后缓存命中时不发起后台刷新 */
   immutable?: boolean;
@@ -67,7 +65,13 @@ export function useApiData<T>(
   const loading = ref(false);
   const error = ref('');
   let loadToken = 0;
-  const enabledRef = options?.enabled ?? ref(true);
+  const enabledRef = computed(() => Boolean(unref(options?.enabled ?? true)));
+
+  function resetState(): void {
+    data.value = null;
+    loading.value = false;
+    error.value = '';
+  }
 
   /** 解析当前 cacheKey */
   function resolveKey(): string {
@@ -76,11 +80,15 @@ export function useApiData<T>(
 
   /** 核心加载函数 */
   async function load(skipCache = false): Promise<void> {
+    if (!enabledRef.value) {
+      loadToken += 1;
+      resetState();
+      return;
+    }
+
     const key = resolveKey();
     if (!key) {
-      data.value = null;
-      loading.value = false;
-      error.value = '';
+      resetState();
       return;
     }
 
@@ -138,6 +146,7 @@ export function useApiData<T>(
 
   /** 强制刷新（跳过缓存） */
   async function refresh(): Promise<void> {
+    if (!enabledRef.value) return;
     await load(true);
   }
 
@@ -150,16 +159,19 @@ export function useApiData<T>(
     }
   }
 
-  // 监听 cacheKey 变化自动重新加载
+  // 监听 cacheKey / 登录态 / enabled 变化自动重新加载
   watch(
-    [resolveKey, () => userStore.state.isLogin],
-    ([newKey]) => {
+    [resolveKey, () => userStore.state.isLogin, enabledRef],
+    ([newKey, , enabled]) => {
+      if (!enabled) {
+        loadToken += 1;
+        resetState();
+        return;
+      }
       if (newKey) {
         load();
       } else {
-        data.value = null;
-        loading.value = false;
-        error.value = '';
+        resetState();
       }
     },
     { immediate: true },

@@ -11,7 +11,7 @@ import { resolvePlayUrl } from '../player/playbackResolver';
 import { useUiStore } from './ui';
 import { getPlayerRuntime, initPlayerRuntime } from '../player/runtime';
 import { getPlaybackSnapshot, subscribePlaybackSnapshot } from '../player/bridge';
-import type { PlaybackCommand } from '../player/contracts';
+import type { PlaybackCommand, PlaybackSnapshot } from '../player/contracts';
 
 type Artist = { name: string };
 type Album = { name?: string; picUrl?: string };
@@ -284,11 +284,11 @@ export const usePlayerStore = defineStore('player', () => {
     if (!runtime) {
       hydrateCache();
       hydrate();
-      window.appEnv?.playback?.getInitialSnapshot?.().then((snapshot) => {
+      window.appEnv?.playback?.getInitialSnapshot?.().then((snapshot: PlaybackSnapshot | null | undefined) => {
         if (snapshot) applyPlaybackSnapshot(snapshot);
       }).catch(() => {});
       stopPlaybackStateSubscription?.();
-      stopPlaybackStateSubscription = window.appEnv?.playback?.onState?.((snapshot) => {
+      stopPlaybackStateSubscription = window.appEnv?.playback?.onState?.((snapshot: PlaybackSnapshot | null | undefined) => {
         if (snapshot) applyPlaybackSnapshot(snapshot);
       }) || null;
       stopPlaybackCommandSubscription?.();
@@ -304,7 +304,7 @@ export const usePlayerStore = defineStore('player', () => {
       window.appEnv?.playback?.publishState?.(snapshot);
     });
     stopPlaybackCommandSubscription?.();
-    stopPlaybackCommandSubscription = window.appEnv?.playback?.onCommand?.((command) => {
+    stopPlaybackCommandSubscription = window.appEnv?.playback?.onCommand?.((command: PlaybackCommand) => {
       void executeHostCommand(command);
     }) || null;
 
@@ -1110,18 +1110,21 @@ export const usePlayerStore = defineStore('player', () => {
       await playByIndex(Math.max(0, state.currentIndex));
       return;
     }
+    if (!state.audio) return;
+
+    const audio = state.audio;
 
     // 刷新后可能仅恢复了歌曲信息，但 audio.src 尚未恢复
     // 此时直接 audio.play() 会失败，需要先重新拉取播放地址
-    if (state.audio.paused) {
-      const hasSource = Boolean(state.audio.src || state.audio.currentSrc);
+    if (audio.paused) {
+      const hasSource = Boolean(audio.src || audio.currentSrc);
       if (!hasSource && state.currentTrack) {
         await playTrack(state.currentTrack);
         return;
       }
 
       try {
-        await state.audio.play();
+        await audio.play();
         state.isPlaying = true;
         syncRuntimeState();
       } catch {
@@ -1131,7 +1134,7 @@ export const usePlayerStore = defineStore('player', () => {
         }
       }
     } else {
-      state.audio.pause();
+      audio.pause();
       state.isPlaying = false;
       syncRuntimeState();
     }

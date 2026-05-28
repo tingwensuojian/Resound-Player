@@ -44,10 +44,34 @@ export function createInitialRuntimeState(): RuntimeState {
   };
 }
 
+/** Strip non-cloneable properties (Vue proxies, functions, etc.) for IPC-safe transfer. */
+function sanitizeTrackForIPC(t: PlaybackTrack | null): PlaybackTrack | null {
+  if (!t) return null;
+  return {
+    id: t.id as any,
+    name: String(t.name || ''),
+    ar: Array.isArray(t.ar) ? t.ar.map((a) => ({ name: String(a?.name || '') })) : [],
+    al: t.al ? { name: String(t.al.name || ''), picUrl: t.al.picUrl ? String(t.al.picUrl) : undefined } : undefined,
+    url: t.url ? String(t.url) : undefined,
+    source: t.source,
+    podcast: t.podcast ? {
+      rid: t.podcast.rid, programId: t.podcast.programId,
+      createTime: t.podcast.createTime, feeBadge: t.podcast.feeBadge, feeTone: t.podcast.feeTone,
+    } : undefined,
+    liked: Boolean(t.liked),
+    isLiked: Boolean(t.isLiked),
+    description: t.description ? String(t.description) : undefined,
+    cloudSid: t.cloudSid,
+    cloudOwnerId: t.cloudOwnerId,
+    uid: t.uid,
+    path: t.path ? String(t.path) : undefined,
+  };
+}
+
 export function toPlaybackSnapshot(state: RuntimeState): PlaybackSnapshot {
   return {
-    currentTrack: state.currentTrack,
-    playlist: state.playlist,
+    currentTrack: sanitizeTrackForIPC(state.currentTrack),
+    playlist: Array.isArray(state.playlist) ? state.playlist.map(sanitizeTrackForIPC).filter(Boolean) as PlaybackTrack[] : [],
     currentIndex: state.currentIndex,
     miniLyricText: state.miniLyricText,
     isPlaying: state.isPlaying,
