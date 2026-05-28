@@ -101,6 +101,10 @@ export default defineConfig(({ mode }) => {
       entries: ['index.html', 'mini.html'],
     },
     build: {
+      // `three` / `tubes1` are intentionally lazy-loaded visual effect chunks.
+      // Keep the warning threshold above those optional assets so the build output
+      // focuses on actionable regressions in eagerly loaded code.
+      chunkSizeWarningLimit: 800,
       rollupOptions: {
         input: {
           main: path.resolve(process.cwd(), 'index.html'),

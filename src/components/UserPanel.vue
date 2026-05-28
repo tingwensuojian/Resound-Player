@@ -66,13 +66,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import AnimatedAppear from './AnimatedAppear.vue';
 import LoginPanel from './LoginPanel.vue';
 import UserSplitView from './UserSplitView.vue';
 import PlaylistDetailPage from './PlaylistDetailPage.vue';
 import AlbumDetailPage from './AlbumDetailPage.vue';
-import PodcastDetailPage from './PodcastDetailPage.vue';
+const PodcastDetailPage = defineAsyncComponent(() => import('./PodcastDetailPage.vue'));
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserDetail, getUserPlaylist } from '../api/auth';
 import { getAlbumDetail, getAlbumSublist, getCloudStorage, getCloudStorageDetail, getDjDetail, getDjProgram, getDjSublist, getSongUrl } from '../api/music';
 import { usePlayerStore } from '../stores/player'

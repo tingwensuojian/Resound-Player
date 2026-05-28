@@ -205,12 +205,12 @@ import SearchPage from './components/SearchPage.vue';
 import RankPanel from './components/RankPanel.vue';
 import MvPanel from './components/MvPanel.vue';
 import LoginModal from './components/LoginModal.vue';
-import UserPanel from './components/UserPanel.vue';
-import HistoryPanel from './components/HistoryPanel.vue';
 import Sidebar from './components/Sidebar.vue';
 import TopBar from './components/TopBar.vue';
 
 /* ---- 二级页面懒加载 ---- */
+const UserPanel = defineAsyncComponent(() => import('./components/UserPanel.vue'));
+const HistoryPanel = defineAsyncComponent(() => import('./components/HistoryPanel.vue'));
 const SettingsPage = defineAsyncComponent(() => import('./components/SettingsPage.vue'));
 const StatsPage = defineAsyncComponent(() => import('./components/StatsPage.vue'));
 const SongCommentPage = defineAsyncComponent(() => import('./components/SongCommentPage.vue'));
