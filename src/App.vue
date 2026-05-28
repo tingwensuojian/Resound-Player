@@ -315,8 +315,8 @@ const sidebarActiveKey = computed(() => {
 
 const isHeroStickyPage = computed(() => ['playlist-detail', 'rank-detail', 'artist-detail', 'album-detail', 'user-detail', 'language-detail', 'podcast-detail'].includes(activePage.value));
 const showBackToTop = computed(() => isHeroStickyPage.value || ['history', 'user', 'mv', 'playlist', 'rank', 'search', 'podcast-list', 'podcast-subscribed', 'podcast-category', 'song-comment'].includes(activePage.value));
-// 详情页（isHeroStickyPage）使用 .playlist-detail-page 作为滚动容器，非详情页使用 .content
-const backToTopScrollHost = computed(() => isHeroStickyPage.value ? '.playlist-detail-page' : '.content');
+// 详情页（isHeroStickyPage）使用 .detail-scroll-host 作为滚动容器，非详情页使用 .content
+const backToTopScrollHost = computed(() => isHeroStickyPage.value ? '.detail-scroll-host' : '.content');
 const contentStyle = computed<Record<string, string>>(() => ({}));
 
 // ── 页面缓存策略（方案二：KeepAlive + include 显式控制）──

@@ -322,9 +322,13 @@ onMounted(remeasureHeight);
  * 嵌入模式变体 — progress 驱动偏移
  * ========================================= */
 .playlist-detail-header-wrap.detail-sticky-header--embedded {
-  top: calc(0px - var(--sticky-progress, 0) * 18px);
+  top: 0;
   margin: 0 -18px 0;
-  padding: var(--space-3) 18px;
+  padding-left: 18px;
+  padding-right: 18px;
+  /* 用户页右侧 embedded 详情没有返回按钮，不再预留顶部空白区 */
+  padding-top: 0;
+  padding-bottom: calc(var(--space-3) - var(--sticky-progress, 0) * 8px);
 }
 
 /* 嵌入 + 吸顶态 — 用 width + 负 margin 填满 .detail-panel 的 padding 区域 */
@@ -332,6 +336,7 @@ onMounted(remeasureHeight);
   width: calc(100% + 36px) !important;
   margin: 0 -18px !important;
   box-sizing: border-box;
+  padding-top: 0;
 }
 
 /* =========================================

@@ -50,7 +50,7 @@ const props = withDefaults(
     rowHeight?: number
     overscan?: number
     scrollMode?: 'self' | 'parent'
-    scrollHostSelector?: string
+    scrollHostSelector?: string | (() => HTMLElement | null | undefined)
     itemKey?: (item: any, index: number) => string | number
     containerClass?: string
   }>(),
@@ -77,9 +77,14 @@ const containerRef = ref<HTMLElement | null>(null)
 
 // ── parent 模式：父滚动宿主 ──
 let parentScrollHost: HTMLElement | null = null
+let parentOffsetTop = 0
 
 // ── ResizeObserver ──
 let resizeObserver: ResizeObserver | null = null
+let parentScrollRaf = 0
+let selfScrollRaf = 0
+let pendingParentScrollTop = 0
+let pendingSelfScrollTop = 0
 
 // ── key 解析 ──
 function resolveKey(item: any, index: number): string | number {
@@ -113,15 +118,43 @@ const { visibleItems, totalHeight } = useVirtualScroll({
 // ── self 模式 ──
 function onSelfScroll(e: Event) {
   const target = e.target as HTMLElement
-  scrollTop.value = Math.max(0, target.scrollTop)
+  pendingSelfScrollTop = Math.max(0, target.scrollTop)
+  if (selfScrollRaf) return
+  selfScrollRaf = requestAnimationFrame(() => {
+    scrollTop.value = pendingSelfScrollTop
+    selfScrollRaf = 0
+  })
 }
 
 // ── parent 模式 ──
 function onParentScroll() {
   if (!parentScrollHost || !containerRef.value) return
-  // 关键：每帧读取 offsetTop，适应吸顶栏折叠等动态偏移
-  const listOffset = containerRef.value.offsetTop
-  scrollTop.value = Math.max(0, parentScrollHost.scrollTop - listOffset)
+  pendingParentScrollTop = parentScrollHost.scrollTop
+  if (parentScrollRaf) return
+  parentScrollRaf = requestAnimationFrame(() => {
+    if (!parentScrollHost || !containerRef.value) {
+      parentScrollRaf = 0
+      return
+    }
+    scrollTop.value = Math.max(0, pendingParentScrollTop - parentOffsetTop)
+    parentScrollRaf = 0
+  })
+}
+
+function resolveParentScrollHost(): HTMLElement | null {
+  if (!props.scrollHostSelector) return null
+  if (typeof props.scrollHostSelector === 'function') {
+    return props.scrollHostSelector() || null
+  }
+  return document.querySelector(props.scrollHostSelector) as HTMLElement | null
+}
+
+function measureParentMetrics() {
+  if (!parentScrollHost || !containerRef.value) return
+  const hostRect = parentScrollHost.getBoundingClientRect()
+  const listRect = containerRef.value.getBoundingClientRect()
+  parentOffsetTop = Math.max(0, listRect.top - hostRect.top + parentScrollHost.scrollTop)
+  containerHeight.value = parentScrollHost.clientHeight || containerHeight.value
 }
 
 // ── 清理 ──
@@ -135,25 +168,48 @@ function unbindParentScroll() {
     parentScrollHost.removeEventListener('scroll', onParentScroll)
     parentScrollHost = null
   }
+  if (parentScrollRaf) {
+    cancelAnimationFrame(parentScrollRaf)
+    parentScrollRaf = 0
+  }
+}
+
+function unbindSelfScroll() {
+  if (selfScrollRaf) {
+    cancelAnimationFrame(selfScrollRaf)
+    selfScrollRaf = 0
+  }
 }
 
 // ── 生命周期 ──
 onMounted(() => {
   // 1. ResizeObserver（self 和 parent 都需要）
   if (containerRef.value) {
-    containerHeight.value = containerRef.value.clientHeight || containerHeight.value
+    if (props.scrollMode === 'self') {
+      containerHeight.value = containerRef.value.clientHeight || containerHeight.value
 
-    resizeObserver = new ResizeObserver(([entry]) => {
-      containerHeight.value = entry.contentRect.height
-    })
-    resizeObserver.observe(containerRef.value)
+      resizeObserver = new ResizeObserver(([entry]) => {
+        containerHeight.value = entry.contentRect.height
+      })
+      resizeObserver.observe(containerRef.value)
+    }
   }
 
   // 2. parent 模式：绑定外部滚动容器
   if (props.scrollMode === 'parent' && props.scrollHostSelector) {
-    const host = document.querySelector(props.scrollHostSelector) as HTMLElement | null
+    const host = resolveParentScrollHost()
     if (host) {
       parentScrollHost = host
+      measureParentMetrics()
+
+      resizeObserver = new ResizeObserver(() => {
+        measureParentMetrics()
+      })
+      resizeObserver.observe(parentScrollHost)
+      if (containerRef.value) {
+        resizeObserver.observe(containerRef.value)
+      }
+
       parentScrollHost.addEventListener('scroll', onParentScroll, { passive: true })
       // 初始计算一次
       onParentScroll()
@@ -164,6 +220,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   disconnectResizeObserver()
   unbindParentScroll()
+  unbindSelfScroll()
 })
 
 // ── items 变化时截断 scrollTop（Bug #2 修复） ──
@@ -184,7 +241,11 @@ function refresh() {
     parentScrollHost.scrollTop = 0
   }
   if (containerRef.value) {
-    containerHeight.value = containerRef.value.clientHeight || containerHeight.value
+    if (props.scrollMode === 'parent') {
+      measureParentMetrics()
+    } else {
+      containerHeight.value = containerRef.value.clientHeight || containerHeight.value
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page">
+  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page">
     <div class="playlist-detail-back">
       <button class="back-btn" @click="goBack">← 返回歌单</button>
     </div>
@@ -43,61 +43,63 @@
       </template>
     </DetailStickyHeroHeader>
 
-    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
-      <div v-if="!tracks.length" class="local-empty">
-        <p>歌单为空，点击"从曲库添加"添加歌曲</p>
-      </div>
-
-      <div v-if="tracks.length" class="local-song-list">
-        <div
-          v-for="(track, idx) in tracks"
-          :key="track.id"
-          class="local-song-row"
-          :class="{ playing: nowPlayingId === track.id }"
-          @mouseenter="hoveredIdx = idx"
-          @mouseleave="hoveredIdx = -1"
-          @dblclick="playTrack(track, idx)"
-          @contextmenu.prevent="showContextMenu($event, track, idx)"
-        >
-          <button class="local-song-pp" @click.stop="handlePPClick(track, idx)" :title="ppTitle(track, idx)">
-            <span v-if="!isTrackPlaying(track) && hoveredIdx !== idx" class="local-song-idx-inner">{{ idx + 1 }}</span>
-            <svg v-else-if="(!isTrackPlaying(track) || isTrackPaused(track)) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><path d="M9 7.2v9.6c0 .7.8 1.1 1.4.7l8-4.8c.6-.4.6-1.3 0-1.7l-8-4.8c-.6-.4-1.4 0-1.4.7z" fill="currentColor"/></svg>
-            <svg v-else-if="isTrackPlaying(track) && !isTrackPaused(track) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>
-            <span v-else class="local-song-pp__wave" aria-hidden="true"><i></i><i></i><i></i></span>
-          </button>
-          <span class="local-song-cover">
-            <img v-if="track.coverUrl" :src="track.coverUrl" class="local-cover-img" alt="" loading="lazy" />
-            <span v-else class="local-cover-placeholder"></span>
-          </span>
-          <div class="local-song-meta">
-            <span class="local-song-title" :title="track.title">
-              <TooltipWrapper v-if="track.hasLyrics" text="内嵌歌词">
-                <span class="local-lyric-icon">♪</span>
-              </TooltipWrapper>
-              {{ track.title }}
-            </span>
-            <span class="local-song-artist-row">
-              <span class="local-song-artist" :title="track.artist">{{ track.artist }}</span>
-              <LocalMetadataStatusBadge
-                v-if="localMusicStore.metadataStatusOf(track)"
-                :result="localMusicStore.metadataStatusOf(track)"
-                compact
-              />
-            </span>
-          </div>
-          <LocalSongActions
-            @play="playTrack(track, idx)"
-            @play-next="addToQueue(track)"
-            @add-to-playlist="addToPlaylist(track)"
-            @show-in-folder="showInFolder(track)"
-            @match-metadata="openLyricMatch(track)"
-            @show-local-album="showLocalAlbum(track)"
-            @show-online-album="showOnlineAlbum(track)"
-            @upload-to-cloud="uploadToCloud(track)"
-          />
+    <div ref="detailScrollHostRef" class="detail-scroll-host">
+      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+        <div v-if="!tracks.length" class="local-empty">
+          <p>歌单为空，点击"从曲库添加"添加歌曲</p>
         </div>
-      </div>
-    </AnimatedAppear>
+
+        <div v-if="tracks.length" class="local-song-list">
+          <div
+            v-for="(track, idx) in tracks"
+            :key="track.id"
+            class="local-song-row"
+            :class="{ playing: nowPlayingId === track.id }"
+            @mouseenter="hoveredIdx = idx"
+            @mouseleave="hoveredIdx = -1"
+            @dblclick="playTrack(track, idx)"
+            @contextmenu.prevent="showContextMenu($event, track, idx)"
+          >
+            <button class="local-song-pp" @click.stop="handlePPClick(track, idx)" :title="ppTitle(track, idx)">
+              <span v-if="!isTrackPlaying(track) && hoveredIdx !== idx" class="local-song-idx-inner">{{ idx + 1 }}</span>
+              <svg v-else-if="(!isTrackPlaying(track) || isTrackPaused(track)) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><path d="M9 7.2v9.6c0 .7.8 1.1 1.4.7l8-4.8c.6-.4.6-1.3 0-1.7l-8-4.8c-.6-.4-1.4 0-1.4.7z" fill="currentColor"/></svg>
+              <svg v-else-if="isTrackPlaying(track) && !isTrackPaused(track) && hoveredIdx === idx" viewBox="0 0 24 24" aria-hidden="true" focusable="false" class="local-song-pp__icon"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></svg>
+              <span v-else class="local-song-pp__wave" aria-hidden="true"><i></i><i></i><i></i></span>
+            </button>
+            <span class="local-song-cover">
+              <img v-if="track.coverUrl" :src="track.coverUrl" class="local-cover-img" alt="" loading="lazy" />
+              <span v-else class="local-cover-placeholder"></span>
+            </span>
+            <div class="local-song-meta">
+              <span class="local-song-title" :title="track.title">
+                <TooltipWrapper v-if="track.hasLyrics" text="内嵌歌词">
+                  <span class="local-lyric-icon">♪</span>
+                </TooltipWrapper>
+                {{ track.title }}
+              </span>
+              <span class="local-song-artist-row">
+                <span class="local-song-artist" :title="track.artist">{{ track.artist }}</span>
+                <LocalMetadataStatusBadge
+                  v-if="localMusicStore.metadataStatusOf(track)"
+                  :result="localMusicStore.metadataStatusOf(track)"
+                  compact
+                />
+              </span>
+            </div>
+            <LocalSongActions
+              @play="playTrack(track, idx)"
+              @play-next="addToQueue(track)"
+              @add-to-playlist="addToPlaylist(track)"
+              @show-in-folder="showInFolder(track)"
+              @match-metadata="openLyricMatch(track)"
+              @show-local-album="showLocalAlbum(track)"
+              @show-online-album="showOnlineAlbum(track)"
+              @upload-to-cloud="uploadToCloud(track)"
+            />
+          </div>
+        </div>
+      </AnimatedAppear>
+    </div>
 
     <LocalContextMenu
       :visible="ctxVisible"
@@ -157,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, type ComponentPublicInstance } from 'vue'
 import { useLocalMusicStore, type LocalTrack } from '../stores/localMusic'
 const localMusicStore = useLocalMusicStore()
 import { usePlayerStore } from '../stores/player'
@@ -210,11 +212,16 @@ const coverUrls = computed(() => {
 const hasCustomCover = computed(() =>
   !!localMusicStore.state.activePlaylistDetail?.customCoverUrl?.trim()
 )
+const detailPageRef = ref<ComponentPublicInstance | null>(null)
+const detailScrollHostRef = ref<HTMLElement | null>(null)
 
 const error = ref('')
 
 // ── 吸顶 + blur 背景 ──
-const { refresh } = useDetailStickyState(coverUrl)
+const { refresh } = useDetailStickyState(coverUrl, {
+  rootRef: detailPageRef,
+  scrollHostRef: detailScrollHostRef,
+})
 
 // ── Modal state ──
 const showRenameModal = ref(false)

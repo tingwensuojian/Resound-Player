@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page user-detail-page">
+  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page user-detail-page">
     <div class="playlist-detail-back">
       <button class="back-btn" @click="emit('back')">← {{ props.backLabel }}</button>
     </div>
@@ -57,36 +57,38 @@
       </template>
     </DetailStickyHeroHeader>
 
-    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="user-detail-body">
-      <AnimatedAppear v-if="loading && !userDetail" tag="div" variant="text" rhythm="body" class-name="state">用户详情加载中…</AnimatedAppear>
-      <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
-      <AnimatedAppear v-else-if="playlistList.length" tag="ul" variant="content" rhythm="list" class-name="song-list">
-        <AnimatedAppear
-          v-for="(playlist, idx) in playlistList"
-          :key="playlist.id || idx"
-          tag="li"
-          variant="text"
-          rhythm="list"
-          :index="idx"
-          class-name="song-item"
-          @dblclick="onPlaylistItemDblClick($event, playlist.id)"
-        >
-          <AnimatedAppear tag="div" variant="text" rhythm="list" :index="idx" class-name="idx">{{ idx + 1 }}</AnimatedAppear>
-          <AnimatedAppear tag="img" variant="media" rhythm="list" :index="idx" class-name="song-cover" :src="resolvePlaylistCover(playlist)" :alt="playlist.name || '歌单封面'" />
-          <AnimatedAppear tag="div" variant="content" rhythm="list" :index="idx" class-name="song-meta">
-            <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-name">{{ playlist.name || '未命名歌单' }}</AnimatedAppear>
-            <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-artist">{{ resolvePlaylistSubtitle(playlist) }}</AnimatedAppear>
+    <div ref="detailScrollHostRef" class="detail-scroll-host">
+      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="user-detail-body">
+        <AnimatedAppear v-if="loading && !userDetail" tag="div" variant="text" rhythm="body" class-name="state">用户详情加载中…</AnimatedAppear>
+        <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
+        <AnimatedAppear v-else-if="playlistList.length" tag="ul" variant="content" rhythm="list" class-name="song-list">
+          <AnimatedAppear
+            v-for="(playlist, idx) in playlistList"
+            :key="playlist.id || idx"
+            tag="li"
+            variant="text"
+            rhythm="list"
+            :index="idx"
+            class-name="song-item"
+            @dblclick="onPlaylistItemDblClick($event, playlist.id)"
+          >
+            <AnimatedAppear tag="div" variant="text" rhythm="list" :index="idx" class-name="idx">{{ idx + 1 }}</AnimatedAppear>
+            <AnimatedAppear tag="img" variant="media" rhythm="list" :index="idx" class-name="song-cover" :src="resolvePlaylistCover(playlist)" :alt="playlist.name || '歌单封面'" />
+            <AnimatedAppear tag="div" variant="content" rhythm="list" :index="idx" class-name="song-meta">
+              <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-name">{{ playlist.name || '未命名歌单' }}</AnimatedAppear>
+              <AnimatedAppear tag="p" variant="text" rhythm="list" :index="idx" class-name="song-artist">{{ resolvePlaylistSubtitle(playlist) }}</AnimatedAppear>
+            </AnimatedAppear>
+            <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="idx" class-name="play-btn" @click="emitOpenPlaylist(playlist.id)">查看</AnimatedAppear>
           </AnimatedAppear>
-          <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="idx" class-name="play-btn" @click="emitOpenPlaylist(playlist.id)">查看</AnimatedAppear>
         </AnimatedAppear>
+        <AnimatedAppear v-else-if="userDetail" tag="div" variant="text" rhythm="body" class-name="state">暂无{{ activeTab === 'created' ? '创建' : '收藏' }}歌单</AnimatedAppear>
       </AnimatedAppear>
-      <AnimatedAppear v-else-if="userDetail" tag="div" variant="text" rhythm="body" class-name="state">暂无{{ activeTab === 'created' ? '创建' : '收藏' }}歌单</AnimatedAppear>
-    </AnimatedAppear>
+    </div>
   </AnimatedAppear>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import HeroCoverMedia from './HeroCoverMedia.vue';
 import { useDominantColor } from '../composables/useDominantColor';
@@ -119,6 +121,8 @@ const userDetail = ref<any>(null);
 const createdPlaylists = ref<any[]>([]);
 const collectedPlaylists = ref<any[]>([]);
 const activeTab = ref<'created' | 'collected'>('created');
+const detailPageRef = ref<ComponentPublicInstance | null>(null);
+const detailScrollHostRef = ref<HTMLElement | null>(null);
 const tabs = [
   { key: 'created', label: '创建歌单' },
   { key: 'collected', label: '收藏歌单' },
@@ -209,6 +213,10 @@ function normalizePlaylistArray(payload: any): any[] {
 
 const { refresh } = useDetailStickyState(
   computed(() => avatarUrl.value?.trim() || ''),
+  {
+    rootRef: detailPageRef,
+    scrollHostRef: detailScrollHostRef,
+  },
 );
 
 // 切换标签时重置滚动位置

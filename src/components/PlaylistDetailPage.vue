@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[detailPageClassName, embedded && 'playlist-detail-page--embedded']">
+  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[detailPageClassName, embedded && 'playlist-detail-page--embedded']">
     <div v-if="!isUserDetail" class="playlist-detail-back">
       <button class="back-btn" @click="emit('back')">← {{ props.backLabel }}</button>
     </div>
@@ -94,83 +94,85 @@
       </template>
     </DetailStickyHeroHeader>
 
-    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
-      <AnimatedAppear v-if="detailLoading && !playlist" tag="div" variant="text" rhythm="body" class-name="state">歌单加载中…</AnimatedAppear>
-      <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
-      <AnimatedAppear v-else-if="playlist" tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
-        <template v-if="activeTab === 'songs'">
-          <VirtualTrackList
-            ref="trackListRef"
-            scroll-mode="parent"
-            :scroll-host-selector="scrollHostSelector"
-            :items="filteredTracks"
-            :row-height="68"
-            :item-key="(t: any) => t?.id || t"
-            container-class="song-list"
-          >
-            <template #default="{ item: track, index: idx }">
-              <div
-                class="song-item"
-                :class="{ 'song-item--playing': isCurrentTrack(track) }"
-                @dblclick="onSongItemDblClick($event, idx)"
-              >
-                <PlayPauseButton :song-id="Number(track?.id || 0)" :index-label="idx + 1" @play="playOne(idx)" />
-                <img v-if="track?.al?.picUrl" :src="track.al.picUrl" class="song-cover" alt="" loading="lazy" />
-                <span v-else-if="playlist?.coverImgUrl" class="song-cover-placeholder" />
-                <div class="song-meta">
-                  <p class="song-name">{{ track?.name || '' }}</p>
-                  <p class="song-artist">
-                    <button
-                      v-for="artist in getSongArtists(track)"
-                      :key="`${track?.id}-${artist.id || artist.name}`"
-                      type="button"
-                      class="artist-link"
-                      @click="openArtistDetail(artist)"
-                    >
-                      {{ artist.name || '未知歌手' }}
-                    </button>
-                    <span v-if="!getSongArtists(track).length">未知歌手</span>
-                  </p>
+    <div ref="detailScrollHostRef" class="detail-scroll-host">
+      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+        <AnimatedAppear v-if="detailLoading && !playlist" tag="div" variant="text" rhythm="body" class-name="state">歌单加载中…</AnimatedAppear>
+        <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
+        <AnimatedAppear v-else-if="playlist" tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+          <template v-if="activeTab === 'songs'">
+            <VirtualTrackList
+              ref="trackListRef"
+              scroll-mode="parent"
+              :scroll-host-selector="scrollHostSelector"
+              :items="filteredTracks"
+              :row-height="68"
+              :item-key="(t: any) => t?.id || t"
+              container-class="song-list"
+            >
+              <template #default="{ item: track, index: idx }">
+                <div
+                  class="song-item"
+                  :class="{ 'song-item--playing': isCurrentTrack(track) }"
+                  @dblclick="onSongItemDblClick($event, idx)"
+                >
+                  <PlayPauseButton :song-id="Number(track?.id || 0)" :index-label="idx + 1" @play="playOne(idx)" />
+                  <img v-if="track?.al?.picUrl" :src="track.al.picUrl" class="song-cover" alt="" loading="lazy" />
+                  <span v-else-if="playlist?.coverImgUrl" class="song-cover-placeholder" />
+                  <div class="song-meta">
+                    <p class="song-name">{{ track?.name || '' }}</p>
+                    <p class="song-artist">
+                      <button
+                        v-for="artist in getSongArtists(track)"
+                        :key="`${track?.id}-${artist.id || artist.name}`"
+                        type="button"
+                        class="artist-link"
+                        @click="openArtistDetail(artist)"
+                      >
+                        {{ artist.name || '未知歌手' }}
+                      </button>
+                      <span v-if="!getSongArtists(track).length">未知歌手</span>
+                    </p>
+                  </div>
+                  <SongActions
+                    :song="track"
+                    @play-next="playNext"
+                    @add-to-playlist="showAddToPlaylist"
+                    @open-comment="openComment"
+                    @open-album="openAlbum"
+                    @open-artist="openArtistDetail"
+                    @open-language="openLanguageDetail"
+                    @open-mv-player="(mv) => emit('open-mv-player', mv)"
+                  />
                 </div>
-                <SongActions
-                  :song="track"
-                  @play-next="playNext"
-                  @add-to-playlist="showAddToPlaylist"
-                  @open-comment="openComment"
-                  @open-album="openAlbum"
-                  @open-artist="openArtistDetail"
-                  @open-language="openLanguageDetail"
-                  @open-mv-player="(mv) => emit('open-mv-player', mv)"
-                />
-              </div>
-            </template>
-            <template #sentinel>
-              <div
-                v-if="infiniteState.hasMore"
-                ref="sentinelRef"
-                class="infinite-sentinel"
-              >
-                <span v-if="infiniteState.loading" class="infinite-loading">加载中…</span>
-                <span v-else class="infinite-tip">向下滑动加载更多</span>
-              </div>
-            </template>
-          </VirtualTrackList>
-        </template>
-        <template v-else-if="activeTab === 'comments'">
-          <div :key="`${tabContentKey}:comments`" class="playlist-comment-section">
-          <CommentPanel
-            :resource-id="Number(playlist.id || props.playlistId || 0)"
-            :resource-type="2"
-            :fetcher="commentApi.getPlaylistComments"
-            :sender="(params) => commentApi.sendComment({ ...params, type: 2 })"
-            :liker="(params) => commentApi.likeComment({ ...params, type: 2 })"
-            :deleter="commentApi.deletePlaylistComment"
-            @open-user="(uid) => emit('open-user', uid)"
-          />
-          </div>
-        </template>
+              </template>
+              <template #sentinel>
+                <div
+                  v-if="infiniteState.hasMore"
+                  ref="sentinelRef"
+                  class="infinite-sentinel"
+                >
+                  <span v-if="infiniteState.loading" class="infinite-loading">加载中…</span>
+                  <span v-else class="infinite-tip">向下滑动加载更多</span>
+                </div>
+              </template>
+            </VirtualTrackList>
+          </template>
+          <template v-else-if="activeTab === 'comments'">
+            <div :key="`${tabContentKey}:comments`" class="playlist-comment-section">
+            <CommentPanel
+              :resource-id="Number(playlist.id || props.playlistId || 0)"
+              :resource-type="2"
+              :fetcher="commentApi.getPlaylistComments"
+              :sender="(params) => commentApi.sendComment({ ...params, type: 2 })"
+              :liker="(params) => commentApi.likeComment({ ...params, type: 2 })"
+              :deleter="commentApi.deletePlaylistComment"
+              @open-user="(uid) => emit('open-user', uid)"
+            />
+            </div>
+          </template>
+        </AnimatedAppear>
       </AnimatedAppear>
-    </AnimatedAppear>
+    </div>
     <!-- 收藏至歌单选择器 -->
     <PlaylistPickerModal
       :visible="showPlaylistPicker"
@@ -186,7 +188,7 @@
 <script setup lang="ts">
 import HeroCoverMedia from './HeroCoverMedia.vue';
 import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { getHistoryRecommendSongDates, getHistoryRecommendSongDetail, getPlaylistDetail, getPlaylistTrackAll, getSongDetailBatch, getRecommendSongs, getUserPlaylist, addTrackToPlaylist } from '../api/music';
 import { usePlayerStore } from '../stores/player'
@@ -300,10 +302,15 @@ const detailPageClassName = computed(() => {
   if (props.embedded) classNames.push('playlist-detail-page--embedded');
   return classNames.join(' ');
 });
+const requestCookie = computed(() => (
+  userStore.state.loginMode === 'cookie' || userStore.state.loginMode === 'qr'
+    ? userStore.state.loginCookie || undefined
+    : undefined
+));
 
-const scrollHostSelector = computed(() =>
-  props.embedded ? '.detail-panel' : '.playlist-detail-page',
-);
+const detailPageRef = ref<ComponentPublicInstance | null>(null);
+const detailScrollHostRef = ref<HTMLElement | null>(null);
+const scrollHostSelector = () => detailScrollHostRef.value;
 
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
@@ -326,7 +333,11 @@ function resolvePlaylistCover(playlistLike: any) {
 
 const { refresh } = useDetailStickyState(
   computed(() => playlist.value?.coverImgUrl?.trim() || ''),
-  !!props.embedded,
+  {
+    embedded: !!props.embedded,
+    rootRef: detailPageRef,
+    scrollHostRef: detailScrollHostRef,
+  },
 );
 
 let fetchToken = 0;
@@ -366,7 +377,7 @@ async function fetchDetail(id: number) {
   }
 
   try {
-    const { data } = await getPlaylistDetail(id, 1000, userStore.state.loginCookie || undefined);
+    const { data } = await getPlaylistDetail(id, 1000, requestCookie.value);
     if (currentToken !== fetchToken) return;
 
     const detail = data?.playlist || null;
@@ -462,10 +473,7 @@ function setupInfiniteScroll() {
     const sentinel = sentinelRef.value;
     if (!sentinel) return;
 
-    // 嵌入模式下 scroll root 是 .detail-panel，独立模式是 .playlist-detail-page
-    const scrollRoot = props.embedded
-      ? document.querySelector('.detail-panel')
-      : document.querySelector('.playlist-detail-page');
+    const scrollRoot = detailScrollHostRef.value;
 
     scrollObserver = new IntersectionObserver(
       (entries) => {
@@ -514,7 +522,7 @@ async function loadHistoryDates() {
   }
   historyLoading.value = true;
   try {
-    const { data } = await getHistoryRecommendSongDates(userStore.state.loginCookie || undefined);
+    const { data } = await getHistoryRecommendSongDates(requestCookie.value);
     const list = Array.isArray(data?.data?.dates)
       ? data.data.dates
       : Array.isArray(data?.data)
@@ -543,7 +551,7 @@ async function loadTodayRecommendTracks() {
   historyLoading.value = true;
   selectedHistoryDate.value = '';
   try {
-    const { data } = await getRecommendSongs(userStore.state.loginCookie || undefined);
+    const { data } = await getRecommendSongs(requestCookie.value);
     const list = Array.isArray(data?.recommend)
       ? data.recommend
       : Array.isArray(data?.songs)
@@ -579,7 +587,7 @@ async function loadHistoryByDate(date: string) {
   selectedHistoryDate.value = date;
   error.value = '';
   try {
-    const { data } = await getHistoryRecommendSongDetail(date, userStore.state.loginCookie || undefined);
+    const { data } = await getHistoryRecommendSongDetail(date, requestCookie.value);
     const list = Array.isArray(data?.data?.songs)
       ? data.data.songs
       : Array.isArray(data?.data?.dailySongs)
@@ -719,7 +727,7 @@ async function showAddToPlaylist(song: any) {
   if (!checkAuth()) return;
   pickerTargetSong.value = song;
   try {
-    const res = await getUserPlaylist(userStore.state.profile?.userId || 0, userStore.state.loginCookie || undefined);
+    const res = await getUserPlaylist(userStore.state.profile?.userId || 0, requestCookie.value);
     playlistPickerList.value = (res.data?.playlist || []).filter((p: any) => !p.subscribed);
   } catch { playlistPickerList.value = []; showToast('加载歌单列表失败', 'error', 3000); }
   selectedPlaylistId.value = null;
@@ -730,7 +738,7 @@ async function confirmAddToPlaylist() {
   const song = pickerTargetSong.value;
   if (!pid || !song) return;
   try {
-    await addTrackToPlaylist(pid, [Number(song.id || 0)], userStore.state.loginCookie || undefined);
+    await addTrackToPlaylist(pid, [Number(song.id || 0)], requestCookie.value);
     showToast('已添加至歌单', 'success', 3000);
   } catch {
     showToast('添加失败，请重试', 'error', 3000);

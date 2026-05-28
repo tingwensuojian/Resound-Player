@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page artist-detail-page">
+  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page artist-detail-page">
     <div class="artist-detail-back">
       <button class="back-btn" @click="emit('back')">← {{ props.backLabel }}</button>
     </div>
@@ -72,6 +72,7 @@
       </template>
     </DetailStickyHeroHeader>
 
+    <div ref="detailScrollHostRef" class="detail-scroll-host">
     <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="artist-detail-body">
       <AnimatedAppear v-if="loading && !artist" tag="div" variant="text" rhythm="body" class-name="state">歌手详情加载中…</AnimatedAppear>
       <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
@@ -81,7 +82,7 @@
           v-if="activeTab === 'songs'"
           ref="trackListRef"
           scroll-mode="parent"
-          scroll-host-selector=".playlist-detail-page"
+          :scroll-host-selector="scrollHostSelector"
           :items="topSongs"
           :row-height="68"
           :item-key="(s: any) => s.id || s"
@@ -120,7 +121,7 @@
           <VirtualTrackList
             ref="allSongsListRef"
             scroll-mode="parent"
-            scroll-host-selector=".playlist-detail-page"
+            :scroll-host-selector="scrollHostSelector"
             :items="allSongs"
             :row-height="68"
             :item-key="(s: any) => s.id || s"
@@ -218,6 +219,7 @@
         </AnimatedAppear>
       </template>
     </AnimatedAppear>
+    </div>
   </AnimatedAppear>
   <!-- 收藏至歌单选择器 -->
   <PlaylistPickerModal
@@ -231,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { useDominantColor } from '../composables/useDominantColor';
 import { useApiData } from '../composables/useApiData';
@@ -257,6 +259,9 @@ import { useAuthAction } from '../composables/useAuthAction';
 import VirtualTrackList from './VirtualTrackList.vue';
 
 const DESC_COLLAPSE_THRESHOLD = 60;
+const detailPageRef = ref<ComponentPublicInstance | null>(null);
+const detailScrollHostRef = ref<HTMLElement | null>(null);
+const scrollHostSelector = () => detailScrollHostRef.value;
 
 const props = withDefaults(
   defineProps<{
@@ -544,7 +549,10 @@ function openComment(songId: number) {
   emit('open-comment', songId);
 }
 
-const { refresh } = useDetailStickyState(coverUrl);
+const { refresh } = useDetailStickyState(coverUrl, {
+  rootRef: detailPageRef,
+  scrollHostRef: detailScrollHostRef,
+});
 </script>
 
 <style scoped>

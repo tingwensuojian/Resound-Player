@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page language-detail-page" :class="{ 'language-detail-page--embedded': embedded }">
+  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page language-detail-page" :class="{ 'language-detail-page--embedded': embedded }">
     <div class="playlist-detail-back">
       <button class="back-btn" @click="$emit('back')">← {{ backLabel }}</button>
     </div>
@@ -26,59 +26,61 @@
       </template>
     </DetailStickyHeroHeader>
 
-    <div class="playlist-detail-body">
-      <div v-if="loading && !playlists.length" class="state">加载中…</div>
-      <div v-else-if="error" class="state error">{{ error }}</div>
-      <template v-else>
-        <!-- 精品歌单 -->
-        <PlaylistHighlightSection
-          v-if="highQuality.length"
-          title="精品歌单"
-          fallback-sub="精品推荐"
-          :items="highQuality"
-          @open-detail="openDetail"
-        />
+    <div ref="detailScrollHostRef" class="detail-scroll-host">
+      <div class="playlist-detail-body">
+        <div v-if="loading && !playlists.length" class="state">加载中…</div>
+        <div v-else-if="error" class="state error">{{ error }}</div>
+        <template v-else>
+          <!-- 精品歌单 -->
+          <PlaylistHighlightSection
+            v-if="highQuality.length"
+            title="精品歌单"
+            fallback-sub="精品推荐"
+            :items="highQuality"
+            @open-detail="openDetail"
+          />
 
-        <!-- 歌单列表 -->
-        <div v-if="playlists.length" class="playlist-grid">
-          <AnimatedAppear
-            v-for="(item, idx) in playlists"
-            :key="item.id"
-            tag="article"
-            variant="media"
-            rhythm="list"
-            :index="idx"
-            class-name="playlist-card hover-play-button-trigger"
-            @click="openDetail(item.id)"
-          >
-            <div class="cover playlist-card-media-shell">
-              <div class="playlist-card-cover-motion-shell">
-                <img class="playlist-card-cover-image" :src="resolveCover(item)" :alt="item.name" loading="lazy" />
+          <!-- 歌单列表 -->
+          <div v-if="playlists.length" class="playlist-grid">
+            <AnimatedAppear
+              v-for="(item, idx) in playlists"
+              :key="item.id"
+              tag="article"
+              variant="media"
+              rhythm="list"
+              :index="idx"
+              class-name="playlist-card hover-play-button-trigger"
+              @click="openDetail(item.id)"
+            >
+              <div class="cover playlist-card-media-shell">
+                <div class="playlist-card-cover-motion-shell">
+                  <img class="playlist-card-cover-image" :src="resolveCover(item)" :alt="item.name" loading="lazy" />
+                </div>
+                <HoverPlayButton :count="item.playCount" size="md" />
               </div>
-              <HoverPlayButton :count="item.playCount" size="md" />
-            </div>
-            <div class="info">
-              <p class="name" :title="item.name">{{ item.name }}</p>
-              <p class="sub">{{ item.creator?.nickname || '未知用户' }} · {{ item.trackCount || 0 }} 首</p>
-            </div>
-          </AnimatedAppear>
-        </div>
+              <div class="info">
+                <p class="name" :title="item.name">{{ item.name }}</p>
+                <p class="sub">{{ item.creator?.nickname || '未知用户' }} · {{ item.trackCount || 0 }} 首</p>
+              </div>
+            </AnimatedAppear>
+          </div>
 
-        <AnimatedAppear v-else-if="!loading" tag="p" variant="text" rhythm="body" class-name="muted">暂无歌单数据</AnimatedAppear>
+          <AnimatedAppear v-else-if="!loading" tag="p" variant="text" rhythm="body" class-name="muted">暂无歌单数据</AnimatedAppear>
 
-        <div class="load-more-wrap">
-          <button v-if="hasMore" class="load-more-btn" :disabled="loading" @click="loadMore">
-            {{ loading ? '加载中…' : '加载更多' }}
-          </button>
-          <span v-else-if="playlists.length" class="load-end">已加载全部歌单</span>
-        </div>
-      </template>
+          <div class="load-more-wrap">
+            <button v-if="hasMore" class="load-more-btn" :disabled="loading" @click="loadMore">
+              {{ loading ? '加载中…' : '加载更多' }}
+            </button>
+            <span v-else-if="playlists.length" class="load-end">已加载全部歌单</span>
+          </div>
+        </template>
+      </div>
     </div>
   </AnimatedAppear>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, type ComponentPublicInstance } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { useDominantColor } from '../composables/useDominantColor';
 import { getTopPlaylists, getHighQualityPlaylists } from '../api/music';
@@ -127,6 +129,8 @@ const order = ref<'hot' | 'new'>('hot');
 const hasMore = ref(false);
 
 let fetchToken = 0;
+const detailPageRef = ref<ComponentPublicInstance | null>(null);
+const detailScrollHostRef = ref<HTMLElement | null>(null);
 
 /** 计算实际要查的歌单分类 */
 const playlistCategory = computed(() => {
@@ -145,7 +149,11 @@ const heroCoverUrl = computed(() => {
 });
 
 useDominantColor(heroCoverUrl);
-const { refresh } = useDetailStickyState(heroCoverUrl, !!props.embedded);
+const { refresh } = useDetailStickyState(heroCoverUrl, {
+  embedded: !!props.embedded,
+  rootRef: detailPageRef,
+  scrollHostRef: detailScrollHostRef,
+});
 
 function resolveCover(item: any) {
   return resolvePlaylistCoverUrl(item.coverImgUrl || item.picUrl || '', 800);

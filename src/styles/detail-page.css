@@ -76,10 +76,12 @@
 .playlist-detail-back,
 .artist-detail-back {
   opacity: calc(1 - var(--sticky-progress, 0) * 2);
-  max-height: 58px;
-  overflow: visible;
-  padding-top: 2px;
-  margin: calc(var(--space-2) - 2px) 0 var(--space-4);
+  max-height: clamp(0px, calc(58px - var(--sticky-progress, 0) * 116px), 58px);
+  overflow: hidden;
+  padding-top: clamp(0px, calc(2px - var(--sticky-progress, 0) * 4px), 2px);
+  margin-top: clamp(0px, calc(var(--space-2) - 2px - var(--sticky-progress, 0) * 24px), calc(var(--space-2) - 2px));
+  margin-bottom: clamp(0px, calc(var(--space-4) - var(--sticky-progress, 0) * 32px), var(--space-4));
+  pointer-events: auto;
 }
 
 /* =========================================
@@ -434,12 +436,28 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  overflow: clip auto;
-  overflow-clip-margin: 16px;
-  overflow-anchor: none;
   margin-left: calc(var(--space-4) * -1);
   margin-right: calc(var(--space-4) * -1);
   width: calc(100% + var(--space-4) * 2);
+}
+
+/* =========================================
+ * 详情页内层滚动宿主 — 吸顶进度、虚拟列表和回顶按钮统一监听这里
+ * ========================================= */
+.detail-scroll-host {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.detail-scroll-host::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 /* =========================================
@@ -453,14 +471,11 @@
 }
 
 /* =========================================
- * 详情页嵌入模式 — 取消自身滚动容器，交由父级 .detail-panel 管理滚动
+ * 详情页嵌入模式 — 保持和独立模式一致，由内层 .detail-scroll-host 负责滚动
  * ========================================= */
 .playlist-detail-page--embedded {
-  overflow: visible !important;
-  overflow-x: visible !important;
-  overflow-y: visible !important;
-  height: auto;
-  min-height: calc(100% + 600px);
+  height: 100%;
+  min-height: 0;
   margin: 0;
   width: auto;
   padding: 0;

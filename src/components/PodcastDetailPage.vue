@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[embedded && 'playlist-detail-page--embedded']">
+  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[embedded && 'playlist-detail-page--embedded']">
     <div v-if="!embedded" class="playlist-detail-back">
       <button class="back-btn" type="button" @click="emit('back')">← 返回播客列表</button>
     </div>
@@ -66,66 +66,68 @@
       </template>
     </DetailStickyHeroHeader>
 
-    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
-      <template v-if="loading">
-        <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="state">播客详情加载中…</AnimatedAppear>
-      </template>
-      <template v-else-if="activeTab === 'episodes'">
-        <VirtualTrackList
-          v-if="filteredItems.length"
-          ref="trackListRef"
-          scroll-mode="parent"
-          :scroll-host-selector="scrollHostSelector"
-          :items="filteredItems"
-          :row-height="72"
-          :item-key="(item: any) => item.key"
-          container-class="song-list"
-        >
-          <template #default="{ item, index: idx }">
-            <div
-              class="song-item podcast-song-item"
-              :class="{ 'song-item--playing': isCurrentTrack(item.raw) }"
-              @dblclick="emit('play-item', { item: item.raw, index: item.originalIndex })"
-            >
-              <PlayPauseButton
-                :song-id="item.trackId"
-                :index-label="item.index"
-                @play="emit('play-item', { item: item.raw, index: item.originalIndex })"
-              />
-              <img class="song-cover" :src="item.coverUrl" :alt="item.name" loading="lazy" />
-              <div class="song-meta">
-                <div class="episode-title-row">
-                  <p class="song-name">{{ item.name }}</p>
-                  <div v-if="item.badges.length" class="status-badge-group">
-                    <span v-for="badge in item.badges" :key="`${item.key}-${badge.label}`" class="status-badge" :class="`status-badge--${badge.tone}`">{{ badge.label }}</span>
+    <div ref="detailScrollHostRef" class="detail-scroll-host">
+      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+        <template v-if="loading">
+          <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="state">播客详情加载中…</AnimatedAppear>
+        </template>
+        <template v-else-if="activeTab === 'episodes'">
+          <VirtualTrackList
+            v-if="filteredItems.length"
+            ref="trackListRef"
+            scroll-mode="parent"
+            :scroll-host-selector="scrollHostSelector"
+            :items="filteredItems"
+            :row-height="72"
+            :item-key="(item: any) => item.key"
+            container-class="song-list"
+          >
+            <template #default="{ item, index: idx }">
+              <div
+                class="song-item podcast-song-item"
+                :class="{ 'song-item--playing': isCurrentTrack(item.raw) }"
+                @dblclick="emit('play-item', { item: item.raw, index: item.originalIndex })"
+              >
+                <PlayPauseButton
+                  :song-id="item.trackId"
+                  :index-label="item.index"
+                  @play="emit('play-item', { item: item.raw, index: item.originalIndex })"
+                />
+                <img class="song-cover" :src="item.coverUrl" :alt="item.name" loading="lazy" />
+                <div class="song-meta">
+                  <div class="episode-title-row">
+                    <p class="song-name">{{ item.name }}</p>
+                    <div v-if="item.badges.length" class="status-badge-group">
+                      <span v-for="badge in item.badges" :key="`${item.key}-${badge.label}`" class="status-badge" :class="`status-badge--${badge.tone}`">{{ badge.label }}</span>
+                    </div>
                   </div>
+                  <p v-if="item.description" class="episode-description">{{ item.description }}</p>
                 </div>
-                <p v-if="item.description" class="episode-description">{{ item.description }}</p>
               </div>
-            </div>
-          </template>
-        </VirtualTrackList>
-        <AnimatedAppear v-else tag="div" variant="text" rhythm="body" class-name="state">暂无声音列表数据</AnimatedAppear>
-      </template>
-      <template v-else-if="activeTab === 'comments'">
-        <div :key="`${tabContentKey}:comments`" class="playlist-comment-section">
-          <CommentPanel
-            :resource-id="Number(podcastRid || 0)"
-            :resource-type="7"
-            :fetcher="commentApi.getRadioComments"
-            :sender="(params) => commentApi.sendComment({ ...params, type: 7 })"
-            :liker="(params) => commentApi.likeComment({ ...params, type: 7 })"
-            :deleter="commentApi.deleteDjComment"
-            @open-user="(uid) => emit('open-user', uid)"
-          />
-        </div>
-      </template>
-    </AnimatedAppear>
+            </template>
+          </VirtualTrackList>
+          <AnimatedAppear v-else tag="div" variant="text" rhythm="body" class-name="state">暂无声音列表数据</AnimatedAppear>
+        </template>
+        <template v-else-if="activeTab === 'comments'">
+          <div :key="`${tabContentKey}:comments`" class="playlist-comment-section">
+            <CommentPanel
+              :resource-id="Number(podcastRid || 0)"
+              :resource-type="7"
+              :fetcher="commentApi.getRadioComments"
+              :sender="(params) => commentApi.sendComment({ ...params, type: 7 })"
+              :liker="(params) => commentApi.likeComment({ ...params, type: 7 })"
+              :deleter="commentApi.deleteDjComment"
+              @open-user="(uid) => emit('open-user', uid)"
+            />
+          </div>
+        </template>
+      </AnimatedAppear>
+    </div>
   </AnimatedAppear>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { useDominantColor } from '../composables/useDominantColor';
 import AnimatedAppear from './AnimatedAppear.vue';
@@ -199,15 +201,19 @@ const heroDescription = computed(() => hero.value.description || '暂无简介�
 const shouldShowDescriptionToggle = computed(() => heroDescription.value.length > DESC_COLLAPSE_THRESHOLD);
 const coverUrl = computed(() => hero.value.coverUrl?.trim() || '');
 useDominantColor(coverUrl);
+const detailPageRef = ref<ComponentPublicInstance | null>(null);
+const detailScrollHostRef = ref<HTMLElement | null>(null);
 
 const { refresh } = useDetailStickyState(
   coverUrl,
-  !!props.embedded,
+  {
+    embedded: !!props.embedded,
+    rootRef: detailPageRef,
+    scrollHostRef: detailScrollHostRef,
+  },
 );
 
-const scrollHostSelector = computed(() =>
-  props.embedded ? '.detail-panel' : '.playlist-detail-page',
-);
+const scrollHostSelector = () => detailScrollHostRef.value;
 
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 

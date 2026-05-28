@@ -1,5 +1,5 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[detailPageClassName, embedded && 'playlist-detail-page--embedded']">
+  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[detailPageClassName, embedded && 'playlist-detail-page--embedded']">
     <div v-if="!embedded" class="playlist-detail-back">
       <button class="back-btn" @click="emit('back')">← {{ props.backLabel }}</button>
     </div>
@@ -74,63 +74,65 @@
       </template>
     </DetailStickyHeroHeader>
 
-    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
-      <AnimatedAppear v-if="loading && !album" tag="div" variant="text" rhythm="body" class-name="state">专辑加载中…</AnimatedAppear>
-      <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
-      <AnimatedAppear v-else-if="album" tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
-        <template v-if="activeTab === 'songs'">
-          <VirtualTrackList
-            ref="trackListRef"
-            scroll-mode="parent"
-            :scroll-host-selector="scrollHostSelector"
-            :items="filteredSongs"
-            :row-height="68"
-            :item-key="(s: any) => s.id"
-            container-class="song-list"
-          >
-            <template #default="{ item: song, index: idx }">
-              <div
-                class="song-item"
-                :class="{ 'song-item--playing': isCurrentTrack(song) }"
-                @dblclick="onSongItemDblClick($event, idx)"
-              >
-                <PlayPauseButton :song-id="Number(song.id || 0)" :index-label="idx + 1" @play="playOne(idx)" />
-                <img class="song-cover" :src="song.al?.picUrl || album.picUrl" :alt="song.name" loading="lazy" />
-                <div class="song-meta">
-                  <p class="song-name">{{ song.name }}</p>
-                  <p class="song-artist">
-                    <button
-                      v-for="artist in getSongArtists(song)"
-                      :key="`${song.id}-${artist.id || artist.name}`"
-                      type="button"
-                      class="artist-link"
-                      @click="openArtistDetail(artist)"
-                    >
-                      {{ artist.name || '未知歌手' }}
-                    </button>
-                    <span v-if="!getSongArtists(song).length">未知歌手</span>
-                  </p>
+    <div ref="detailScrollHostRef" class="detail-scroll-host">
+      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+        <AnimatedAppear v-if="loading && !album" tag="div" variant="text" rhythm="body" class-name="state">专辑加载中…</AnimatedAppear>
+        <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
+        <AnimatedAppear v-else-if="album" tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+          <template v-if="activeTab === 'songs'">
+            <VirtualTrackList
+              ref="trackListRef"
+              scroll-mode="parent"
+              :scroll-host-selector="scrollHostSelector"
+              :items="filteredSongs"
+              :row-height="68"
+              :item-key="(s: any) => s.id"
+              container-class="song-list"
+            >
+              <template #default="{ item: song, index: idx }">
+                <div
+                  class="song-item"
+                  :class="{ 'song-item--playing': isCurrentTrack(song) }"
+                  @dblclick="onSongItemDblClick($event, idx)"
+                >
+                  <PlayPauseButton :song-id="Number(song.id || 0)" :index-label="idx + 1" @play="playOne(idx)" />
+                  <img class="song-cover" :src="song.al?.picUrl || album.picUrl" :alt="song.name" loading="lazy" />
+                  <div class="song-meta">
+                    <p class="song-name">{{ song.name }}</p>
+                    <p class="song-artist">
+                      <button
+                        v-for="artist in getSongArtists(song)"
+                        :key="`${song.id}-${artist.id || artist.name}`"
+                        type="button"
+                        class="artist-link"
+                        @click="openArtistDetail(artist)"
+                      >
+                        {{ artist.name || '未知歌手' }}
+                      </button>
+                      <span v-if="!getSongArtists(song).length">未知歌手</span>
+                    </p>
+                  </div>
+                  <SongActions :song="song" @play-next="playNext" @add-to-playlist="showAddToPlaylist" @open-comment="openComment" @open-album="openAlbum" @open-artist="openArtistDetail" @open-language="openLanguageDetail" @open-mv-player="(mv) => emit('open-mv-player', mv)" />
                 </div>
-                <SongActions :song="song" @play-next="playNext" @add-to-playlist="showAddToPlaylist" @open-comment="openComment" @open-album="openAlbum" @open-artist="openArtistDetail" @open-language="openLanguageDetail" @open-mv-player="(mv) => emit('open-mv-player', mv)" />
-              </div>
-            </template>
-          </VirtualTrackList>
-        </template>
-        <template v-else-if="activeTab === 'comments'">
-          <div :key="`${tabContentKey}:comments`" class="playlist-comment-section">
-            <CommentPanel
-              :resource-id="Number(album.id || props.albumId || 0)"
-              :resource-type="3"
-              :fetcher="commentApi.getAlbumComments"
-              :sender="(params) => commentApi.sendComment({ ...params, type: 3 })"
-              :liker="(params) => commentApi.likeComment({ ...params, type: 3 })"
-              :deleter="commentApi.deleteAlbumComment"
-              @open-user="(uid) => emit('open-user', uid)"
-            />
-          </div>
-        </template>
+              </template>
+            </VirtualTrackList>
+          </template>
+          <template v-else-if="activeTab === 'comments'">
+            <div :key="`${tabContentKey}:comments`" class="playlist-comment-section">
+              <CommentPanel
+                :resource-id="Number(album.id || props.albumId || 0)"
+                :resource-type="3"
+                :fetcher="commentApi.getAlbumComments"
+                :sender="(params) => commentApi.sendComment({ ...params, type: 3 })"
+                :liker="(params) => commentApi.likeComment({ ...params, type: 3 })"
+                :deleter="commentApi.deleteAlbumComment"
+                @open-user="(uid) => emit('open-user', uid)"
+              />
+            </div>
+          </template>
+        </AnimatedAppear>
       </AnimatedAppear>
-    </AnimatedAppear>
+    </div>
   </AnimatedAppear>
   <!-- 收藏至歌单选择器 -->
   <PlaylistPickerModal
@@ -146,7 +148,7 @@
 <script setup lang="ts">
 import HeroCoverMedia from './HeroCoverMedia.vue';
 import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useDetailStickyState } from '../composables/useDetailStickyState';
 import { useDominantColor } from '../composables/useDominantColor';
 import { useApiData } from '../composables/useApiData';
@@ -247,14 +249,18 @@ const detailPageClassName = computed(() => {
   if (props.embedded) classNames.push('playlist-detail-page--embedded');
   return classNames.join(' ');
 });
+const detailPageRef = ref<ComponentPublicInstance | null>(null);
+const detailScrollHostRef = ref<HTMLElement | null>(null);
 const { refresh } = useDetailStickyState(
   computed(() => album.value?.picUrl?.trim() || ''),
-  !!props.embedded,
+  {
+    embedded: !!props.embedded,
+    rootRef: detailPageRef,
+    scrollHostRef: detailScrollHostRef,
+  },
 );
 
-const scrollHostSelector = computed(() =>
-  props.embedded ? '.detail-panel' : '.playlist-detail-page',
-);
+const scrollHostSelector = () => detailScrollHostRef.value;
 
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
