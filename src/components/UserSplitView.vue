@@ -261,6 +261,7 @@ defineEmits<{
   transform-origin: top center;
   filter: blur(24px) saturate(155%) contrast(1.08);
   opacity: calc(1 - var(--sticky-progress, 0));
+  transition: opacity 0.25s cubic-bezier(0.33, 0, 0.1, 1);
   transition: opacity 0.18s linear;
   pointer-events: none;
 }

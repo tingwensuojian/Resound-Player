@@ -1,0 +1,176 @@
+[     124ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[     138ms] [LOG] [SW] 安装中... @ http://localhost:5173/src/utils/swRegister.ts:21
+[     138ms] [LOG] [SW] 新版本已激活 @ http://localhost:5173/src/utils/swRegister.ts:32
+[    2157ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 九月底 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[    8311ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://p2.music.126.net/y5-sE4JMEszpNVxFIS2s_A==/109951168984577815.jpg?param=64y64:0
+[    8321ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://p2.music.126.net/y5-sE4JMEszpNVxFIS2s_A==/109951168984577815.jpg:0
+[  255408ms] [ERROR] [vite] SyntaxError: The requested module '/src/composables/useScrollShrink.ts' does not provide an export named 'useListScroll' @ http://localhost:5173/@vite/client:881
+[  255409ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkExample.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[  261692ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://p2.music.126.net/y5-sE4JMEszpNVxFIS2s_A==/109951168984577815.jpg:0
+[  261787ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://p2.music.126.net/y5-sE4JMEszpNVxFIS2s_A==/109951168984577815.jpg:0
+[  307238ms] [WARNING] [Vue warn]: Property "demoSongs" was accessed during render but is not defined on instance. 
+  at <App> @ http://localhost:5173/node_modules/.vite/deps/chunk-6SOJBO4M.js?v=de6ac07a:2203
+[  311970ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[  312588ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 九月底 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[  322829ms] [ERROR] WebSocket connection to 'ws://localhost:5173/?token=RMkRSZq8pQL8' failed:  @ http://localhost:5173/@vite/client:801
+[  322829ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[  322923ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  323927ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  324931ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  325935ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  327251ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[  327256ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[  327285ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/banner?timestamp=1780247224854:0
+[  327287ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/login/status?timestamp=1780247224855:0
+[  327789ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/banner?timestamp=1780247225372:0
+[  328297ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/banner?timestamp=1780247225877:0
+[  328803ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/api/banner?timestamp=1780247226384:0
+[  329195ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[  329196ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  329309ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247226891:0
+[  329814ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247227396:0
+[  330199ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  330319ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247227901:0
+[  330823ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247228406:0
+[  331201ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  331327ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247228910:0
+[  331830ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247229414:0
+[  332203ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  332334ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247229917:0
+[  332837ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247230421:0
+[  333206ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  333340ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247230923:0
+[  333843ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247231426:0
+[  334208ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  334346ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247231929:0
+[  334851ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247232433:0
+[  335211ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  335355ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247232937:0
+[  335859ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247233441:0
+[  336216ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  336362ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247233945:0
+[  336867ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247234449:0
+[  337221ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  337370ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247234953:0
+[  337874ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247235457:0
+[  338225ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  338379ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247235961:0
+[  338884ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247236466:0
+[  339230ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  339387ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247236969:0
+[  339892ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247237474:0
+[  340234ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  340397ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247237979:0
+[  340901ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247238483:0
+[  341242ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  341405ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247238987:0
+[  341909ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/banner?timestamp=1780247239491:0
+[  342250ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  342467ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/cloudsearch?keywords=%E5%8D%8E%E8%AF%AD+%E7%83%AD%E9%97%A8&limit=12&offset=0:0
+[  342467ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/personal_fm?timestamp=1780247240005:0
+[  342467ms] [WARNING] [RadarDetail] fetch failed for id= 3136952023 @ http://localhost:5173/src/components/HomePanel.vue:421
+[  342468ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/playlist/detail?id=3136952023&s=8&timestamp=1780247240006:0
+[  342468ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/api/top/artists?limit=24&offset=0&timestamp=1780247240006:0
+[  343259ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  344273ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  345283ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  346306ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  347328ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  348338ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  349352ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  350371ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  351414ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  352483ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  353540ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  354580ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  355739ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  356900ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  357948ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  359098ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  360283ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  361467ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  362733ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  363883ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  365328ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[  367024ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[  367030ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[  367777ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 九月底 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[ 1246252ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/App.vue?t=1780248143800:0
+[ 1246252ms] [ERROR] [vite] Failed to reload /src/App.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 2111195ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/ArtistDetailPage.vue?t=1780249008739:0
+[ 2111196ms] [ERROR] [vite] Failed to reload /src/components/ArtistDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 2139895ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/ArtistDetailPage.vue?t=1780249037437:0
+[ 2139895ms] [ERROR] [vite] Failed to reload /src/App.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 2163256ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/ArtistDetailPage.vue?t=1780249060815:0
+[ 2163256ms] [ERROR] [vite] Failed to reload /src/App.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 2183863ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/ArtistDetailPage.vue?t=1780249081437:0
+[ 2183863ms] [ERROR] [vite] Failed to reload /src/App.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 2254451ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/ArtistDetailPage.vue?t=1780249151986:0
+[ 2254451ms] [ERROR] [vite] Failed to reload /src/App.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 2272844ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[ 2273504ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 九月底 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[ 5513833ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780252411414&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[ 5513833ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5513834ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780252411414:0
+[ 5513834ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5524678ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5663434ms] [ERROR] [vite] Failed to reload /src/components/ArtistDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5663478ms] [ERROR] [vite] Failed to reload /src/components/AlbumDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5663507ms] [ERROR] [vite] Failed to reload /src/components/UserDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5675045ms] [ERROR] [vite] Failed to reload /src/components/AlbumDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5675137ms] [ERROR] [vite] Failed to reload /src/components/UserDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5791678ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/UserDetailPage.vue?t=1780252689247:0
+[ 5791678ms] [ERROR] [vite] Failed to reload /src/components/UserDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5791690ms] [ERROR] [vite] Failed to reload /src/components/AlbumDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5793361ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/UserDetailPage.vue?t=1780252690939:0
+[ 5793362ms] [ERROR] [vite] Failed to reload /src/components/UserDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5798068ms] [ERROR] [vite] Failed to reload /src/App.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5805699ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780252703279&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[ 5805700ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5816437ms] [ERROR] [vite] Failed to reload /src/components/ArtistDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5858082ms] [ERROR] [vite] Failed to reload /src/components/UserDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5858101ms] [ERROR] [vite] Failed to reload /src/components/AlbumDetailPage.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 5872803ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780252770382&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[ 5872804ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 7638756ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780254536336:0
+[ 7638756ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 7642404ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780254539986&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[ 7642404ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 7645238ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780254542820&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[ 7645238ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 7663142ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[ 7861913ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[11438960ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780258336541&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[11438960ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[11534242ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780258431811:0
+[11534242ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[11909091ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780258806668&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[11909091ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[13334518ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780260232098:0
+[13334518ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[13368314ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780260265892&vue&type=style&index=0&scoped=b48c15d0&lang.css:0
+[13368314ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue?vue&type=style&index=0&scoped=b48c15d0&lang.css. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[13368319ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/DetailShrinkShell.vue?t=1780260265892:0
+[13368319ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkShell.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[13915585ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[13916219ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[13916227ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[13916931ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 诀别书 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[22097609ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[22097618ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22098621ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22099624ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22100627ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22101632ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22102639ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22103646ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22104672ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22105684ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22106731ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22107814ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22109130ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22110715ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22112149ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22113889ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22119433ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22124608ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034

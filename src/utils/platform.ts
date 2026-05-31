@@ -139,7 +139,8 @@ export const platform = {
     if (this.isDesktop) {
       return (window as any).appEnv?.unblockMatchUrl || 'http://127.0.0.1:38763'
     }
-    return import.meta.env.VITE_UNBLOCK_MATCH_TARGET || 'http://127.0.0.1:38763'
+    // Web 端走 Vite 代理路径（相对路径，自动跟随当前 host），确保局域网设备也能访问
+    return import.meta.env.VITE_UNBLOCK_MATCH_TARGET || '/unblock-api'
   },
 
   /** 是否具备 Electron 内置 unblock 匹配桥 */

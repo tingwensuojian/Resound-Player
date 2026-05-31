@@ -10,6 +10,7 @@
 }
 
 .interactive-media-motion {
+  contain: layout style;
   display: block;
   line-height: 0;
   transform-origin: center center;

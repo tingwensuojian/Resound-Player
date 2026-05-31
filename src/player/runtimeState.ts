@@ -50,7 +50,7 @@ function sanitizeTrackForIPC(t: PlaybackTrack | null): PlaybackTrack | null {
   return {
     id: t.id as any,
     name: String(t.name || ''),
-    ar: Array.isArray(t.ar) ? t.ar.map((a) => ({ name: String(a?.name || '') })) : [],
+    ar: Array.isArray(t.ar) ? t.ar.map((a) => ({ id: a?.id, artistId: a?.artistId, name: String(a?.name || '') })) : [],
     al: t.al ? { name: String(t.al.name || ''), picUrl: t.al.picUrl ? String(t.al.picUrl) : undefined } : undefined,
     url: t.url ? String(t.url) : undefined,
     source: t.source,

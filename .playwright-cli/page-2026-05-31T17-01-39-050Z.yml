@@ -1,0 +1,107 @@
+- generic [ref=e1]:
+  - complementary [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - img [ref=e6] [cursor=pointer]
+        - generic [ref=e13]: Resound
+      - navigation [ref=e14]:
+        - button "首页" [ref=e15] [cursor=pointer]:
+          - img [ref=e16]
+          - generic [ref=e19]: 首页
+        - button "搜索" [ref=e20] [cursor=pointer]:
+          - img [ref=e21]
+          - generic [ref=e24]: 搜索
+        - button "歌单" [ref=e25] [cursor=pointer]:
+          - img [ref=e26]
+          - generic [ref=e28]: 歌单
+        - button "排行榜" [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+          - generic [ref=e36]: 排行榜
+        - button "MV" [ref=e37] [cursor=pointer]:
+          - img [ref=e38]
+          - generic [ref=e43]: MV
+        - button "播客有声书" [ref=e44] [cursor=pointer]:
+          - img [ref=e45]
+          - generic [ref=e47]: 播客有声书
+        - button "收藏历史" [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+          - generic [ref=e53]: 收藏历史
+        - button "听歌统计" [ref=e54] [cursor=pointer]:
+          - img [ref=e55]
+          - generic [ref=e57]: 听歌统计
+        - button "用户" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+          - generic [ref=e62]: 用户
+        - button "设置" [ref=e63] [cursor=pointer]:
+          - img [ref=e64]
+          - generic [ref=e67]: 设置
+        - button "Shrink演示" [ref=e68] [cursor=pointer]:
+          - img [ref=e69]
+          - generic [ref=e74]: Shrink演示
+        - button "发现" [ref=e75] [cursor=pointer]:
+          - img [ref=e76]
+          - generic [ref=e79]: 发现
+    - generic "收起侧栏" [ref=e80] [cursor=pointer]
+  - generic [ref=e82]:
+    - banner [ref=e83]:
+      - generic [ref=e84]:
+        - button "后退" [disabled]:
+          - img
+        - button "前进" [disabled]:
+          - img
+      - generic [ref=e85]:
+        - button "打开搜索" [ref=e87] [cursor=pointer]:
+          - img [ref=e88]
+        - button "心动模式" [ref=e91] [cursor=pointer]:
+          - img [ref=e92]
+          - text: 心动模式
+        - button "登录" [ref=e95] [cursor=pointer]
+    - main [ref=e96]
+  - contentinfo [ref=e98]:
+    - generic [ref=e99]:
+      - generic [ref=e100]:
+        - button [ref=e101] [cursor=pointer]:
+          - img [ref=e102]
+        - button "全屏":
+          - img
+      - generic [ref=e107]:
+        - generic [ref=e109]: 未在播放
+        - generic [ref=e110]: Unknown Artist
+    - generic [ref=e111]:
+      - generic [ref=e112]:
+        - button "上一首" [ref=e113] [cursor=pointer]:
+          - img [ref=e114]
+        - button "播放或暂停" [ref=e116] [cursor=pointer]:
+          - img [ref=e117]
+        - button "下一首" [ref=e119] [cursor=pointer]:
+          - img [ref=e120]
+      - generic [ref=e122]:
+        - generic [ref=e123]: 0:00
+        - slider [ref=e124]: "0"
+        - generic [ref=e125]: 0:00
+    - generic [ref=e126]:
+      - generic [ref=e127]:
+        - button "静音" [ref=e128] [cursor=pointer]:
+          - img [ref=e129]
+        - slider [ref=e133]: "70"
+      - button "音质选择" [ref=e135] [cursor=pointer]:
+        - generic [ref=e136]: 较高
+        - text: 音质选择
+      - button "均衡器" [ref=e138] [cursor=pointer]:
+        - img [ref=e139]
+        - text: 均衡器
+      - button "歌词" [ref=e144] [cursor=pointer]:
+        - img [ref=e145]
+        - text: 歌词
+      - button "收藏" [disabled] [ref=e148] [cursor=pointer]:
+        - img [ref=e149]
+        - text: 收藏
+      - button "设置" [ref=e152] [cursor=pointer]:
+        - img [ref=e153]
+        - text: 设置
+      - button "切换播放模式" [ref=e156] [cursor=pointer]:
+        - img [ref=e157]
+        - text: 列表循环
+      - button "播放列表" [ref=e162] [cursor=pointer]:
+        - img [ref=e163]
+        - text: 播放列表

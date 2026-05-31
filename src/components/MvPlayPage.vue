@@ -1,8 +1,5 @@
 <template>
   <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="mv-play-page playlist-detail-page">
-    <div class="playlist-detail-back">
-      <button class="back-btn" @click="emit('back')">← {{ props.backLabel || '返回' }}</button>
-    </div>
 
     <div class="mv-play-content">
       <div class="mv-play-main">

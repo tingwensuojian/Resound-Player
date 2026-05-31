@@ -1008,4 +1008,29 @@ onBeforeUnmount(() => {
   background: #e81123;
   color: #fff;
 }
+
+/* ── 平板端顶栏适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .topbar {
+    grid-template-columns: minmax(100px, 140px) minmax(0, 1fr) auto;
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
+  }
+  .nav-btn { width: 36px; height: 36px; }
+  .search-wrap.expanded {
+    max-width: min(360px, calc(100vw - 320px));
+  }
+  .user-menu {
+    width: min(286px, calc(100vw - 32px));
+    right: 0;
+  }
+}
+
+/* ── 触摸设备增大交互目标 ── */
+@media (pointer: coarse) {
+  .nav-btn { width: 44px; height: 44px; }
+  .msg { width: 44px; height: 44px; }
+  .avatar { width: 44px; height: 44px; }
+  .search-trigger { width: 44px; height: 44px; }
+}
 </style>

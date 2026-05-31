@@ -1,4 +1,5 @@
 import { nextTick, watch, onUnmounted, type Ref } from 'vue';
+import { shouldSkipWebGLEffect } from '../utils/deviceDetector';
 
 export function useSilkBackground(
   containerRef: Ref<HTMLElement | null>,
@@ -8,6 +9,7 @@ export function useSilkBackground(
 
   function start() {
     const ctn = containerRef.value!;
+    if (shouldSkipWebGLEffect()) return;
     if (!ctn) return;
 
     const canvas = document.createElement('canvas');

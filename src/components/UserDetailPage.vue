@@ -1,15 +1,9 @@
 <template>
-  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page user-detail-page">
-    <div class="playlist-detail-back">
-      <button class="back-btn" @click="emit('back')">← {{ props.backLabel }}</button>
-    </div>
-
-    <DetailStickyHeroHeader
-      :loading="loading"
-      :ready="!!userDetail"
-      :error="error"
-      loading-text="用户详情加载中…"
-    >
+    <DetailShrinkShell
+      :cover-url="avatarUrl || ''"
+    
+  :list-scrolling="listScrolling"
+  >
       <template #media>
         <HeroCoverMedia :src="avatarUrl" :alt="displayName" />
       </template>
@@ -55,10 +49,9 @@
           </AnimatedAppear>
         </AnimatedAppear>
       </template>
-    </DetailStickyHeroHeader>
-
-    <div ref="detailScrollHostRef" class="detail-scroll-host">
-      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="user-detail-body">
+    <template #content>
+<div class="page-content-scroll" @scroll="handleListScroll">
+    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="user-detail-body">
         <AnimatedAppear v-if="loading && !userDetail" tag="div" variant="text" rhythm="body" class-name="state">用户详情加载中…</AnimatedAppear>
         <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
         <AnimatedAppear v-else-if="playlistList.length" tag="ul" variant="content" rhythm="list" class-name="song-list">
@@ -84,16 +77,18 @@
         <AnimatedAppear v-else-if="userDetail" tag="div" variant="text" rhythm="body" class-name="state">暂无{{ activeTab === 'created' ? '创建' : '收藏' }}歌单</AnimatedAppear>
       </AnimatedAppear>
     </div>
-  </AnimatedAppear>
+    </template>
+    </DetailShrinkShell>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
-import { useDetailStickyState } from '../composables/useDetailStickyState';
+import { useListScroll } from '../composables/useScrollShrink';
+const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 import HeroCoverMedia from './HeroCoverMedia.vue';
 import { useDominantColor } from '../composables/useDominantColor';
 import AnimatedAppear from './AnimatedAppear.vue';
-import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
+import DetailShrinkShell from './DetailShrinkShell.vue';
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserDetail } from '../api/auth';
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
@@ -122,7 +117,6 @@ const createdPlaylists = ref<any[]>([]);
 const collectedPlaylists = ref<any[]>([]);
 const activeTab = ref<'created' | 'collected'>('created');
 const detailPageRef = ref<ComponentPublicInstance | null>(null);
-const detailScrollHostRef = ref<HTMLElement | null>(null);
 const tabs = [
   { key: 'created', label: '创建歌单' },
   { key: 'collected', label: '收藏歌单' },
@@ -211,17 +205,10 @@ function normalizePlaylistArray(payload: any): any[] {
   return [];
 }
 
-const { refresh } = useDetailStickyState(
-  computed(() => avatarUrl.value?.trim() || ''),
-  {
-    rootRef: detailPageRef,
-    scrollHostRef: detailScrollHostRef,
-  },
-);
-
 // 切换标签时重置滚动位置
 watch(activeTab, () => {
-  refresh();
+  const host = document.querySelector('.page-content-scroll');
+  if (host) host.scrollTop = 0;
 });
 
 onMounted(() => {
@@ -229,8 +216,10 @@ onMounted(() => {
 });
 </script>
 
+<style>@import '../styles/detail-page.css';</style>
 <style scoped>
-@import '../styles/detail-page.css';
+
+;
 
 .cover {
   width: 308px;
@@ -291,4 +280,15 @@ onMounted(() => {
     height: 36px;
   }
 }
+
+.state {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: var(--text-label-md);
+}
+.state.error {
+  color: var(--danger);
+}
+
 </style>

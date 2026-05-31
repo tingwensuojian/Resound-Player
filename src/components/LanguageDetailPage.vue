@@ -1,16 +1,9 @@
 <template>
-  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page language-detail-page" :class="{ 'language-detail-page--embedded': embedded }">
-    <div class="playlist-detail-back">
-      <button class="back-btn" @click="$emit('back')">← {{ backLabel }}</button>
-    </div>
-
-    <DetailStickyHeroHeader
-      :embedded="embedded"
-      :loading="loading && !dataReady"
-      :ready="dataReady"
-      :error="error"
-      loading-text="歌单加载中…"
-    >
+  <DetailShrinkShell
+      :cover-url="heroCoverUrl"
+    
+  :list-scrolling="listScrolling"
+  >
       <template #media>
         <HeroCoverMedia v-if="heroCoverUrl" :src="heroCoverUrl" :alt="playlistCategory" />
       </template>
@@ -24,10 +17,8 @@
           共 {{ totalCount }} 个歌单
         </AnimatedAppear>
       </template>
-    </DetailStickyHeroHeader>
-
-    <div ref="detailScrollHostRef" class="detail-scroll-host">
-      <div class="playlist-detail-body">
+      <template #content>
+      <div class="page-content-scroll" @scroll="handleListScroll">
         <div v-if="loading && !playlists.length" class="state">加载中…</div>
         <div v-else-if="error" class="state error">{{ error }}</div>
         <template v-else>
@@ -75,13 +66,14 @@
           </div>
         </template>
       </div>
-    </div>
-  </AnimatedAppear>
+      </template>
+    </DetailShrinkShell>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, type ComponentPublicInstance } from 'vue';
-import { useDetailStickyState } from '../composables/useDetailStickyState';
+import { useListScroll } from '../composables/useScrollShrink';
+const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 import { useDominantColor } from '../composables/useDominantColor';
 import { getTopPlaylists, getHighQualityPlaylists } from '../api/music';
 import { apiCache, CACHE_TTL } from '../stores/apiCache';
@@ -89,7 +81,7 @@ import { resolvePlaylistCoverUrl } from '../utils/image';
 import AnimatedAppear from './AnimatedAppear.vue';
 import HoverPlayButton from './HoverPlayButton.vue';
 import PlaylistHighlightSection from './PlaylistHighlightSection.vue';
-import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
+import DetailShrinkShell from './DetailShrinkShell.vue';
 import HeroCoverMedia from './HeroCoverMedia.vue';
 
 /** 将百科语种名映射到歌单分类名 */
@@ -129,9 +121,6 @@ const order = ref<'hot' | 'new'>('hot');
 const hasMore = ref(false);
 
 let fetchToken = 0;
-const detailPageRef = ref<ComponentPublicInstance | null>(null);
-const detailScrollHostRef = ref<HTMLElement | null>(null);
-
 /** 计算实际要查的歌单分类 */
 const playlistCategory = computed(() => {
   return LANGUAGE_TO_CATEGORY[props.languageName] || props.languageName;
@@ -149,11 +138,6 @@ const heroCoverUrl = computed(() => {
 });
 
 useDominantColor(heroCoverUrl);
-const { refresh } = useDetailStickyState(heroCoverUrl, {
-  embedded: !!props.embedded,
-  rootRef: detailPageRef,
-  scrollHostRef: detailScrollHostRef,
-});
 
 function resolveCover(item: any) {
   return resolvePlaylistCoverUrl(item.coverImgUrl || item.picUrl || '', 800);
@@ -240,13 +224,10 @@ watch(() => props.languageName, (name) => {
 }, { immediate: true });
 </script>
 
+<style>@import '../styles/detail-page.css';</style>
 <style scoped>
-@import '../styles/detail-page.css';
 
-.playlist-detail-back {
-  position: relative;
-  z-index: 3;
-}
+;
 
 .playlist-grid {
   display: grid;
@@ -370,4 +351,15 @@ watch(() => props.languageName, (name) => {
 @media (max-width: 767px) {
   .playlist-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.state {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: var(--text-label-md);
+}
+.state.error {
+  color: var(--danger);
+}
+
 </style>

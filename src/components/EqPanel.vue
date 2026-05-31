@@ -35,6 +35,7 @@
                 <input
                   type="range"
                   class="eq-slider"
+                  orient="vertical"
                   :min="-12"
                   :max="12"
                   :step="0.5"
@@ -147,13 +148,8 @@ function selectPreset(preset: EqPreset) {
 function onBandInput(index: number, event: Event) {
   const val = Number((event.target as HTMLInputElement).value);
   eq.state.gains[index] = val;
-  if (!isSelectedCustomPreset.value) {
-    eq.state.currentPreset = '自定义';
-  }
-  if (eq.state.enabled) {
-    playerStore.setEqGains(eq.state.gains);
-  }
-  // 拖拽停止后再持久化，避免连续 input 频繁写 localStorage。
+  if (!isSelectedCustomPreset.value) eq.state.currentPreset = '自定义';
+  if (eq.state.enabled) playerStore.setEqGains(eq.state.gains);
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => eq.save(), 300);
 }
@@ -302,50 +298,50 @@ function resetGains() {
   gap: 4px;
   min-width: 0;
 }
+
 .eq-slider-wrap {
-  display: grid;
-  place-items: center;
   height: 180px;
   width: 100%;
-  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 .eq-slider {
   -webkit-appearance: none;
   appearance: none;
-  writing-mode: vertical-lr;
+  width: 180px;
+  height: 180px;
+  transform: rotate(-90deg);
   direction: rtl;
-  width: 100%;
-  height: 100%;
-  background: transparent !important;
+  accent-color: var(--accent);
   cursor: pointer;
   margin: 0;
   padding: 0;
+  background: transparent;
 }
 .eq-slider:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 .eq-slider::-webkit-slider-runnable-track {
-  width: 4px;
-  height: 100%;
+  height: 4px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 28%, var(--bg-muted));
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-soft));
 }
 .eq-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  appearance: none;
   width: 16px;
   height: 16px;
   border-radius: 50%;
   background: var(--accent);
   border: 2px solid var(--bg-solid);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent), 0 2px 6px rgba(0, 0, 0, 0.2);
-  margin-left: -6px;
+  margin-top: -6px;
 }
 .eq-slider::-moz-range-track {
-  width: 4px;
-  height: 100%;
+  height: 4px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent) 28%, var(--bg-muted));
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border-soft));

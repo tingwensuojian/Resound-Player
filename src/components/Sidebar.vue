@@ -38,7 +38,7 @@
           class-name="menu-item"
           :class="{ active: item.key === activeKey, iconOnly: isCollapsed }"
           :title="isCollapsed ? item.label : ''"
-          @click="emit('select', item.key)"
+          @click="onMenuClick(item.key)"
         >
           <component :is="item.icon" :size="18" class="icon" />
           <span class="text" :class="{ collapsedText: isCollapsed }">{{ item.label }}</span>
@@ -60,7 +60,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-import { BarChart3, BookAudio, Clapperboard, Compass, Disc3, FolderOpen, FolderTree, History, Home, ListMusic, Mic2, Search, Settings, Trophy, User } from 'lucide-vue-next';
+import { BarChart3, BookAudio, Clapperboard, Compass, Disc3, FolderOpen, FolderTree, History, Home, ListMusic, Mic2, Search, Settings, Shrink, Trophy, User } from 'lucide-vue-next';
 import AnimatedAppear from './AnimatedAppear.vue';
 import { platform } from '../utils/platform';
 
@@ -70,13 +70,15 @@ const props = withDefaults(
   defineProps<{
     activeKey: string;
     collapsed?: boolean;
+    overlay?: boolean;
   }>(),
-  { collapsed: false },
+  { collapsed: false, overlay: false },
 );
 
 const emit = defineEmits<{
   (e: 'update:collapsed', v: boolean): void;
   (e: 'select', key: string): void;
+  (e: 'close'): void;
 }>();
 
 const sidebarRef = ref<HTMLElement | null>(null);
@@ -105,7 +107,20 @@ onMounted(() => {
 });
 
 function toggleCollapsed() {
-  isCollapsed.value = !isCollapsed.value;
+  if (props.overlay) {
+    // overlay 模式：折叠时通知父组件关闭
+    emit('close');
+  } else {
+    isCollapsed.value = !isCollapsed.value;
+  }
+}
+
+function onMenuClick(key: string) {
+  emit('select', key);
+  // overlay 模式下选择菜单项后自动关闭侧栏
+  if (props.overlay) {
+    emit('close');
+  }
 }
 
 const items = [
@@ -122,6 +137,7 @@ const items = [
   ] : []),
   { key: 'user', label: '用户', icon: User },
   { key: 'settings', label: '设置', icon: Settings },
+  { key: 'shrink-demo', label: 'Shrink演示', icon: Shrink },
   { key: 'discover', label: '发现', icon: Compass },
 ];
 </script>
@@ -144,7 +160,6 @@ const items = [
   cursor: default;
   overflow: visible;
   contain: layout style;
-  will-change: width;
   transition: width 0.28s cubic-bezier(0.34, 1, 0.64, 1);
   z-index: 10;
   border: none !important;
@@ -315,5 +330,18 @@ const items = [
 .edge-crease.collapsed .crease-line {
   left: 12px;
   transform: translateY(-50%) translateX(-50%);
+}
+
+/* ── Overlay 模式（平板端展开） ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar.sidebar-overlay-open {
+    z-index: 10;
+    animation: sidebar-slide-in 0.28s cubic-bezier(0.34, 1, 0.64, 1);
+  }
+}
+
+@keyframes sidebar-slide-in {
+  from { transform: translateX(-100%); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
 }
 </style>

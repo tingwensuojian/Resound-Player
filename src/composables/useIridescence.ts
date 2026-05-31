@@ -1,4 +1,5 @@
 import { nextTick, watch, onUnmounted, type Ref } from 'vue';
+import { shouldSkipWebGLEffect } from '../utils/deviceDetector';
 
 const vertexShader = `
 attribute vec2 uv;
@@ -79,6 +80,12 @@ export function useIridescence(
   }
 
   async function start() {
+    // 低配设备跳过WebGL效果
+    if (shouldSkipWebGLEffect()) {
+      console.log('[Iridescence] 跳过：设备等级不足');
+      return;
+    }
+    
     const { Renderer, Program, Mesh, Triangle, Color } = await import('ogl');
     const ctn = containerRef.value!;
     if (!ctn || started) { return; }

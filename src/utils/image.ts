@@ -30,3 +30,44 @@ export function resolvePlaylistCoverUrl(url?: string | null, size = 512) {
 export function resolveArtistImageUrl(item: any) {
   return normalizeImageUrl(item?.img1v1Url || item?.picUrl || item?.avatar || item?.avatarUrl || item?.coverUrl || item?.cover || item?.coverImgUrl || '');
 }
+
+/**
+ * 预渲染静态模糊图，替代实时 backdrop-filter
+ * 将封面图用 canvas 渲染 + blur，生成 data URL
+ * 只在挂载/封面变化时执行一次，不是每帧
+ */
+export function generateBlurredBg(
+  imageUrl: string,
+  options?: { blurRadius?: number; saturation?: number; maxWidth?: number }
+): Promise<string> {
+  const {
+    blurRadius = 10,
+    saturation = 1.32,
+    maxWidth = 200,
+  } = options || {};
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      // 用较小的 canvas 尺寸（200px），模糊后不可感知分辨率差异
+      const scale = Math.min(1, maxWidth / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas 2D context unavailable')); return; }
+
+      // blur + saturation 一次性渲染
+      ctx.filter = `blur(${blurRadius}px) saturate(${saturation})`;
+      ctx.drawImage(img, 0, 0, w, h);
+
+      resolve(canvas.toDataURL('image/webp', 0.6));
+    };
+    img.onerror = () => reject(new Error(`Failed to load image: ${imageUrl}`));
+    img.src = resolveSizedImageUrl(imageUrl, 512);
+  });
+}

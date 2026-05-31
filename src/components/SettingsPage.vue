@@ -2020,4 +2020,14 @@ async function handleAction(key: string) {
   to { opacity: 1; }
 }
 
+
+/* ── 平板端设置页适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .settings-page { padding: 0; }
+  .row { padding: var(--space-2) var(--space-3); }
+}
+@media (pointer: coarse) {
+  .tab-btn { min-height: 44px; }
+  .row { min-height: 44px; }
+}
 </style>

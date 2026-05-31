@@ -1,13 +1,11 @@
 <template>
-  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page">
-    <div class="playlist-detail-back">
-      <button class="back-btn" @click="goBack">← 返回歌单</button>
-    </div>
-
-    <DetailStickyHeroHeader
+  <DetailHeroShell
       :loading="false"
       :ready="!!localMusicStore.state.activePlaylistDetail"
+      :cover-url="coverUrl"
+      :bar-title="playlistName"
     >
+
       <template #media>
         <template v-if="hasCustomCover">
           <HeroCoverMedia :src="coverUrl" :alt="playlistName" />
@@ -41,9 +39,8 @@
         <AnimatedAppear tag="button" variant="control" rhythm="actions" class-name="add-to-queue" @click="handleAddTrack">从曲库添加</AnimatedAppear>
         <AnimatedAppear tag="button" variant="control" rhythm="actions" class-name="play-all" @click="handlePlayAll">播放全部</AnimatedAppear>
       </template>
-    </DetailStickyHeroHeader>
-
-    <div ref="detailScrollHostRef" class="detail-scroll-host">
+    
+    <template #content>
       <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
         <div v-if="!tracks.length" class="local-empty">
           <p>歌单为空，点击"从曲库添加"添加歌曲</p>
@@ -99,7 +96,7 @@
           </div>
         </div>
       </AnimatedAppear>
-    </div>
+      </template>
 
     <LocalContextMenu
       :visible="ctxVisible"
@@ -132,7 +129,7 @@
       :track="pendingMetadataTrack"
       @close="closeMetadataDialogs"
     />
-  </AnimatedAppear>
+    </DetailHeroShell>
 
   <!-- 选择歌单对话框 -->
   <Teleport to="body">
@@ -154,7 +151,7 @@
           <button class="button-surface" @click="cancelPlaylistPicker">取消</button>
         </div>
       </div>
-    </div>
+      </div>
   </Teleport>
 </template>
 
@@ -165,9 +162,9 @@ const localMusicStore = useLocalMusicStore()
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore()
 import { platform } from '../utils/platform'
-import { useDetailStickyState } from '../composables/useDetailStickyState'
+
 import AnimatedAppear from '../components/AnimatedAppear.vue'
-import DetailStickyHeroHeader from '../components/DetailStickyHeroHeader.vue'
+import DetailHeroShell from '../components/DetailHeroShell.vue'
 import HeroCoverMedia from '../components/HeroCoverMedia.vue'
 import LocalContextMenu, { type ContextMenuItem } from '../components/LocalContextMenu.vue'
 import PromptModal from '../components/ui/PromptModal.vue'
@@ -212,266 +209,10 @@ const coverUrls = computed(() => {
 const hasCustomCover = computed(() =>
   !!localMusicStore.state.activePlaylistDetail?.customCoverUrl?.trim()
 )
-const detailPageRef = ref<ComponentPublicInstance | null>(null)
-const detailScrollHostRef = ref<HTMLElement | null>(null)
 
 const error = ref('')
+async function uploadToCloud(track) {
 
-// ── 吸顶 + blur 背景 ──
-const { refresh } = useDetailStickyState(coverUrl, {
-  rootRef: detailPageRef,
-  scrollHostRef: detailScrollHostRef,
-})
-
-// ── Modal state ──
-const showRenameModal = ref(false)
-const showAddTrackModal = ref(false)
-const showLyricMatchDialog = ref(false)
-const pendingMetadataTrack = ref<LocalTrack | null>(null)
-
-// ── 行 hover / 播放暂停音浪 ──
-const hoveredIdx = ref(-1)
-
-function isTrackPlaying(track: LocalTrack) {
-  return String(nowPlayingId.value) === String(track.id)
-}
-
-function isTrackPaused(track: LocalTrack) {
-  return isTrackPlaying(track) && !playerStore.state.isPlaying
-}
-
-function ppTitle(track: LocalTrack, idx: number) {
-  if (!isTrackPlaying(track) && hoveredIdx.value !== idx) return `第 ${idx + 1} 首`
-  if ((!isTrackPlaying(track) || isTrackPaused(track)) && hoveredIdx.value === idx) return '播放'
-  if (isTrackPlaying(track) && !isTrackPaused(track) && hoveredIdx.value === idx) return '暂停'
-  return '正在播放'
-}
-
-function handlePPClick(track: LocalTrack, idx: number) {
-  if (nowPlayingId.value === track.id) {
-    playerStore.togglePlay()
-  } else {
-    playTrack(track, idx)
-  }
-}
-
-// ── 右键菜单 ──
-const ctxVisible = ref(false)
-const ctxX = ref(0)
-const ctxY = ref(0)
-const ctxTrack = ref<LocalTrack | null>(null)
-
-const ctxItems = computed<ContextMenuItem[]>(() => {
-  const track = ctxTrack.value
-  if (!track) return []
-  return [
-    { key: 'remove', label: '从歌单移除', icon: '✕' },
-  ]
-})
-
-function showContextMenu(e: MouseEvent, track: LocalTrack, _index: number) {
-  ctxTrack.value = track
-  ctxX.value = e.clientX
-  ctxY.value = e.clientY
-  ctxVisible.value = true
-}
-
-function handleCtxAction(key: string) {
-  const track = ctxTrack.value
-  if (!track) return
-  if (key === 'remove') {
-    handleRemoveTrack(track)
-  }
-}
-
-// ── 业务逻辑 ──
-
-function goBack() {
-  localMusicStore.state.activeView = 'playlists'
-  localMusicStore.state.activePlaylistDetail = null
-  localMusicStore.state.activePlaylistId = ''
-  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
-}
-
-function handleRename() {
-  showRenameModal.value = true
-}
-
-async function onRenameConfirm(name: string) {
-  const pl = localMusicStore.state.activePlaylistDetail
-  if (!pl) return
-  await localMusicStore.renamePlaylist(pl.id, name.trim())
-}
-
-function handleAddTrack() {
-  showAddTrackModal.value = true
-}
-
-async function onAddTrackConfirm(kw: string) {
-  const pl = localMusicStore.state.activePlaylistDetail
-  if (!pl) return
-  if (!platform.localApi) return
-
-  try {
-    const results = await platform.localApi.search(kw.trim())
-    if (!results?.length) {
-      alert('未找到匹配的歌曲')
-      return
-    }
-    const newTracks = results.filter((t: any) =>
-      !tracks.value.some((pt: any) => pt.id === t.id)
-    )
-    if (!newTracks.length) {
-      alert('搜索结果已全部在歌单中')
-      return
-    }
-    if (!confirm(`找到 ${newTracks.length} 首未添加的歌曲，确定全部加入歌单？`)) return
-
-    for (const t of newTracks) {
-      await localMusicStore.addTrackToPlaylist(pl.id, t)
-    }
-    alert(`已添加 ${newTracks.length} 首歌曲到歌单`)
-  } catch (e) {
-    console.error('[localPlaylist] add track error:', e)
-  }
-}
-
-async function handleRemoveTrack(track: LocalTrack) {
-  const pl = localMusicStore.state.activePlaylistDetail
-  if (!pl || !track) return
-  if (!confirm(`确定从歌单移除「${track.title}」？`)) return
-  await localMusicStore.removeTrackFromPlaylist(pl.id, track.id)
-}
-
-function playTrack(track: any, index: number) {
-  const playlist = tracks.value.map((t: any) => ({
-    id: t.id, name: t.title,
-    ar: [{ name: t.artist }],
-    al: { name: t.album, picUrl: t.coverUrl },
-    source: 'local' as const, path: t.path,
-    duration: t.duration,
-  }))
-  playerStore.setPlaylist(playlist as any, index)
-  playerStore.playByIndex(Number(index))
-}
-
-function handlePlayAll() {
-  if (!tracks.value.length) return
-  playTrack(tracks.value[0], 0)
-}
-
-/** 下一首播放：插入到当前播放之后 */
-function addToQueue(track: LocalTrack) {
-  const song = {
-    id: track.id, name: track.title,
-    ar: [{ name: track.artist }],
-    al: { name: track.album, picUrl: track.coverUrl },
-    source: 'local' as const, path: track.path,
-    duration: track.duration,
-  }
-  playerStore.insertNext(song)
-  loginModalStore.showGlobalToast('已加入播放队列', 'success', 3000)
-}
-
-/** 添加到歌单 */
-const showPlaylistPicker = ref(false)
-const pendingTrackForPlaylist = ref<LocalTrack | null>(null)
-
-async function addToPlaylist(track: LocalTrack) {
-  if (!localMusicStore.state.playlists.length) {
-    await localMusicStore.loadPlaylists()
-  }
-  if (!localMusicStore.state.playlists.length) {
-    const create = confirm('还没有本地歌单，是否创建一个？')
-    if (!create) return
-    const pl = await localMusicStore.createPlaylist('新歌单')
-    if (pl) {
-      await localMusicStore.addTrackToPlaylist(pl.id, track)
-      loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
-    }
-    return
-  }
-  pendingTrackForPlaylist.value = track
-  showPlaylistPicker.value = true
-}
-
-async function confirmPlaylistPicker(playlistId: string) {
-  const track = pendingTrackForPlaylist.value
-  if (!track) return
-  showPlaylistPicker.value = false
-  pendingTrackForPlaylist.value = null
-  try {
-    await localMusicStore.addTrackToPlaylist(playlistId, track)
-    loginModalStore.showGlobalToast('已添加到歌单', 'success', 3000)
-  } catch {
-    loginModalStore.showGlobalToast('添加失败，请重试', 'error', 3000)
-  }
-}
-
-function cancelPlaylistPicker() {
-  showPlaylistPicker.value = false
-  pendingTrackForPlaylist.value = null
-}
-
-function openLyricMatch(track: LocalTrack) {
-  pendingMetadataTrack.value = track
-  showLyricMatchDialog.value = true
-}
-
-function closeMetadataDialogs() {
-  showLyricMatchDialog.value = false
-  pendingMetadataTrack.value = null
-}
-
-/** 定位到目录 */
-function showInFolder(track: LocalTrack) {
-  if (!track.path) {
-    loginModalStore.showGlobalToast('未找到对应目录，文件可能已被移动或删除', 'warning', 3000)
-    return
-  }
-  const parentDir = track.path.replace(/\\/g, '/').replace(/\/[^/]*$/, '')
-  localMusicStore.expandFolderAncestors(parentDir)
-  localMusicStore.state.selectedFolderPath = parentDir
-  localMusicStore.state.locatedTrackId = track.id
-  localMusicStore.state.activeView = 'folders'
-  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
-}
-
-/** 查看本地专辑 */
-function showLocalAlbum(track: LocalTrack) {
-  localMusicStore.state.selectedAlbum = track.album
-  localMusicStore.state.locatedTrackId = track.id
-  localMusicStore.state.activeView = 'albums'
-  window.dispatchEvent(new CustomEvent('local-navigate', { detail: { page: 'local-music' } }))
-}
-
-/** 查看在线专辑 */
-async function showOnlineAlbum(track: LocalTrack) {
-  try {
-    const songKw = [track.title, track.artist].filter(Boolean).join(' ')
-    const songRes = await searchMusic(songKw, { type: 1, limit: 3 })
-    const song = songRes?.result?.songs?.[0]
-    let albumId = song?.al?.id || song?.album?.id
-    if (!albumId) {
-      const albumKw = [track.artist, track.album].filter(Boolean).join(' ')
-      const albumRes = await searchMusic(albumKw, { type: 10, limit: 1 })
-      albumId = albumRes?.result?.albums?.[0]?.id
-    }
-    if (albumId) {
-      window.dispatchEvent(new CustomEvent('open-album-detail', { detail: { albumId } }))
-      loginModalStore.showGlobalToast('已跳转到在线专辑，若信息有误请使用搜索查找', 'warning', 4000)
-    } else {
-      loginModalStore.showGlobalToast('未找到在线专辑', 'warning', 3000)
-    }
-  } catch {
-    loginModalStore.showGlobalToast('搜索专辑失败', 'error', 3000)
-  }
-}
-
-/** 上传至云盘 */
-async function uploadToCloud(track: LocalTrack) {
-  if (!platform.localApi) return
-  if (!userStore.state.isLogin) { loginModalStore.showLoginModal('none'); return }
   if (userStore.state.loginMode !== 'cookie' && userStore.state.loginMode !== 'qr') {
     loginModalStore.showGlobalToast('搜索用户方式登录不支持上传云盘功能，请使用扫码或 Cookie 登录', 'warning', 5000)
     return

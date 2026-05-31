@@ -40,6 +40,16 @@ writeMainLog('[module-load]', {
 
 app.commandLine.appendSwitch('no-sandbox');
 
+// ── GPU 硬件加速标志 ──
+// 启用 GPU 光栅化：将 CSS/图像光栅化从 CPU 移入 GPU，减少主线程负担
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+// 启用 Skia GPU 渲染器：Chromium 默认 GPU 渲染后端
+app.commandLine.appendSwitch('enable-features', 'UseSkiaRenderer');
+// Windows/Linux 启用 Vulkan 后端（如果可用），替代 OpenGL
+if (process.platform !== 'darwin') {
+  app.commandLine.appendSwitch('enable-features', 'Vulkan');
+}
+
 if (process.env.RESOUND_WAV_METADATA_E2E === '1') {
   app.whenReady().then(() => runWavMetadataE2E(app)).catch((err) => {
     console.error('[wav-metadata-e2e]', err);

@@ -1,8 +1,5 @@
 <template>
   <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="comment-page">
-    <div class="playlist-detail-back">
-      <button class="back-btn" @click="$emit('back')">← 返回</button>
-    </div>
     <header class="comment-page-head">
       <div class="head-cover-wrap">
         <img v-if="song?.al?.picUrl" class="head-cover" :src="resolveSizedImageUrl(song.al.picUrl, 80)" :alt="song.name" />
@@ -100,4 +97,9 @@ onMounted(async () => {
 .head-artist { margin: 0; color: var(--text-sub); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .head-album { margin: 0; color: var(--text-sub); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .head-link { border: 0; background: transparent; color: var(--accent); cursor: pointer; padding: 0; font-size: inherit; font-family: inherit; white-space: nowrap; }
-.head-link:hover { opacity: 0.75; }</style>
+.head-link:hover { opacity: 0.75; }
+/* ── 平板端评论页适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .song-comment-page { padding: var(--space-3); }
+}
+</style>

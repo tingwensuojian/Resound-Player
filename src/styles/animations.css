@@ -158,6 +158,7 @@
 .an-enter-media,
 .an-enter-modal,
 .an-enter-nav {
+  contain: layout style;
   will-change: transform, opacity;
 }
 
@@ -404,6 +405,7 @@ img.entity-cover.cover-image,
   display: grid;
   width: 100%;
   overflow: hidden;
+  contain: layout style;
   background: var(--bg-surface, #1c1917);
 }
 .progressive-cover > * {

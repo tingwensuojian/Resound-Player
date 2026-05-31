@@ -489,4 +489,9 @@ function formatArtists(ar?: { name: string }[]): string {
     animation: none !important;
   }
 }
+
+/* ── 平板端播放队列适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .queue-panel { padding: var(--space-3); }
+}
 </style>

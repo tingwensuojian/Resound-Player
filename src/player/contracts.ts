@@ -18,6 +18,8 @@ export type QualityDowngradeInfo = {
 };
 
 export type TrackArtist = {
+  id?: number;
+  artistId?: number;
   name: string;
 };
 

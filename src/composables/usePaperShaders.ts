@@ -1,4 +1,5 @@
 import { nextTick, watch, onUnmounted, type Ref } from 'vue';
+import { shouldSkipWebGLEffect } from '../utils/deviceDetector';
 
 /* ------------------------------------------------------------------ */
 /*  MeshGradient — 有机流动渐变网格                                    */
@@ -56,6 +57,12 @@ export function usePaperShaders(
   let cleanup: (() => void) | null = null;
 
   async function start() {
+    // 低配设备跳过WebGL效果
+    if (shouldSkipWebGLEffect()) {
+      console.log('[PaperShaders] 跳过：设备等级不足');
+      return;
+    }
+    
     const THREE = await import('three');
     const ctn = containerRef.value!;
     if (!ctn) return;

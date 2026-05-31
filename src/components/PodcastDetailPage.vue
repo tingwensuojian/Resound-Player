@@ -1,16 +1,11 @@
 <template>
-  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[embedded && 'playlist-detail-page--embedded']">
-    <div v-if="!embedded" class="playlist-detail-back">
-      <button class="back-btn" type="button" @click="emit('back')">← 返回播客列表</button>
-    </div>
+  <DetailShrinkShell
+      :class="[embedded && 'playlist-detail-page--embedded']"
+      :cover-url="coverUrl || ''"
+    
+  :list-scrolling="listScrolling"
+  >
 
-    <DetailStickyHeroHeader
-      :embedded="embedded"
-      :loading="loading"
-      :ready="!!heroTitle"
-      :error="''"
-      loading-text="播客详情加载中…"
-    >
       <template #media>
         <HeroCoverMedia :src="coverUrl" :alt="heroTitle" />
       </template>
@@ -64,10 +59,10 @@
           :show-search="activeTab === 'episodes'"
         />
       </template>
-    </DetailStickyHeroHeader>
 
-    <div ref="detailScrollHostRef" class="detail-scroll-host">
-      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+    <template #content>
+<div class="page-content-scroll" @scroll="handleListScroll">
+    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
         <template v-if="loading">
           <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="state">播客详情加载中…</AnimatedAppear>
         </template>
@@ -123,15 +118,16 @@
         </template>
       </AnimatedAppear>
     </div>
-  </AnimatedAppear>
+    </template>
+    </DetailShrinkShell>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
-import { useDetailStickyState } from '../composables/useDetailStickyState';
+import { useListScroll } from '../composables/useScrollShrink';
 import { useDominantColor } from '../composables/useDominantColor';
 import AnimatedAppear from './AnimatedAppear.vue';
-import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
+import DetailShrinkShell from './DetailShrinkShell.vue';
 import HeroCoverMedia from './HeroCoverMedia.vue';
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
@@ -183,6 +179,8 @@ const filteredItems = computed(() => {
   });
 });
 
+const { listScrolling, handleListScroll, resetScroll } = useListScroll();
+const scrollHostSelector = '.page-content-scroll';
 const isDescriptionExpanded = ref(false);
 
 const detail = computed(() => props.detail?.voiceList || props.detail?.data?.voiceList || props.detail?.data || props.detail || props.items?.[0]?.voiceList || props.items?.[0]?.detail || props.items?.[0]?.program?.radio || props.items?.[0]?.program || props.items?.[0] || null);
@@ -201,19 +199,6 @@ const heroDescription = computed(() => hero.value.description || '暂无简介�
 const shouldShowDescriptionToggle = computed(() => heroDescription.value.length > DESC_COLLAPSE_THRESHOLD);
 const coverUrl = computed(() => hero.value.coverUrl?.trim() || '');
 useDominantColor(coverUrl);
-const detailPageRef = ref<ComponentPublicInstance | null>(null);
-const detailScrollHostRef = ref<HTMLElement | null>(null);
-
-const { refresh } = useDetailStickyState(
-  coverUrl,
-  {
-    embedded: !!props.embedded,
-    rootRef: detailPageRef,
-    scrollHostRef: detailScrollHostRef,
-  },
-);
-
-const scrollHostSelector = () => detailScrollHostRef.value;
 
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
@@ -404,13 +389,16 @@ onMounted(() => {
 watch(
   () => props.detail,
   () => {
-    requestAnimationFrame(() => refresh());
+    const host = document.querySelector('.page-content-scroll');
+  if (host) host.scrollTop = 0;
   },
 );
 </script>
 
+<style>@import '../styles/detail-page.css';</style>
 <style scoped>
-@import '../styles/detail-page.css';
+
+;
 
 .podcast-song-item {
   display: grid;
@@ -545,4 +533,15 @@ watch(
     border-radius: 14px;
   }
 }
+
+.state {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: var(--text-label-md);
+}
+.state.error {
+  color: var(--danger);
+}
+
 </style>

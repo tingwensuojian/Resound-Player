@@ -37,13 +37,13 @@ export function useBackToTop(options: {
   }
 
   function scrollToTop(): void {
-    const host = scrollHost || getScrollHost();
+    const host = scrollHost;
     if (!host) return;
     host.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function update(): void {
-    const host = scrollHost || getScrollHost();
+    const host = scrollHost;
     if (!host) return;
     const st = host.scrollTop;
     const maxScroll = Math.max(1, host.scrollHeight - host.clientHeight);

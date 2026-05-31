@@ -263,7 +263,7 @@
             <template v-else>
               <button class="con-btn" @click="playerStore.prev()" aria-label="上一首"><SkipBack :size="14" /></button>
             </template>
-            <button class="con-btn con-play" @click="playerStore.togglePlay()" aria-label="播放或暂停">{{ playerStore.state.isPlaying ? '❚❚' : '▶' }}</button>
+            <button class="con-btn con-play" @click="playerStore.togglePlay()" aria-label="播放或暂停"><Pause v-if="playerStore.state.isPlaying" :size="20" /><Play v-else :size="20" /></button>
             <button class="con-btn" @click="playerStore.next()" aria-label="下一首"><SkipForward :size="14" /></button>
           </div>
           <div class="console-progress">
@@ -309,7 +309,7 @@
 </template>
 
 <script setup lang="ts">
-import { AlignJustify, ChevronDown, Copy, Heart, Minus, Plus, Repeat, Repeat1, Settings, Shuffle, SkipBack, SkipForward, Sparkles, Volume, Volume1, Volume2, VolumeX } from 'lucide-vue-next';
+import { AlignJustify, ChevronDown, Copy, Heart, Minus, Pause, Play, Plus, Repeat, Repeat1, Settings, Shuffle, SkipBack, SkipForward, Sparkles, Volume, Volume1, Volume2, VolumeX } from 'lucide-vue-next';
 import { computed, nextTick, ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { toggleDjSubscribe, toggleSongLike, trashPersonalFm, deleteDjComment } from '../api/music';
 import { usePlayerStore } from '../stores/player'
@@ -1281,6 +1281,130 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .ui-hidden {
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+/* ── 平板端全屏播放器纵向布局 ── */
+@media (max-width: 1180px) and (min-width: 768px) {
+  /* === Layout: single column === */
+  .expanded-panel {
+    height: 100dvh;
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+  .panel-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    gap: var(--space-3);
+    align-items: start;
+    overflow-y: auto;
+  }
+
+  /* === P0: Cover sizing === */
+  .left-zone {
+    padding: var(--space-2) 0;
+    max-height: 32vh;
+  }
+  .album-shell {
+    width: min(380px, 38vw) !important;
+    height: min(380px, 38vw) !important;
+  }
+  .vinyl-record {
+    width: min(38vh, 380px) !important;
+  }
+
+  /* === P0: Text overflow === */
+  .song-name,
+  .song-artist {
+    width: min(480px, 80vw) !important;
+  }
+  .song-name {
+    font-size: clamp(20px, 4vw, 32px) !important;
+  }
+  .song-artist {
+    font-size: clamp(14px, 2.5vw, 18px) !important;
+  }
+  .song-name-center {
+    font-size: clamp(20px, 4vw, 32px) !important;
+  }
+  .song-artist-center {
+    font-size: clamp(16px, 2.5vw, 18px) !important;
+  }
+
+  /* === P0: Controls sizing === */
+  .progress-wrap,
+  .controls {
+    width: min(300px, 70vw) !important;
+  }
+  .volume-wrap {
+    width: min(300px, 70vw) !important;
+  }
+
+  /* === P1: Right actions reposition === */
+  .right-actions {
+    position: absolute !important;
+    right: var(--space-4) !important;
+    top: auto !important;
+    bottom: var(--space-4) !important;
+    transform: none !important;
+    flex-direction: row !important;
+    gap: var(--space-2) !important;
+    z-index: 65;
+  }
+
+  /* === P1: Bottom console === */
+  .bottom-console {
+    padding: 0 var(--space-3) var(--space-3) !important;
+    gap: var(--space-1) !important;
+  }
+  .cc-right .con-vol-slider {
+    width: 108px !important;
+  }
+  .console-bar {
+    height: 44px !important;
+  }
+
+  /* === P2: Vinyl pointer === */
+  .vinyl-pointer {
+    width: 25% !important;
+    left: 48% !important;
+    top: -18% !important;
+  }
+
+  /* === Landscape (iPad横屏) === */
+  @media (orientation: landscape) {
+    .panel-body {
+      grid-template-columns: 35% 65% !important;
+      overflow-y: visible !important;
+    }
+    .left-zone {
+      max-height: 50vh !important;
+    }
+    .album-shell {
+      width: min(320px, 28vw) !important;
+      height: min(320px, 28vw) !important;
+    }
+    .vinyl-record {
+      width: min(32vh, 320px) !important;
+    }
+    .console-progress {
+      width: 100% !important;
+    }
+    .bottom-console {
+      padding: 0 var(--space-3) var(--space-2) !important;
+    }
+    .right-actions {
+      position: fixed !important;
+      right: var(--space-4) !important;
+      bottom: auto !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      flex-direction: column !important;
+    }
+  }
+}
+
+@media (pointer: coarse) {
+  .ctrl { min-width: 44px; min-height: 44px; }
+  .progress-wrap input[type='range'] { height: 44px; }
 }
 </style>
 <style>

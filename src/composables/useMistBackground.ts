@@ -1,4 +1,5 @@
 import { nextTick, watch, onUnmounted, type Ref } from 'vue';
+import { shouldSkipWebGLEffect } from '../utils/deviceDetector';
 
 const fragmentShader = `
 precision highp float;
@@ -81,6 +82,12 @@ export function useMistBackground(
   let cleanup: (() => void) | null = null;
 
   function start() {
+    // 低配设备跳过WebGL效果
+    if (shouldSkipWebGLEffect()) {
+      console.log('[MistBackground] 跳过：设备等级不足');
+      return;
+    }
+    
     const ctn = containerRef.value!;
     if (!ctn) return;
 

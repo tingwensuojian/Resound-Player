@@ -1199,4 +1199,9 @@ function onDocClick(e: MouseEvent) {
   font-weight: 500;
   color: var(--text-soft);
 }
+
+/* ── 平板端统计页适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .insight-grid { grid-template-columns: 1fr; }
+}
 </style>

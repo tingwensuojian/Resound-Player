@@ -463,4 +463,9 @@ watch(() => props.resourceId, (id) => {
 .cp-toast { position: fixed; bottom: 12%; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 999px; max-width: 420px; text-align: center; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); color: #fbbf24; font-size: 13px; font-weight: 500; line-height: 1.4; pointer-events: none; z-index: 310; }
 .toast-fade-enter-active, .toast-fade-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateX(-50%) translateY(8px); }
+
+/* ── 平板端评论面板适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .comment-panel { padding: var(--space-3); }
+}
 </style>

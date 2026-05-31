@@ -6,10 +6,20 @@
     <Sidebar
       v-show="!isNarrow || sidebarOpen"
       :active-key="sidebarActiveKey"
-      :collapsed="!isNarrow && sidebarCollapsed"
+      :collapsed="isTablet ? !sidebarOpen : (!isNarrow && sidebarCollapsed)"
+      :overlay="isTablet && sidebarOpen"
       @update:collapsed="sidebarCollapsed = $event"
       @select="onSelectMenu"
+      @close="sidebarOpen = false"
     />
+
+    <transition name="overlay-fade">
+      <div
+        v-if="(isNarrow || isTablet) && sidebarOpen"
+        class="sidebar-overlay"
+        @click="sidebarOpen = false"
+      />
+    </transition>
 
     <div class="main-area">
       <TopBar
@@ -168,6 +178,14 @@
           <LanguageDetailPage v-else-if="activePage === 'language-detail'" :language-name="activeLanguage" :back-label="activeLanguageReturnPage === 'song-comment' ? '评论' : undefined" @back="backToLanguage" @open-detail="(playlistId) => openPlaylistDetail(playlistId, undefined, activePage)" />
           <LocalMusicHub v-else-if="activePage === 'local-music' && platform.isDesktop" />
           <LocalPlaylistDetailPage v-else-if="activePage === 'local-playlist-detail' && platform.isDesktop" />
+          <DetailShrinkExample v-else-if="activePage === 'shrink-demo'"
+  title="经典华语金曲合集"
+  description="收录了 80-90 年代最经典的华语流行金曲，每一首都承载着满满的回忆。周杰伦、林俊杰、王力宏等天王天后的代表作一网打尽。"
+  creator="音乐小站"
+  :song-count="56"
+  :play-count="123456789"
+  :songs="demoSongs"
+  @play-all="() => {}" />
           <PlaceholderPanel v-else-if="activePage" :page-key="activePage" />
         </KeepAlive>
         </div>
@@ -190,11 +208,14 @@
 <script setup lang="ts">
 import { computed, KeepAlive, onBeforeUnmount, onMounted, watch, ref, defineAsyncComponent } from 'vue';
 import { platform } from './utils/platform';
+import { injectDeviceTierCSS } from './utils/deviceDetector';
+import { toggleFpsOverlay } from './utils/performance';
 import HomePanel from './components/HomePanel.vue';
 import PlayerBar from './components/PlayerBar.vue';
 import PlayQueuePanel from './components/PlayQueuePanel.vue';
 import PlayerExpanded from './components/PlayerExpanded.vue';
 import PlaceholderPanel from './components/PlaceholderPanel.vue';
+import DetailShrinkExample from './components/DetailShrinkExample.vue';
 import ScrollToTopFab from './components/ui/ScrollToTopFab.vue';
 import PlaylistDetailPage from './components/PlaylistDetailPage.vue';
 import AlbumDetailPage from './components/AlbumDetailPage.vue';
@@ -282,6 +303,7 @@ const activeLanguage = ref('');
 const activeLanguageReturnPage = ref('home');
 const apiReady = ref(false);
 const isNarrow = ref(false);
+const isTablet = ref(false);
 const sidebarOpen = ref(true);
 const sidebarCollapsed = ref(false);
 type SettingsInitialTab = 'playback' | 'appearance' | 'local' | 'account' | 'about';
@@ -295,6 +317,15 @@ const layoutVars = computed<Record<string, string>>(() => {
       '--layout-gap': sidebarOpen.value ? '8px' : '0px',
       '--content-max-width': '100%',
       '--content-padding': '14px',
+    };
+  }
+
+  if (isTablet.value) {
+    return {
+      '--sidebar-width': sidebarOpen.value ? '220px' : '76px',
+      '--layout-gap': '8px',
+      '--content-max-width': '100%',
+      '--content-padding': '12px',
     };
   }
 
@@ -315,8 +346,8 @@ const sidebarActiveKey = computed(() => {
 
 const isHeroStickyPage = computed(() => ['playlist-detail', 'rank-detail', 'artist-detail', 'album-detail', 'user-detail', 'language-detail', 'podcast-detail'].includes(activePage.value));
 const showBackToTop = computed(() => isHeroStickyPage.value || ['history', 'user', 'mv', 'playlist', 'rank', 'search', 'podcast-list', 'podcast-subscribed', 'podcast-category', 'song-comment'].includes(activePage.value));
-// 详情页（isHeroStickyPage）使用 .detail-scroll-host 作为滚动容器，非详情页使用 .content
-const backToTopScrollHost = computed(() => isHeroStickyPage.value ? '.detail-scroll-host' : '.content');
+// 详情页（isHeroStickyPage）使用 .page-content-scroll 作为滚动容器，非详情页使用 .content
+const backToTopScrollHost = computed(() => isHeroStickyPage.value ? '.page-content-scroll' : '.content');
 const contentStyle = computed<Record<string, string>>(() => ({}));
 
 // ── 页面缓存策略（方案二：KeepAlive + include 显式控制）──
@@ -344,9 +375,14 @@ const keepAliveNames = computed(() =>
 );
 
 function syncViewport() {
-  // 平板端沿用桌面布局，仅在移动端（<=767）启用窄屏抽屉逻辑
-  isNarrow.value = window.innerWidth <= 767;
+  const w = window.innerWidth;
+  isTablet.value = w >= 768 && w <= 1023;
+  isNarrow.value = w <= 767;
   if (isNarrow.value && sidebarOpen.value) {
+    sidebarOpen.value = false;
+  }
+  // 平板端默认折叠 sidebar
+  if (isTablet.value && sidebarOpen.value) {
     sidebarOpen.value = false;
   }
 }
@@ -364,6 +400,11 @@ function onSelectMenu(key: string) {
 }
 
 function onNavBack() {
+  // 平板端用户页：如果在详情视图，先返回列表而非页面级后退
+  if (isTablet.value && activePage.value === 'user') {
+    window.dispatchEvent(new CustomEvent('user-panel-back'));
+    return;
+  }
   const entry = navHistory.back();
   if (entry) {
     navigateToEntry(entry);
@@ -1132,13 +1173,26 @@ function flushApiCacheBeforeUnload() {
   apiCache.flushPending()
 }
 
+// FPS监控快捷键切换: Ctrl/Cmd + Shift + F
+function handleFpsToggle(e: KeyboardEvent) {
+  const isMod = e.ctrlKey || e.metaKey;
+  if (isMod && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    toggleFpsOverlay({ position: 'top-right', size: 'large', showFrameTime: true });
+  }
+}
+
 onMounted(async () => {
+  injectDeviceTierCSS();
   syncViewport();
   window.addEventListener('resize', syncViewport);
   window.addEventListener('local-navigate', handleLocalNavigate);
   window.addEventListener('open-tray-settings', openTraySettings);
   window.addEventListener('open-album-detail', handleOpenAlbumDetail);
   document.addEventListener('mini-mode-state', handleMiniModeState);
+  
+  // FPS监控快捷键: Ctrl/Cmd + Shift + F
+  window.addEventListener('keydown', handleFpsToggle);
 
   await userStore.hydrate();
   playerStore.init();
@@ -1174,7 +1228,14 @@ onBeforeUnmount(() => {
   window.removeEventListener('open-album-detail', handleOpenAlbumDetail);
   window.removeEventListener('beforeunload', flushApiCacheBeforeUnload);
   document.removeEventListener('mini-mode-state', handleMiniModeState);
+  window.removeEventListener('keydown', handleFpsToggle);
 });
+// Demo data for DetailShrinkExample
+const demoSongs = Array.from({ length: 50 }, (_, i) => ({
+  name: "歌曲标题 " + (i + 1),
+  artist: ["周杰伦", "林俊杰", "王力宏", "蔡依林", "孙燕姿", "张惠妹", "陈奕迅", "王菲"][i % 8],
+  duration: "3:" + String(21 + (i % 39)).padStart(2, "0"),
+}))
 </script>
 
 <style scoped>
@@ -1188,13 +1249,13 @@ onBeforeUnmount(() => {
   --content-max-width: 100%;
   --content-padding: 16px;
 
-  --main-height: calc(100vh - (var(--layout-top) * 2) - var(--player-bar-height));
+  --main-height: calc(100dvh - (var(--layout-top) * 2) - var(--player-bar-height));
   --sidebar-height: var(--main-height);
   --main-width: calc(100% - (var(--layout-left) * 2) - var(--sidebar-width) - var(--layout-gap));
   --content-height: calc(var(--main-height) - var(--topbar-height));
 
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
   position: fixed;
   inset: 0;
   background: var(--bg-app);
@@ -1261,13 +1322,15 @@ onBeforeUnmount(() => {
   transform: scale(1.1);
   transform-origin: top center;
   filter: blur(24px) saturate(155%) contrast(1.08);
+  contain: paint;
   pointer-events: none;
   opacity: 0;
+  will-change: filter, opacity;
   transition: opacity 0.6s ease;
 }
 
 .content.content--hero-sticky::before {
-  opacity: var(--blur-opacity, 1);
+  opacity: 0;  /* disabled - all hero-sticky pages use DetailShrinkShell */
 }
 
 .content.content--user-page,
@@ -1280,6 +1343,23 @@ onBeforeUnmount(() => {
   min-height: 100%;
   margin: 0;
   height: 100%;
+}
+
+@supports not (height: 100dvh) {
+  .layout {
+    height: 100vh;
+    --main-height: calc(100vh - (var(--layout-top) * 2) - var(--player-bar-height));
+  }
+}
+
+/* ── 平板端布局 ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .layout {
+    --sidebar-width: 76px;
+    --topbar-height: 68px;
+    --content-max-width: 100%;
+    --content-padding: 12px;
+  }
 }
 
 @media (max-width: 1919px) {
@@ -1302,5 +1382,23 @@ onBeforeUnmount(() => {
 
 :deep(.user-page-host) {
   height: 100%;
+}
+
+/* ── 侧栏遮罩层 ── */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 9;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 0.22s ease;
+}
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
 }
 </style>

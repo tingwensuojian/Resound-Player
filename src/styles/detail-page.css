@@ -20,29 +20,7 @@
 .panel::before,
 .daily-page::before,
 .user-detail-page::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: var(--detail-head-fade-height, 320px);
-  z-index: 0;
-  background-image:
-    linear-gradient(
-      180deg,
-      rgba(17, 24, 39, 0.56) 0%,
-      rgba(17, 24, 39, 0.34) 28%,
-      rgba(17, 24, 39, 0.14) 56%,
-      rgba(17, 24, 39, 0) 100%
-    ),
-    var(--cover-bg-url);
-  background-size: cover, cover;
-  background-position: center, var(--detail-head-bg-position, center);
-  transform: scale(1.1);
-  transform-origin: top center;
-  filter: blur(24px) saturate(155%) contrast(1.08);
-  opacity: 0.98;
-  pointer-events: none;
+  display: none;
 }
 
 .panel > *,
@@ -72,17 +50,6 @@
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* 返回按钮容器 — opacity 由 --sticky-progress 连续驱动 */
-.playlist-detail-back,
-.artist-detail-back {
-  opacity: calc(1 - var(--sticky-progress, 0) * 2);
-  max-height: clamp(0px, calc(58px - var(--sticky-progress, 0) * 116px), 58px);
-  overflow: hidden;
-  padding-top: clamp(0px, calc(2px - var(--sticky-progress, 0) * 4px), 2px);
-  margin-top: clamp(0px, calc(var(--space-2) - 2px - var(--sticky-progress, 0) * 24px), calc(var(--space-2) - 2px));
-  margin-bottom: clamp(0px, calc(var(--space-4) - var(--sticky-progress, 0) * 32px), var(--space-4));
-  pointer-events: auto;
-}
 
 /* =========================================
  * 详情页 header wrap margin 复位
@@ -101,11 +68,6 @@
 
 /* 仅在 .playlist-detail-page 下加水平间距（抵消父级负 margin 延伸至屏幕边缘），
    不影响 language-detail-page / comment-page 等无父级负 margin 的页面 */
-.playlist-detail-page .playlist-detail-back,
-.playlist-detail-page .artist-detail-back {
-  padding-left: var(--space-4);
-  padding-right: var(--space-4);
-}
 
 .back-btn:hover {
   background: var(--glass-reflection), color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
@@ -453,12 +415,15 @@
   overscroll-behavior: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  contain: layout;
 }
 
 .detail-scroll-host::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
+
+/* contain: paint removed — it overrides overflow-y: auto to clip, preventing scroll */
 
 /* =========================================
  * 详情页 body — 所有详情页共享统一的 body 基线

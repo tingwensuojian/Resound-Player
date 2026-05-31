@@ -499,6 +499,81 @@ html body #app .layout footer.bar[data-v-efc867c7] {
   box-shadow: 0 -1px 0 color-mix(in srgb, var(--border) 72%, transparent), 0 -10px 30px rgba(15, 23, 42, 0.08) !important;
 }
 
+/* =========================================
+ * GPU 等级降级样式 — 基于 data-device-tier
+ * 低端设备：禁用昂贵视觉效果、减少合成层
+ * 中端设备：降低 blur 强度、减少合成层
+ * 高端设备：全部启用
+ * ========================================= */
+[data-device-tier="low"] .playlist-detail-header-wrap {
+  will-change: auto !important;
+}
+[data-device-tier="low"] .playlist-detail-header-wrap::before {
+  opacity: 0 !important;
+}
+[data-device-tier="low"] .playlist-detail-header-wrap,
+[data-device-tier="low"] .panel::before,
+[data-device-tier="low"] .daily-page::before,
+[data-device-tier="low"] .user-detail-page::before {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-device-tier="low"] .content::before {
+  filter: none !important;
+}
+[data-device-tier="low"] .cover {
+  will-change: auto !important;
+  transition: none !important;
+}
+[data-device-tier="low"] .an-enter-card,
+[data-device-tier="low"] .an-enter-media,
+[data-device-tier="low"] .an-enter-modal,
+[data-device-tier="low"] .an-enter-nav,
+[data-device-tier="low"] .an-enter-control,
+[data-device-tier="low"] .an-enter-text {
+  will-change: auto !important;
+  animation-duration: 0.01ms !important;
+}
+[data-device-tier="low"] .hover-play-button,
+[data-device-tier="low"] .hover-play-button-count {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-device-tier="low"] * {
+  transition-duration: 0.1s !important;
+}
+/* 全局禁用 backdrop-filter：低端设备 GPU 无法承受背景重采样成本 */
+[data-device-tier="low"] *,
+[data-device-tier="low"] *::before,
+[data-device-tier="low"] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-device-tier="low"] [class*="progressive-cover"] {
+  transition: none !important;
+}
+
+[data-device-tier="mid"] .playlist-detail-header-wrap {
+  will-change: auto !important;
+}
+[data-device-tier="mid"] .playlist-detail-header-wrap::before {
+  transition: opacity 0.15s ease !important;
+}
+[data-device-tier="mid"] .content::before {
+  filter: blur(12px) saturate(155%) contrast(1.08);
+}
+[data-device-tier="mid"] .cover {
+  will-change: auto !important;
+}
+[data-device-tier="mid"] .an-enter-card,
+[data-device-tier="mid"] .an-enter-media,
+[data-device-tier="mid"] .an-enter-modal,
+[data-device-tier="mid"] .an-enter-nav,
+[data-device-tier="mid"] .an-enter-control,
+[data-device-tier="mid"] .an-enter-text {
+  will-change: auto !important;
+}
+
 .menu-item:hover,
 .song:hover,
 .hot-item:hover,
@@ -1345,4 +1420,29 @@ textarea:disabled {
     opacity: 1;
     transform: translate(-50%, -100%) translateY(0);
   }
+}
+
+/* =========================================
+ * 详情页滚动容器 — 全局规则，不依赖 scoped @import
+ * （detail-page.css 的 scoped @import 不会应用到
+ *  DetailHeroShell 中的 .detail-scroll-host 元素）
+ * ========================================= */
+.playlist-detail-page {
+  height: 100%;
+}
+
+.detail-scroll-host {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* contain: paint 会覆盖 overflow-y: auto 为 clip，禁止滚动 */
+  /* 有意不添加 contain: paint */
+}
+
+.detail-scroll-host::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }

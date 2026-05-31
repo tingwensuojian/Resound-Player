@@ -1,0 +1,306 @@
+/* =========================================
+ * hero-shell.css — DetailHeroShell 样式
+ *
+ * 单一组件，移动端优先，最高 FPS。
+ * 无 scroll 事件、无 RAF、无 calc()、
+ * 无高度动画。
+ * ========================================= */
+
+/* =========================================
+ * Hero Section — 文档流块级元素，自然滚动
+ * ========================================= */
+.hero-section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+
+  /* 移动端：全屏 splash（安全：hero 在 scroll-host 内部，不会挤压内容） */
+  min-height: 100dvh;
+  min-height: 100vh; /* fallback */
+  box-sizing: border-box;
+
+  background: var(--hero-bg, var(--bg-app));
+}
+
+/* 背景模糊层 */
+.hero-section-bg {
+  position: absolute;
+  inset: -40px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(48px) saturate(1.4);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+
+.hero-section-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0.02) 0%,
+    rgba(0,0,0,0.18) 100%
+  );
+}
+
+/* 布局容器 */
+.hero-layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  gap: var(--space-3);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* 封面媒体容器 */
+.hero-media {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.hero-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+
+/* 标题 */
+.hero-title {
+  width: 100%;
+}
+
+.hero-title :deep(.title) {
+  text-align: center;
+  font-size: var(--text-headline-md);
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* 元数据 */
+.hero-meta {
+  width: 100%;
+}
+
+/* 操作按钮 */
+.hero-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* 底部渐变 fade */
+.hero-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(to top, var(--bg-app) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* =========================================
+ * Sticky Bar — 始终紧凑，高度固定
+ * ========================================= */
+.sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  padding-left: calc(var(--space-3) + env(safe-area-inset-left, 0px));
+  padding-right: calc(var(--space-3) + env(safe-area-inset-right, 0px));
+  background: var(--bg-solid);
+  border-bottom: 1px solid var(--border-soft);
+  box-sizing: border-box;
+
+  /* 唯一 transition：raised 状态阴影 */
+  transition: box-shadow 0.25s ease;
+  will-change: box-shadow;
+}
+
+.sticky-bar--raised {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+
+/* bar 缩略图 */
+.bar-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-muted);
+}
+
+/* bar 标题 */
+.bar-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-label-md);
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+/* bar 操作区 */
+.bar-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* =========================================
+ * 桌面端 — 横向布局
+ * ========================================= */
+@media (min-width: 641px) {
+  .hero-section {
+    min-height: auto;
+    padding: 0;
+  }
+
+  .hero-layout {
+    flex-direction: row;
+    text-align: left;
+    align-items: flex-start;
+    padding: var(--space-6);
+    gap: var(--space-6);
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .hero-media {
+    width: 240px;
+    flex-shrink: 0;
+  }
+
+  .hero-info {
+    align-items: flex-start;
+    padding-top: var(--space-2);
+  }
+
+  .hero-title :deep(.title) {
+    text-align: left;
+    font-size: var(--text-headline-xl);
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* =========================================
+ * 横屏模式
+ * ========================================= */
+@media (orientation: landscape) and (max-height: 500px) {
+  .hero-section {
+    min-height: auto;
+  }
+
+  .hero-layout {
+    flex-direction: row;
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .hero-media {
+    width: 120px;
+  }
+
+  .hero-title :deep(.title) {
+    text-align: left;
+    font-size: var(--text-body-lg);
+  }
+
+  .hero-meta {
+    text-align: left;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* =========================================
+ * Loading / Error State
+ * ========================================= */
+.hero-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--text-soft);
+  font-size: var(--text-label-md);
+}
+
+.hero-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--danger);
+  font-size: var(--text-label-md);
+}
+
+/* =========================================
+ * 减少动效
+ * ========================================= */
+@media (prefers-reduced-motion: reduce) {
+  .sticky-bar {
+    transition: none !important;
+  }
+}
+
+/* =========================================
+ * Tabs 区域
+ * ========================================= */
+.hero-tabs-area {
+  flex-shrink: 0;
+  padding: 0 var(--space-3);
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================================
+ * Loading/Error state (in scroll-host)
+ * ========================================= */
+.state {
+  padding: var(--space-6) 0;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+.state.error {
+  color: var(--danger);
+}

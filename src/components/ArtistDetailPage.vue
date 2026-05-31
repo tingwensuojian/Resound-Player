@@ -1,79 +1,58 @@
 <template>
-  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page artist-detail-page">
-    <div class="artist-detail-back">
-      <button class="back-btn" @click="emit('back')">← {{ props.backLabel }}</button>
-    </div>
-
-    <DetailStickyHeroHeader
-      :loading="loading"
-      :ready="!!artist"
-      :error="error"
-      loading-text="歌手详情加载中…"
-    >
-      <template #media>
-        <HeroCoverMedia :src="coverUrl" :alt="artist?.name || '歌手封面'" image-class="artist-cover" />
-      </template>
-      <template #title>
-        <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="title">{{ artist?.name || '未命名歌手' }}</AnimatedAppear>
-      </template>
-      <template #meta>
-        <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="sub-row artist-meta-row">
-          <AnimatedAppear tag="span" variant="text" rhythm="body" class-name="meta-pill">{{ artistAreaText }}</AnimatedAppear>
-          <AnimatedAppear tag="span" variant="text" rhythm="body" class-name="meta-pill">热门歌曲：{{ topSongs.length }}</AnimatedAppear>
-          <AnimatedAppear tag="span" variant="text" rhythm="body" class-name="meta-pill">专辑：{{ albums.length }}</AnimatedAppear>
-          <AnimatedAppear tag="span" variant="text" rhythm="body" class-name="meta-pill">MV：{{ mvs.length }}</AnimatedAppear>
-        </AnimatedAppear>
-        <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="desc-wrap">
-          <AnimatedAppear
-            tag="p"
-            variant="text"
-            rhythm="body"
-            class-name="desc"
-            :class="{ 'desc--collapsed': !isDescriptionExpanded && shouldShowDescriptionToggle }"
-          >
-            {{ artistDescriptionPreview }}
-          </AnimatedAppear>
-          <button
-            v-if="shouldShowDescriptionToggle"
-            type="button"
-            class="desc-toggle"
-            @click="isDescriptionExpanded = !isDescriptionExpanded"
-          >
-            {{ isDescriptionExpanded ? '收起' : '展开' }}
-          </button>
-        </AnimatedAppear>
-      </template>
-      <template #actions>
-        <EntitySubscribeButton
-          v-if="artist?.id"
-          type="artist"
-          :subscribed="subscribeState.isSubscribed.value"
-          :loading="subscribeState.isLoading.value"
-          @toggle="subscribeState.toggle"
-        />
-        <AnimatedAppear tag="button" variant="control" rhythm="actions" class-name="play-all" @click="playTopSongs">播放热门</AnimatedAppear>
-      </template>
-      <template #tabs>
-        <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="artist-tabs" role="tablist" aria-label="歌手详情标签">
-          <AnimatedAppear
-            v-for="tab in tabs"
-            :key="tab.key"
-            tag="button"
-            variant="control"
-            rhythm="actions"
-            class-name="artist-tab"
-            :class="{ active: activeTab === tab.key }"
-            type="button"
-            @click="activeTab = tab.key"
-          >
-            {{ tab.label }}
-          </AnimatedAppear>
-        </AnimatedAppear>
-      </template>
-    </DetailStickyHeroHeader>
-
-    <div ref="detailScrollHostRef" class="detail-scroll-host">
-    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="artist-detail-body">
+  <DetailShrinkShell
+    :list-scrolling="listScrolling"
+    :cover-url="coverUrl || ''"
+  >
+    <template #media>
+      <HeroCoverMedia :src="coverUrl || ''" :alt="artist?.name || '歌手封面'" image-class="artist-cover" />
+    </template>
+    <template #title>
+      <h2 class="title">{{ artist?.name || '未命名歌手' }}</h2>
+    </template>
+    <template #meta>
+      <div class="sub-row artist-meta-row">
+        <span class="meta-pill">{{ artistAreaText }}</span>
+        <span class="meta-pill">热门歌曲：{{ topSongs.length }}</span>
+        <span class="meta-pill">专辑：{{ albums.length }}</span>
+        <span class="meta-pill">MV：{{ mvs.length }}</span>
+      </div>
+      <div class="desc-wrap">
+        <p
+          class="desc"
+          :class="{ 'desc--collapsed': !isDescriptionExpanded && shouldShowDescriptionToggle }"
+        >
+          {{ artistDescriptionPreview }}
+        </p>
+        <button
+          v-if="shouldShowDescriptionToggle"
+          type="button"
+          class="desc-toggle"
+          @click="isDescriptionExpanded = !isDescriptionExpanded"
+        >
+          {{ isDescriptionExpanded ? '收起' : '展开' }}
+        </button>
+      </div>
+    </template>
+    <template #actions>
+      <EntitySubscribeButton
+        v-if="artist?.id"
+        type="artist"
+        :subscribed="subscribeState.isSubscribed.value"
+        :loading="subscribeState.isLoading.value"
+        @toggle="subscribeState.toggle"
+      />
+      <button class="btn-play-all" @click="playTopSongs">播放热门</button>
+    </template>
+    <template #tabs>
+      <DetailTabBar
+        v-model="activeTab"
+        :tabs="tabs"
+        aria-label="歌手详情标签"
+        :show-search="false"
+      />
+    </template>
+    <template #content>
+      <div class="page-content-scroll" @scroll="handleListScroll">
       <AnimatedAppear v-if="loading && !artist" tag="div" variant="text" rhythm="body" class-name="state">歌手详情加载中…</AnimatedAppear>
       <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
 
@@ -218,9 +197,9 @@
           </AnimatedAppear>
         </AnimatedAppear>
       </template>
-    </AnimatedAppear>
     </div>
-  </AnimatedAppear>
+    </template>
+  </DetailShrinkShell>
   <!-- 收藏至歌单选择器 -->
   <PlaylistPickerModal
     :visible="showPlaylistPicker"
@@ -233,15 +212,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
-import { useDetailStickyState } from '../composables/useDetailStickyState';
-import { useDominantColor } from '../composables/useDominantColor';
-import { useApiData } from '../composables/useApiData';
-import { CACHE_TTL } from '../stores/apiCache';
-import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
+import { computed, ref, watch, type ComponentPublicInstance, onBeforeUnmount } from 'vue';
+import DetailShrinkShell from './DetailShrinkShell.vue';
+import DetailTabBar from './ui/DetailTabBar.vue';
 import HeroCoverMedia from './HeroCoverMedia.vue';
 import AnimatedAppear from './AnimatedAppear.vue';
 import PlayPauseButton from './ui/PlayPauseButton.vue';
+import { useListScroll } from '../composables/useScrollShrink';
+import { useApiData } from '../composables/useApiData';
+import { CACHE_TTL } from '../stores/apiCache';
+import { useDominantColor } from '../composables/useDominantColor';
 import MvHoverPoster from './MvHoverPoster.vue';
 import SongActions from './ui/SongActions.vue';
 import EntitySubscribeButton from './ui/EntitySubscribeButton.vue';
@@ -260,8 +240,9 @@ import VirtualTrackList from './VirtualTrackList.vue';
 
 const DESC_COLLAPSE_THRESHOLD = 60;
 const detailPageRef = ref<ComponentPublicInstance | null>(null);
-const detailScrollHostRef = ref<HTMLElement | null>(null);
-const scrollHostSelector = () => detailScrollHostRef.value;
+
+const scrollHostSelector = '.page-content-scroll';
+const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 
 const props = withDefaults(
   defineProps<{
@@ -330,9 +311,14 @@ const subscribeState = useEntitySubscribe({
   id: artistIdRef,
   initialSubscribed: computed(() => artist.value?.subscribed ?? false),
 });
-const activeTab = computed({
-  get: () => (props.initialTab || 'songs') as 'songs' | 'all-songs' | 'albums' | 'mvs' | 'bio',
-  set: (v) => emit('update:active-tab', v),
+const activeTab = ref<'songs' | 'all-songs' | 'albums' | 'mvs' | 'bio'>(
+  (props.initialTab || 'songs') as 'songs' | 'all-songs' | 'albums' | 'mvs' | 'bio'
+);
+watch(() => props.initialTab, (val) => {
+  if (val) activeTab.value = val as any;
+});
+watch(activeTab, (val) => {
+  emit('update:active-tab', val);
 });
 const tabs = [
   { key: 'songs', label: '热门歌曲' },
@@ -549,14 +535,11 @@ function openComment(songId: number) {
   emit('open-comment', songId);
 }
 
-const { refresh } = useDetailStickyState(coverUrl, {
-  rootRef: detailPageRef,
-  scrollHostRef: detailScrollHostRef,
-});
 </script>
 
+<style>@import '../styles/detail-page.css';</style>
 <style scoped>
-@import '../styles/detail-page.css';
+
 
 .artist-detail-back {
   display: block;
@@ -765,6 +748,17 @@ const { refresh } = useDetailStickyState(coverUrl, {
   .mv-grid {
     grid-template-columns: 1fr;
   }
+}
+
+
+.state {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: var(--text-label-md);
+}
+.state.error {
+  color: var(--danger);
 }
 
 </style>

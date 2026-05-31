@@ -1,26 +1,21 @@
 <template>
-  <AnimatedAppear ref="detailPageRef" tag="section" variant="content" rhythm="shell" class-name="playlist-detail-page" :class="[detailPageClassName, embedded && 'playlist-detail-page--embedded']">
-    <div v-if="!embedded" class="playlist-detail-back">
-      <button class="back-btn" @click="emit('back')">← {{ props.backLabel }}</button>
-    </div>
+  <DetailShrinkShell
 
-    <DetailStickyHeroHeader
-      :embedded="embedded"
-      :loading="loading"
-      :ready="!!album"
-      :error="error"
-      loading-text="专辑加载中…"
-    >
+      :cover-url="album?.picUrl || ''"
+    
+  :list-scrolling="listScrolling"
+  >
+
       <template #media>
-        <HeroCoverMedia :src="album.picUrl" :alt="album.name" />
+        <HeroCoverMedia :src="album?.picUrl" :alt="album?.name" />
       </template>
       <template #title>
-        <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="title">{{ album.name }}</AnimatedAppear>
+        <AnimatedAppear tag="h2" variant="title" rhythm="title" class-name="title">{{ album?.name }}</AnimatedAppear>
       </template>
       <template #meta>
         <AnimatedAppear tag="p" variant="text" rhythm="body" class-name="sub">
-          <button v-if="album.artist?.id || album.artist?.name" type="button" class="artist-link artist-link--inline" @click="openAlbumArtistDetail">
-            {{ album.artist?.name || '未知歌手' }}
+          <button v-if="album?.artist?.id || album?.artist?.name" type="button" class="artist-link artist-link--inline" @click="openAlbumArtistDetail">
+            {{ album?.artist?.name || '未知歌手' }}
           </button>
           <span v-else>未知歌手</span>
           <span class="sub-dot">·</span>
@@ -72,10 +67,10 @@
           :show-search="activeTab === 'songs'"
         />
       </template>
-    </DetailStickyHeroHeader>
 
-    <div ref="detailScrollHostRef" class="detail-scroll-host">
-      <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
+    <template #content>
+<div class="page-content-scroll" @scroll="handleListScroll">
+    <AnimatedAppear tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
         <AnimatedAppear v-if="loading && !album" tag="div" variant="text" rhythm="body" class-name="state">专辑加载中…</AnimatedAppear>
         <AnimatedAppear v-else-if="error" tag="div" variant="text" rhythm="body" class-name="state error">{{ error }}</AnimatedAppear>
         <AnimatedAppear v-else-if="album" tag="div" variant="content" rhythm="body" class-name="playlist-detail-body">
@@ -96,7 +91,7 @@
                   @dblclick="onSongItemDblClick($event, idx)"
                 >
                   <PlayPauseButton :song-id="Number(song.id || 0)" :index-label="idx + 1" @play="playOne(idx)" />
-                  <img class="song-cover" :src="song.al?.picUrl || album.picUrl" :alt="song.name" loading="lazy" />
+                  <img class="song-cover" :src="song.al?.picUrl || album?.picUrl" :alt="song.name" loading="lazy" />
                   <div class="song-meta">
                     <p class="song-name">{{ song.name }}</p>
                     <p class="song-artist">
@@ -133,7 +128,8 @@
         </AnimatedAppear>
       </AnimatedAppear>
     </div>
-  </AnimatedAppear>
+    </template>
+    </DetailShrinkShell>
   <!-- 收藏至歌单选择器 -->
   <PlaylistPickerModal
     :visible="showPlaylistPicker"
@@ -147,9 +143,9 @@
 
 <script setup lang="ts">
 import HeroCoverMedia from './HeroCoverMedia.vue';
-import DetailStickyHeroHeader from './DetailStickyHeroHeader.vue';
+import DetailShrinkShell from './DetailShrinkShell.vue';
 import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
-import { useDetailStickyState } from '../composables/useDetailStickyState';
+import { useListScroll } from '../composables/useScrollShrink';
 import { useDominantColor } from '../composables/useDominantColor';
 import { useApiData } from '../composables/useApiData';
 import { CACHE_TTL } from '../stores/apiCache';
@@ -197,6 +193,8 @@ const emit = defineEmits<{
   (e: 'open-user', userId: number): void;
 }>();
 
+const { listScrolling, handleListScroll, resetScroll } = useListScroll();
+const scrollHostSelector = '.page-content-scroll';
 const isDescriptionExpanded = ref(false);
 const activeTab = ref<'songs' | 'comments'>('songs');
 const tabs = [
@@ -249,24 +247,14 @@ const detailPageClassName = computed(() => {
   if (props.embedded) classNames.push('playlist-detail-page--embedded');
   return classNames.join(' ');
 });
-const detailPageRef = ref<ComponentPublicInstance | null>(null);
-const detailScrollHostRef = ref<HTMLElement | null>(null);
-const { refresh } = useDetailStickyState(
-  computed(() => album.value?.picUrl?.trim() || ''),
-  {
-    embedded: !!props.embedded,
-    rootRef: detailPageRef,
-    scrollHostRef: detailScrollHostRef,
-  },
-);
-
-const scrollHostSelector = () => detailScrollHostRef.value;
 
 const trackListRef = ref<InstanceType<typeof VirtualTrackList> | null>(null);
 
 // 专辑切换时重置滚动位置
 watch(() => album.value?.id, () => {
-  requestAnimationFrame(() => refresh());
+  // 专辑切换时重置滚动位置
+  const host = document.querySelector('.page-content-scroll');
+  if (host) host.scrollTop = 0;
 });
 
 function openArtistDetail(artist: any) {
@@ -286,7 +274,6 @@ function openAlbumArtistDetail() {
   if (!artistId) return;
   emit('open-artist', artist);
 }
-
 
 function buildLocalAlbumHistoryEntry() {
   const current = album.value;
@@ -323,7 +310,6 @@ async function playAll() {
   playerStore.setPlaylist(songs.value, 0);
   await playerStore.playByIndex(0);
 }
-
 
 async function playOne(index: number) {
   if (!songs.value.length) return;
@@ -380,8 +366,10 @@ function openAlbum(albumId: number) {
 }
 </script>
 
+<style>@import '../styles/detail-page.css';</style>
 <style scoped>
-@import '../styles/detail-page.css';
+
+
 
 .playlist-detail-page--embedded.user-detail-panel .playlist-detail-header {
   grid-template-columns: 308px minmax(0, 1fr);
@@ -421,8 +409,6 @@ function openAlbum(albumId: number) {
 }
 
 .playlist-detail-body { }
-
-
 
 .cover {
   width: 308px;
@@ -505,5 +491,15 @@ function openAlbum(albumId: number) {
   padding: var(--space-2) 0;
 }
 
+
+.state {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--text-soft);
+  font-size: var(--text-label-md);
+}
+.state.error {
+  color: var(--danger);
+}
 
 </style>

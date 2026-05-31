@@ -74,7 +74,7 @@
         <input type="range" min="0" max="100" :value="Math.round((playerStore.state.muted ? 0 : playerStore.state.volume) * 100)" @input="onVolume" />
       </AnimatedAppear>
       <AnimatedAppear v-if="playerStore.state.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" tag="button" variant="control" rhythm="actions" class-name="icon intel-icon" aria-label="心动模式"><Sparkles :size="10" /></AnimatedAppear>
-      <div class="quality-wrap" ref="qualityWrapRef">
+      <div class="quality-wrap tablet-collapse" ref="qualityWrapRef">
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="icon quality-icon" :class="{ active: showQualityPopup }" data-tooltip="音质选择" aria-label="音质选择" @click.stop="toggleQualityPopup">
           <span class="quality-btn-label">{{ qualityLabel || playerStore.state.defaultQuality }}</span>
         </AnimatedAppear>
@@ -105,13 +105,13 @@
           </transition>
         </Teleport>
       </div>
-      <div class="eq-wrap" ref="eqWrapRef">
+      <div class="eq-wrap tablet-collapse" ref="eqWrapRef">
         <AnimatedAppear tag="button" variant="control" rhythm="actions" class-name="icon" :class="{ active: showEqPanel }" data-tooltip="均衡器" aria-label="均衡器" @click.stop="showEqPanel = !showEqPanel">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg>
         </AnimatedAppear>
         <EqPanel :visible="showEqPanel" @close="showEqPanel = false" />
       </div>
-      <div class="lyric-wrap" ref="lyricWrapRef">
+      <div class="lyric-wrap tablet-collapse" ref="lyricWrapRef">
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="2" class-name="icon" :class="{ active: isAnyLyricActive }" data-tooltip="歌词" aria-label="歌词" @click.stop="handleLyricClick"><Captions :size="14" /></AnimatedAppear>
         <Teleport to="body">
           <transition name="quality-fade">
@@ -138,7 +138,7 @@
         </Teleport>
       </div>
       <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="3" class-name="icon" :class="{ saved: isCurrentLiked, loading: likeLoading }" :aria-pressed="isCurrentLiked" :data-tooltip="isCurrentLiked ? '取消收藏' : '收藏'" :aria-label="isCurrentLiked ? '取消收藏' : '收藏'" :disabled="likeLoading || !canToggleCurrentLike" @click="toggleCurrentLike"><Heart :size="14" /></AnimatedAppear>
-      <div class="settings-wrap" ref="settingsWrapRef">
+      <div class="settings-wrap tablet-collapse" ref="settingsWrapRef">
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="4" class-name="icon" :class="{ active: showSettings }" data-tooltip="设置" aria-label="设置" @click.stop="toggleSettings"><Settings :size="14" /></AnimatedAppear>
         <Teleport to="body">
           <transition name="quality-fade">
@@ -163,7 +163,7 @@
           </transition>
         </Teleport>
       </div>
-      <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="5" class-name="icon" :data-tooltip="playModeTooltip" aria-label="切换播放模式" @click="playerStore.cyclePlayMode()">
+      <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="5" class-name="icon tablet-collapse-btn" :data-tooltip="playModeTooltip" aria-label="切换播放模式" @click="playerStore.cyclePlayMode()">
         <Repeat v-if="playerStore.state.playMode === 'loop'" :size="14" />
         <Repeat1 v-else-if="playerStore.state.playMode === 'single'" :size="14" />
         <Shuffle v-else :size="14" />
@@ -174,7 +174,53 @@
       <template v-else>
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="6" class-name="icon" :class="{ active: uiStore.state.showPlayQueue }" data-tooltip="播放列表" aria-label="播放列表" @click="uiStore.togglePlayQueue()"><ListMusic :size="14" /></AnimatedAppear>
       </template>
+
+      <!-- 平板端：更多按钮（触发上拉栏） -->
+      <button class="icon tablet-more-btn" type="button" aria-label="更多控制" @click="showMoreSheet = true">
+        <MoreHorizontal :size="16" />
+      </button>
     </AnimatedAppear>
+
+    <!-- 平板端：上拉栏 -->
+    <Teleport to="body">
+      <transition name="sheet-fade">
+        <div v-if="showMoreSheet" class="sheet-backdrop" @click.self="showMoreSheet = false" @touchstart.passive.self="onSheetTouchStart" @touchmove.passive.self="onSheetTouchMove" @touchend.passive="onSheetTouchEnd">
+          <div class="sheet-panel" @click.stop>
+            <div class="sheet-handle" />
+            <div class="sheet-header">更多控制</div>
+            <div class="sheet-list">
+              <button class="sheet-item" type="button" @click="toggleQualityPopup(); showMoreSheet = false">
+                <Settings :size="16" />
+                <span class="sheet-item-label">音质选择</span>
+                <span class="sheet-item-value">{{ qualityLabel || playerStore.state.defaultQuality }}</span>
+              </button>
+              <button class="sheet-item" type="button" @click="showEqPanel = !showEqPanel; showMoreSheet = false">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg>
+                <span class="sheet-item-label">均衡器</span>
+                <span class="sheet-item-value">{{ showEqPanel ? '已开启' : '' }}</span>
+              </button>
+              <button class="sheet-item" type="button" @click="handleLyricClick(); showMoreSheet = false">
+                <Captions :size="16" />
+                <span class="sheet-item-label">歌词显示</span>
+                <span class="sheet-item-value">{{ isAnyLyricActive ? '已开启' : '' }}</span>
+              </button>
+              <button class="sheet-item" type="button" @click="toggleSettings(); showMoreSheet = false">
+                <Settings :size="16" />
+                <span class="sheet-item-label">播放速度</span>
+                <span class="sheet-item-value">{{ playerStore.state.playbackRate === 1 ? '' : playerStore.state.playbackRate + 'x' }}</span>
+              </button>
+              <button class="sheet-item" type="button" @click="playerStore.cyclePlayMode()">
+                <Repeat v-if="playerStore.state.playMode === 'loop'" :size="16" />
+                <Repeat1 v-else-if="playerStore.state.playMode === 'single'" :size="16" />
+                <Shuffle v-else :size="16" />
+                <span class="sheet-item-label">播放模式</span>
+                <span class="sheet-item-value">{{ playModeLabel }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </Teleport>
   </AnimatedAppear>
 </template>
 
@@ -185,6 +231,7 @@ import {
   Check,
   Heart,
   ListMusic,
+  MoreHorizontal,
   Pause,
   Play,
   Repeat,
@@ -247,6 +294,7 @@ const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
 
 const showSettings = ref(false);
 const showEqPanel = ref(false);
+const showMoreSheet = ref(false);
 const settingsWrapRef = ref<HTMLElement | null>(null);
 const settingsPopupStyle = ref<Record<string, string>>({});
 
@@ -256,6 +304,20 @@ function toggleSettings() {
     nextTick(() => {
       if (!settingsWrapRef.value) return;
       const rect = settingsWrapRef.value.getBoundingClientRect();
+
+      // 按钮被隐藏时（平板端折叠模式），居中显示弹窗
+      if (rect.width === 0 && rect.height === 0) {
+        settingsPopupStyle.value = {
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 'min(320px, calc(100vw - 32px))',
+          maxHeight: 'min(380px, 60vh)',
+        };
+        return;
+      }
+
       const estimatedHeight = Math.min(speedOptions.length * 38 + 16, 380);
       const gap = 8;
       const spaceAbove = rect.top;
@@ -312,6 +374,20 @@ const popupStyle = ref<Record<string, string>>({});
 function updatePopupPosition() {
   if (!qualityWrapRef.value) return;
   const rect = qualityWrapRef.value.getBoundingClientRect();
+
+  // 按钮被隐藏时（平板端折叠模式），居中显示弹窗
+  if (rect.width === 0 && rect.height === 0) {
+    popupStyle.value = {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: 'min(320px, calc(100vw - 32px))',
+      maxHeight: 'min(380px, 60vh)',
+    };
+    return;
+  }
+
   const estimatedHeight = Math.min(qualityOptions.length * 38 + 16, 380);
   const gap = 8;
   const spaceAbove = rect.top;
@@ -440,6 +516,19 @@ function updateLyricPopoverPosition() {
   if (!lyricWrapRef.value) return;
   const rect = lyricWrapRef.value.getBoundingClientRect();
   const gap = 8;
+
+  // 按钮被隐藏时（平板端折叠模式），居中显示弹窗
+  if (rect.width === 0 && rect.height === 0) {
+    lyricPopoverStyle.value = {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: 'min(260px, calc(100vw - 32px))',
+    };
+    return;
+  }
+
   lyricPopoverStyle.value = {
     position: 'fixed',
     bottom: `${window.innerHeight - rect.top + gap}px`,
@@ -604,6 +693,26 @@ const coverLoaded = useBgLoaded(() => playerStore.state.currentTrack?.al?.picUrl
 
 const playModeTooltip = computed(() => {
   if (playerStore.state.playMode === 'loop') return '列表循环';
+
+const playModeLabel = computed(() => {
+  const mode = playerStore.state.playMode;
+  if (mode === 'single') return '单曲循环';
+  if (mode === 'random') return '随机播放';
+  return '列表循环';
+});
+
+/* ── 上拉栏滑动手势关闭 ── */
+let _sheetTouchStartY = 0;
+function onSheetTouchStart(e: TouchEvent) {
+  _sheetTouchStartY = e.touches[0]?.clientY ?? 0;
+}
+function onSheetTouchMove(_e: TouchEvent) { /* passive */ }
+function onSheetTouchEnd(e: TouchEvent) {
+  const endY = e.changedTouches[0]?.clientY ?? 0;
+  if (endY - _sheetTouchStartY > 60) {
+    showMoreSheet.value = false;
+  }
+}
   if (playerStore.state.playMode === 'single') return '单曲循环';
   return '随机播放';
 });
@@ -787,6 +896,7 @@ function onSeek(e: Event) {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   padding: 0 var(--space-5);
+  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom, 0px));
   z-index: 20;
   min-width: 0;
 }
@@ -821,7 +931,7 @@ function onSeek(e: Event) {
 }
 .meta { min-width: 0; max-width: 100%; overflow: hidden; flex: 1; }
 .title-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.title { color: #111827; font-weight: 600; }
+.title { color: #111827; font-weight: 600; font-size: var(--text-label-md); margin: 0; line-height: normal; }
 .artist { color: #6b7280; font-size: var(--text-label-sm); display: flex; align-items: center; gap: 4px; overflow: hidden; height: 18px; line-height: 18px; max-width: 100%; }
 .lyric-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #6b7280; font-size: var(--text-label-sm); height: 18px; line-height: 18px; max-width: 100%; }
 .source-badge { display: inline-flex; align-items: center; flex-shrink: 0; height: 16px; padding: 0 5px; border-radius: 3px; background: color-mix(in srgb, #6366f1 18%, transparent); color: #6366f1; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; line-height: 1; margin-left: 4px; }
@@ -895,5 +1005,144 @@ function onSeek(e: Event) {
 .lyric-popover__item-check.on { border-color: var(--accent); background: var(--accent); }
 .lyric-popover__item-check .dot { width: 6px; height: 6px; border-radius: 999px; background: transparent; transition: background 0.18s ease; }
 .lyric-popover__item-check.on .dot { background: #fff; }
+
+
+/* ── 平板端播放栏适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .bar {
+    padding: 0 var(--space-3);
+    gap: var(--space-3);
+    height: 76px;
+  }
+  .cover { width: 48px; height: 48px; border-radius: 10px; }
+  .meta { max-width: 160px; }
+  .title { font-size: 13px; }
+  .artist { font-size: 11px; }
+}
+
+/* ── 触摸设备：进度条增大触摸区域 ── */
+@media (pointer: coarse) {
+  .progress {
+    height: 44px;
+    margin: -18px 0;
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* ── 平板端：折叠按钮组 + 更多按钮 ── */
+.tablet-more-btn { display: none; }
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .tablet-collapse,
+  .tablet-collapse-btn {
+    display: none !important;
+  }
+  .tablet-more-btn {
+    display: grid;
+  }
+}
+
+/* ── 上拉栏样式 ── */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-panel {
+  width: 100%;
+  max-width: 480px;
+  max-height: 60vh;
+  background: var(--bg-solid);
+  border-radius: 18px 18px 0 0;
+  padding: var(--space-2) var(--space-4) var(--space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.sheet-panel::-webkit-scrollbar { display: none; }
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text-soft) 40%, transparent);
+  margin: var(--space-2) auto var(--space-3);
+}
+
+.sheet-header {
+  font-size: var(--text-label-sm);
+  font-weight: var(--text-label-sm-weight);
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0 var(--space-1) var(--space-2);
+}
+
+.sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheet-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-3);
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-main);
+  font-size: var(--text-body-md);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.14s ease;
+}
+.sheet-item:hover,
+.sheet-item:active {
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-solid));
+}
+.sheet-item svg {
+  flex-shrink: 0;
+  color: var(--text-sub);
+}
+.sheet-item-label {
+  flex: 1;
+  min-width: 0;
+}
+.sheet-item-value {
+  font-size: var(--text-label-md);
+  color: var(--text-sub);
+  flex-shrink: 0;
+}
+
+/* ── 上拉栏动画 ── */
+.sheet-fade-enter-active,
+.sheet-fade-leave-active {
+  transition: opacity 0.24s ease;
+}
+.sheet-fade-enter-active .sheet-panel,
+.sheet-fade-leave-active .sheet-panel {
+  transition: transform 0.28s cubic-bezier(0.34, 1, 0.64, 1);
+}
+.sheet-fade-enter-from,
+.sheet-fade-leave-to {
+  opacity: 0;
+}
+.sheet-fade-enter-from .sheet-panel {
+  transform: translateY(100%);
+}
+.sheet-fade-leave-to .sheet-panel {
+  transform: translateY(100%);
+}
 
 </style>

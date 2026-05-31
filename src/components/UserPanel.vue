@@ -19,6 +19,7 @@
       :dj-items="currentDjItems"
       :fill-sub-tabs="isPublicUserMode"
       @select-item="handleSelectItem"
+      @clear-selection="selectedItem = null"
     >
       <template #detail="{ item }">
         <PlaylistDetailPage
@@ -66,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AnimatedAppear from './AnimatedAppear.vue';
 import LoginPanel from './LoginPanel.vue';
 import UserSplitView from './UserSplitView.vue';
@@ -107,6 +108,11 @@ const cloudPseudoPlaylist = computed(() => ({
 const activeTab = ref<'playlists' | 'cloud'>('playlists');
 const playlistSubTab = ref<'created' | 'collected' | 'albums' | 'podcast'>('created');
 const selectedItem = ref<any>(null);
+
+/** 平板端（768~1023px）不自动选中，让用户先看到列表 */
+function isTabletView() {
+  return window.innerWidth >= 768 && window.innerWidth <= 1180;
+}
 const albumSongs = ref<any[]>([]);
 const albumLoading = ref(false);
 const albumError = ref('');
@@ -147,7 +153,7 @@ const activeDetailItem = computed(() => {
 watch(
   activeDetailItem,
   (item) => {
-    if (item) selectedItem.value = item;
+    if (item && !isTabletView()) selectedItem.value = item;
   },
   { immediate: true },
 );
@@ -159,6 +165,7 @@ watch(activeTab, async (tab) => {
 });
 
 watch([activeTab, playlistSubTab], () => {
+  if (isTabletView()) { selectedItem.value = null; return; }
   if (activeTab.value === 'playlists') {
     if (playlistSubTab.value === 'podcast') {
       selectedItem.value = currentDjItems.value[0] || null;
@@ -177,6 +184,7 @@ watch([activeTab, playlistSubTab], () => {
 watch(
   [currentPlaylistItems, cloudPseudoPlaylist, currentDjItems],
   ([playlistItems, cloudItem, djItems]) => {
+    if (isTabletView()) return;
     if (activeTab.value === 'playlists') {
       if (playlistSubTab.value === 'podcast') {
         const nextItems = Array.isArray(djItems) ? djItems : [];
@@ -446,7 +454,9 @@ async function loadUserData() {
       });
     }
 
-    if (activeTab.value === 'playlists' && playlistSubTab.value === 'albums' && currentPlaylistItems.value.length) {
+    if (isTabletView()) {
+      // 平板端不自动选中，展示列表页
+    } else if (activeTab.value === 'playlists' && playlistSubTab.value === 'albums' && currentPlaylistItems.value.length) {
       selectedItem.value = currentPlaylistItems.value[0];
       await loadAlbumSongs(Number(selectedItem.value.id));
     } else if (activeTab.value === 'playlists' && playlistSubTab.value === 'podcast') {
@@ -635,6 +645,17 @@ function openPlaylist(playlistId: number) {
 
 onMounted(loadUserData);
 
+// 平板端：监听 TopBar 返回按钮，先回到列表
+function handleUserPanelBack() {
+  if (selectedItem.value) {
+    selectedItem.value = null;
+  }
+}
+window.addEventListener('user-panel-back', handleUserPanelBack);
+onBeforeUnmount(() => {
+  window.removeEventListener('user-panel-back', handleUserPanelBack);
+});
+
 watch(
   [() => userStore.state.profile?.userId, () => userStore.state.loginMode],
   ([uid]) => {
@@ -681,13 +702,18 @@ watch(
 .empty-state { min-height: 0; height: 100%; display: grid; align-content: start; overflow: auto; padding-right: var(--space-1); }
 .user-page--fixed :deep(.split-stage) {
   min-height: 0;
-  height: calc(100vh - 220px);
-  max-height: calc(100vh - 220px);
+  height: calc(100dvh - 220px);
+  max-height: calc(100dvh - 220px);
 }
 
 .user-page--fixed :deep(.left-panel),
 .user-page--fixed :deep(.detail-panel) {
   height: 100%;
   max-height: 100%;
+}
+
+/* ── 平板端用户面板适配 ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .user-page { gap: var(--space-3); }
 }
 </style>
