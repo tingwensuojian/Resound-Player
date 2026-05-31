@@ -267,6 +267,7 @@ function onFullscreen() {
   flex-direction: column;
   background: var(--bg-surface);
   border-radius: 8px;
+  animation: anFadeUp var(--an-duration-base) var(--an-ease) both;
   overflow: hidden;
   -webkit-app-region: drag;
 }

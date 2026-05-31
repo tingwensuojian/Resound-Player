@@ -590,6 +590,8 @@ onBeforeUnmount(() => {
 }
 
 .sa-btn {
+
+  animation: anFadeUp var(--an-duration-fast) var(--an-ease) both;
   width: 34px;
   height: 34px;
   border: 1px solid var(--border);

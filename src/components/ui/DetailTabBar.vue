@@ -85,7 +85,8 @@ defineEmits<{
 
 .playlist-tab:hover {
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  background: var(--button-surface-hover-bg);
+  border-color: var(--button-surface-hover-border);
 }
 
 .playlist-tab.active {
@@ -117,6 +118,10 @@ defineEmits<{
 
 .tab-search-input::placeholder {
   color: var(--text-soft);
+}
+
+.tab-search-input:hover {
+  border-color: var(--button-surface-hover-border);
 }
 
 .tab-search-input:focus {

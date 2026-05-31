@@ -94,6 +94,8 @@ const dashOffset = computed(() => {
 }
 
 .scroll-to-top-fab:hover {
+
+  animation: anPopUp var(--an-duration-base) var(--an-ease) both;
   transform: translateY(-2px);
   box-shadow:
     0 8px 24px rgba(15, 23, 42, 0.16),

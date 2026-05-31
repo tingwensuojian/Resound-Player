@@ -1,5 +1,6 @@
 <template>
   <Teleport to="body">
+    <transition name="dialog-fade">
     <div v-if="visible" class="dialog-overlay" @click.self="$emit('cancel')">
       <div class="dialog-panel">
         <h3 class="dialog-title">选择歌单</h3>
@@ -19,6 +20,7 @@
         </div>
       </div>
     </div>
+    </transition>
   </Teleport>
 </template>
 
@@ -54,6 +56,8 @@ defineEmits<{
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 .dialog-title {
+
+  animation: anModalIn var(--an-duration-base) var(--an-ease) both;
   margin: 0 0 var(--space-3);
   font-size: var(--text-headline-md);
   font-weight: 600;
@@ -94,3 +98,18 @@ defineEmits<{
   justify-content: flex-end;
 }
 </style>
+
+.dialog-fade-enter-active,
+.dialog-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.dialog-fade-enter-from,
+.dialog-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+.dialog-fade-enter-to,
+.dialog-fade-leave-from {
+  opacity: 1;
+  transform: scale(1);
+}

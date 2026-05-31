@@ -174,3 +174,122 @@
 [22113889ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
 [22119433ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
 [22124608ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22130405ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22132612ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22136639ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22141781ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22144408ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22149781ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22153354ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22156517ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22161024ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22167003ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[22167011ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[22168066ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 诀别书 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[22280925ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5173/src/components/DetailShrinkExample.vue?t=1780269178492:0
+[22280925ms] [ERROR] [vite] Failed to reload /src/components/DetailShrinkExample.vue. This could be due to syntax errors or importing non-existent modules. (see errors above) @ http://localhost:5173/@vite/client:881
+[22373807ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[22373809ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22374814ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22375818ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22376822ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22377996ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/App.vue:0
+[22397730ms] [WARNING] [Vue warn]: Failed to resolve component: DetailShrinkExample
+If this is a native custom element, make sure to exclude it from component resolution via compilerOptions.isCustomElement. 
+  at <App> @ http://localhost:5173/node_modules/.vite/deps/chunk-6SOJBO4M.js?v=7017c132:2203
+[22397746ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[22397751ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[22398389ms] [WARNING] [Vue warn]: Failed to resolve component: DetailShrinkExample
+If this is a native custom element, make sure to exclude it from component resolution via compilerOptions.isCustomElement. 
+  at <App> @ http://localhost:5173/node_modules/.vite/deps/chunk-6SOJBO4M.js?v=7017c132:2203
+[22398836ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 12.31 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[22407323ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[22407336ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22408337ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22409339ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22410341ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22411345ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22412499ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/App.vue:0
+[22433272ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[22433273ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22434276ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22435279ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22436281ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22437283ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22438285ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22439287ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22440947ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[22440955ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[22441830ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 还是会想你 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[22826350ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[22826351ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22827354ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22828357ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22829360ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22830363ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[22832160ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[22832165ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[22833153ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 心似烟火 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[23044169ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[23044172ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23045173ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23046176ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23047179ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23048181ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23049878ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[23049884ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[23050681ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 心似烟火 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[23314708ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[23314709ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23315713ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23316715ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23317718ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23318721ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23320515ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[23320520ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[23321402ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 心似烟火 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[23464606ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[23464609ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23465614ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23466618ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23467621ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23468624ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23470416ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[23470422ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[23471521ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 想去海边 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[23632715ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[23632717ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_SOCKET_NOT_CONNECTED @ http://localhost:5173/@vite/client:1034
+[23633722ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23634725ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23635728ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23636731ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23638383ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[23638388ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[23639251ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 遐想 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[23759365ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[23759369ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23760373ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23761375ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23762378ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23763381ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23765155ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[23765160ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[23766101ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 红 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[23850316ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[23850318ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23851320ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23852322ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23853325ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23854381ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[23856174ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[23856180ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[23856985ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 红 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414
+[24137313ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:963
+[24137314ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[24138318ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[24139322ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[24140324ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[24141327ms] [ERROR] WebSocket connection to 'ws://localhost:5173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/@vite/client:1034
+[24142979ms] [LOG] [DeviceDetector] 设备能力: {tier: mid, memory: 16, cpuCores: 10, isMobile: false, supportsWebGL: true} @ http://localhost:5173/src/utils/deviceDetector.ts:76
+[24142983ms] [LOG] [SW] 已激活 @ http://localhost:5173/src/utils/swRegister.ts:25
+[24143932ms] [LOG] [RadarDetail] id= 3136952023 name= 私人雷达 firstTrack= 明天过后 trackCount= 35 @ http://localhost:5173/src/components/HomePanel.vue:414

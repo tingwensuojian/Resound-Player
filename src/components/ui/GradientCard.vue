@@ -109,6 +109,8 @@ const {
 
 /* 移除 ::before 中的 background-image 双重加载 — 现由三层渐进系统覆盖 */
 .gradient-card::before {
+
+  animation: anFadeUp var(--an-duration-base) var(--an-ease) both;
   content: '';
   position: absolute;
   inset: 0;

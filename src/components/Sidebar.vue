@@ -60,7 +60,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-import { BarChart3, BookAudio, Clapperboard, Compass, Disc3, FolderOpen, FolderTree, History, Home, ListMusic, Mic2, Search, Settings, Shrink, Trophy, User } from 'lucide-vue-next';
+import { BarChart3, BookAudio, Clapperboard, Compass, Disc3, FolderOpen, FolderTree, History, Home, ListMusic, Mic2, Search, Settings, Trophy, User } from 'lucide-vue-next';
 import AnimatedAppear from './AnimatedAppear.vue';
 import { platform } from '../utils/platform';
 
@@ -137,7 +137,6 @@ const items = [
   ] : []),
   { key: 'user', label: '用户', icon: User },
   { key: 'settings', label: '设置', icon: Settings },
-  { key: 'shrink-demo', label: 'Shrink演示', icon: Shrink },
   { key: 'discover', label: '发现', icon: Compass },
 ];
 </script>

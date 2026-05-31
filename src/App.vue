@@ -178,14 +178,6 @@
           <LanguageDetailPage v-else-if="activePage === 'language-detail'" :language-name="activeLanguage" :back-label="activeLanguageReturnPage === 'song-comment' ? '评论' : undefined" @back="backToLanguage" @open-detail="(playlistId) => openPlaylistDetail(playlistId, undefined, activePage)" />
           <LocalMusicHub v-else-if="activePage === 'local-music' && platform.isDesktop" />
           <LocalPlaylistDetailPage v-else-if="activePage === 'local-playlist-detail' && platform.isDesktop" />
-          <DetailShrinkExample v-else-if="activePage === 'shrink-demo'"
-  title="经典华语金曲合集"
-  description="收录了 80-90 年代最经典的华语流行金曲，每一首都承载着满满的回忆。周杰伦、林俊杰、王力宏等天王天后的代表作一网打尽。"
-  creator="音乐小站"
-  :song-count="56"
-  :play-count="123456789"
-  :songs="demoSongs"
-  @play-all="() => {}" />
           <PlaceholderPanel v-else-if="activePage" :page-key="activePage" />
         </KeepAlive>
         </div>
@@ -215,7 +207,6 @@ import PlayerBar from './components/PlayerBar.vue';
 import PlayQueuePanel from './components/PlayQueuePanel.vue';
 import PlayerExpanded from './components/PlayerExpanded.vue';
 import PlaceholderPanel from './components/PlaceholderPanel.vue';
-import DetailShrinkExample from './components/DetailShrinkExample.vue';
 import ScrollToTopFab from './components/ui/ScrollToTopFab.vue';
 import PlaylistDetailPage from './components/PlaylistDetailPage.vue';
 import AlbumDetailPage from './components/AlbumDetailPage.vue';
@@ -1230,12 +1221,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('mini-mode-state', handleMiniModeState);
   window.removeEventListener('keydown', handleFpsToggle);
 });
-// Demo data for DetailShrinkExample
-const demoSongs = Array.from({ length: 50 }, (_, i) => ({
-  name: "歌曲标题 " + (i + 1),
-  artist: ["周杰伦", "林俊杰", "王力宏", "蔡依林", "孙燕姿", "张惠妹", "陈奕迅", "王菲"][i % 8],
-  duration: "3:" + String(21 + (i % 39)).padStart(2, "0"),
-}))
 </script>
 
 <style scoped>

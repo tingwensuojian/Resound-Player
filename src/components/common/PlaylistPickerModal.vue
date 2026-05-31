@@ -77,6 +77,8 @@ defineEmits<{
 }
 
 .pp-title {
+
+  animation: anModalIn var(--an-duration-base) var(--an-ease) both;
   margin: 0;
   color: var(--text-main);
   font-size: 15px;

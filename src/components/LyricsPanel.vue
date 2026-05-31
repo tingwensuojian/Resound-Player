@@ -323,7 +323,7 @@ startTick();
 </script>
 
 <style scoped>
-.right-zone { min-height: 0; display: flex; flex-direction: column; height: 100%; isolation: isolate; }
+.right-zone { min-height: 0; display: flex; flex-direction: column; height: 100%; isolation: isolate; animation: anFadeUp var(--an-duration-base) var(--an-ease) both; }
 .right-zone.l-center .line-wrap { text-align: center; }
 .right-zone:not(.l-center) .line-wrap { text-align: left; padding-left: var(--space-4); padding-right: var(--space-4); }
 .right-zone.l-no-cover { max-width: min(700px, 85%); margin: 0 auto; width: 100%; }

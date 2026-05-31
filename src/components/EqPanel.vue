@@ -220,6 +220,8 @@ function resetGains() {
   transform-origin: center center;
 }
 .eq-head {
+
+  animation: anFadeUp var(--an-duration-fast) var(--an-ease) both;
   display: flex;
   align-items: center;
   justify-content: space-between;

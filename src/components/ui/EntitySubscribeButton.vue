@@ -208,9 +208,6 @@ const textLabels: Record<EntityType, string> = {
   gap: 5px;
   position: relative;
   z-index: 3;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
   white-space: nowrap;
 }
 
@@ -242,6 +239,26 @@ const textLabels: Record<EntityType, string> = {
   width: auto;
   height: 36px;
   padding: 0 14px;
+  border-radius: var(--radius-sm);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
+}
+
+.entity-subscribe-button--playlist.text-mode:hover,
+.entity-subscribe-button--album.text-mode:hover,
+.entity-subscribe-button--podcast.text-mode:hover {
+  transform: translateY(-1px);
+  background: var(--button-surface-hover-bg);
+  border-color: var(--button-surface-hover-border);
+}
+
+.entity-subscribe-button--playlist.text-mode:active,
+.entity-subscribe-button--album.text-mode:active,
+.entity-subscribe-button--podcast.text-mode:active {
+  transform: translateY(0) scale(0.99);
+  background: var(--button-surface-active-bg);
+  border-color: var(--button-surface-active-border);
 }
 .entity-subscribe-button--playlist.text-mode.saved,
 .entity-subscribe-button--album.text-mode.saved,
@@ -294,9 +311,22 @@ const textLabels: Record<EntityType, string> = {
   height: 36px;
   padding: 0 14px;
   gap: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
+  border-radius: var(--radius-sm);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: visible;
+}
+
+.entity-subscribe-button--artist:hover {
+  transform: translateY(-1px);
+  background: var(--button-surface-hover-bg);
+  border-color: var(--button-surface-hover-border);
+}
+
+.entity-subscribe-button--artist:active {
+  transform: translateY(0) scale(0.99);
+  background: var(--button-surface-active-bg);
+  border-color: var(--button-surface-active-border);
 }
 
 .entity-subscribe-button--artist.saved {

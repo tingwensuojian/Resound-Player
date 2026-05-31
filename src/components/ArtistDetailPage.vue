@@ -41,7 +41,7 @@
         :loading="subscribeState.isLoading.value"
         @toggle="subscribeState.toggle"
       />
-      <button class="btn-play-all" @click="playTopSongs">播放热门</button>
+      <button class="play-all" @click="playTopSongs">播放热门</button>
     </template>
     <template #tabs>
       <DetailTabBar
