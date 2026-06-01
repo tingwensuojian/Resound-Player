@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import http from 'http';
@@ -99,6 +100,9 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       entries: ['index.html', 'mini.html'],
+    },
+    define: {
+      __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync('./package.json', 'utf-8')).version),
     },
     build: {
       // `three` / `tubes1` are intentionally lazy-loaded visual effect chunks.

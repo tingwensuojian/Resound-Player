@@ -689,10 +689,22 @@ async function fetchChangelog() {
 }
 
 // 当前版本号
-const CURRENT_VERSION = 'v0.1.0';
+const CURRENT_VERSION = typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : 'v0.0.0';
 const UPDATE_CHECKED = ref(false);
 const UPDATE_AVAILABLE = ref(false);
 const UPDATE_LATEST = ref('');
+
+function semverGt(a: string, b: string): boolean {
+  // 比较两个版本号（如 "v1.2.3" 或 "1.2.3"）
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0;
+    const nb = pb[i] || 0;
+    if (na !== nb) return na > nb;
+  }
+  return false;
+}
 
 async function checkUpdate() {
   if (checkingUpdate.value) return;
@@ -704,7 +716,7 @@ async function checkUpdate() {
     const data = await res.json();
     const latestTag = data.tag_name || '';
     UPDATE_LATEST.value = latestTag;
-    UPDATE_AVAILABLE.value = latestTag > CURRENT_VERSION;
+    UPDATE_AVAILABLE.value = semverGt(latestTag, CURRENT_VERSION);
   } catch {
     UPDATE_AVAILABLE.value = false;
     UPDATE_LATEST.value = '';
