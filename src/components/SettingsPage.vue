@@ -209,15 +209,24 @@
         </div>
         <div class="about-actions">
           <button class="about-update-btn" type="button" @click="checkUpdate" :disabled="checkingUpdate">
-            {{ checkingUpdate ? '检查中...' : '检查更新' }}
+            {{ checkingUpdate ? '检查中...' : UPDATE_CHECKED ? (UPDATE_AVAILABLE ? '发现新版本 ' + UPDATE_LATEST : '已是最新版') : '检查更新' }}
           </button>
-          <button class="about-changelog-btn" type="button" @click="changelogExpanded = !changelogExpanded">
+          <a v-if="UPDATE_CHECKED && UPDATE_AVAILABLE" :href="'https://github.com/tingwensuojian/Resound-Player/releases/tag/' + UPDATE_LATEST" target="_blank" rel="noopener" class="about-download-link">前往下载 ›</a>
+          <button class="about-changelog-btn" type="button" @click="changelogExpanded = !changelogExpanded; if (changelogExpanded) fetchChangelog()">
             <svg class="about-chevron" :class="{ rotated: changelogExpanded }" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M4 6l4 4 4-4"/></svg>
             更新日志
           </button>
         </div>
         <div v-show="changelogExpanded" class="about-changelog">
-          <div class="changelog-entry">
+          <div v-if="changelogLoading" class="changelog-loading">加载中…</div>
+          <template v-else-if="changelogList.length">
+            <div v-for="(release, i) in changelogList" :key="i" class="changelog-entry">
+              <span class="changelog-version">{{ release.tag }}</span>
+              <span class="changelog-date">{{ release.date }}</span>
+              <p class="changelog-desc">{{ release.desc }}</p>
+            </div>
+          </template>
+          <div v-else class="changelog-entry">
             <span class="changelog-version">v0.1.0</span>
             <span class="changelog-date">—</span>
             <p class="changelog-desc">首个稳定版本发布，暂无详细记录。</p>
@@ -656,12 +665,52 @@ function refreshDonationList() {
   ];
 }
 
-function checkUpdate() {
+// 更新日志
+const changelogLoading = ref(false);
+const changelogList = ref<Array<{tag: string; date: string; desc: string}>>([]);
+
+async function fetchChangelog() {
+  if (changelogList.value.length || changelogLoading.value) return;
+  changelogLoading.value = true;
+  try {
+    const res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases?per_page=10');
+    if (!res.ok) throw new Error('获取失败');
+    const data = await res.json();
+    changelogList.value = (data || []).map((r: any) => ({
+      tag: r.tag_name || '',
+      date: r.published_at ? r.published_at.slice(0, 10) : '',
+      desc: (r.body || '').split('\n')[0].replace(/^[#*\s]+/, '') || '暂无描述',
+    }));
+  } catch {
+    changelogList.value = [];
+  } finally {
+    changelogLoading.value = false;
+  }
+}
+
+// 当前版本号
+const CURRENT_VERSION = 'v0.1.0';
+const UPDATE_CHECKED = ref(false);
+const UPDATE_AVAILABLE = ref(false);
+const UPDATE_LATEST = ref('');
+
+async function checkUpdate() {
+  if (checkingUpdate.value) return;
   checkingUpdate.value = true;
-  // TODO: 接入正式检查更新逻辑
-  setTimeout(() => {
+  UPDATE_CHECKED.value = true;
+  try {
+    const res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases/latest');
+    if (!res.ok) throw new Error('无法获取版本信息');
+    const data = await res.json();
+    const latestTag = data.tag_name || '';
+    UPDATE_LATEST.value = latestTag;
+    UPDATE_AVAILABLE.value = latestTag > CURRENT_VERSION;
+  } catch {
+    UPDATE_AVAILABLE.value = false;
+    UPDATE_LATEST.value = '';
+  } finally {
     checkingUpdate.value = false;
-  }, 800);
+  }
 }
 
 const showEmptyAccountState = computed(() => activeTab.value === 'account' && !currentGroups.value.length);
@@ -1672,6 +1721,24 @@ async function handleAction(key: string) {
 .about-update-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.about-download-link {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 var(--space-3);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.about-download-link:hover {
+  opacity: 0.85;
 }
 
 .about-changelog-btn {
