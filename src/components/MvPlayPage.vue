@@ -1,21 +1,26 @@
 <template>
-  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="mv-play-page playlist-detail-page">
+  <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="mv-play-page">
 
     <div class="mv-play-content">
       <div class="mv-play-main">
-        <div class="video-wrap">
-          <video
-            v-if="mvUrl"
-            :src="mvUrl"
-            controls
-            autoplay
-            playsinline
-            preload="metadata"
-            class="video"
-          />
-          <div v-else-if="playerLoading" class="video-placeholder">正在加载视频…</div>
-          <div v-else-if="playerError" class="video-placeholder error">{{ playerError }}</div>
-          <div v-else class="video-placeholder">暂无可播放地址</div>
+        <div ref="videoSectionRef" class="video-section">
+          <div class="video-wrap" :class="{ 'video-wrap--pip-hidden': pipActive }">
+            <video
+              
+              v-if="mvUrl"
+              :src="mvUrl"
+              controls
+              autoplay
+              playsinline
+              preload="metadata"
+              class="video"
+            />
+            <div v-else-if="playerLoading" class="video-placeholder">正在加载视频…</div>
+            <div v-else-if="playerError" class="video-placeholder error">{{ playerError }}</div>
+            <div v-else class="video-placeholder">暂无可播放地址</div>
+          </div>
+          <!-- 画中画占位：保持滚动高度 -->
+          <div v-if="pipActive" class="pip-placeholder"></div>
         </div>
       </div>
 
@@ -60,10 +65,28 @@
       </section>
     </div>
   </AnimatedAppear>
+  
+  <!-- 画中画浮动条 - Teleport 到 body 避免 position:fixed 被父级 contain 拦截 -->
+  <Teleport to="body">
+    <div v-if="pipActive" class="mv-pip-floating" @click="scrollToTop">
+      <div class="pip-floating-wrap">
+        <video
+          ref="pipVideoElRef"
+          :src="mvUrl"
+          controls
+          autoplay
+          playsinline
+          preload="metadata"
+          class="pip-video"
+        />
+      </div>
+      <button class="pip-floating-close" @click.stop="pipActive = false">✕</button>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import {
   getMvDetail,
   getMvDetailInfo,
@@ -76,6 +99,69 @@ import CommentPanel from './CommentPanel.vue';
 
 const props = defineProps<{ mv?: any | null; backLabel?: string }>();
 const emit = defineEmits<{ (e: 'back'): void; (e: 'open-user', userId: number): void }>();
+
+// 画中画（PiP）状态
+const pipActive = ref(false);
+const videoSectionRef = ref<HTMLElement | null>(null);
+const pipVideoElRef = ref<HTMLVideoElement | null>(null);
+const PIP_THRESHOLD = 80;
+let pipScrollTarget: HTMLElement | null = null;
+let savedPlayTime = 0;
+
+function scrollToTop() {
+  const content = document.querySelector('.content');
+  if (content) content.scrollTop = 0;
+}
+
+function syncVideoTime() {
+  // 同步两个 video 元素的播放位置
+  const origVideo = document.querySelector('.video-wrap video') as HTMLVideoElement | null;
+  const pipVideo = pipVideoElRef.value;
+  if (!origVideo && !pipVideo) return;
+  const srcVideo = pipActive.value ? origVideo : pipVideo;
+  const dstVideo = pipActive.value ? pipVideo : origVideo;
+  if (srcVideo && dstVideo && !isNaN(srcVideo.currentTime)) {
+    dstVideo.currentTime = srcVideo.currentTime;
+  }
+}
+
+function checkPip() {
+  if (!videoSectionRef.value || !pipScrollTarget) return;
+  const rect = videoSectionRef.value.getBoundingClientRect();
+  const contentRect = pipScrollTarget.getBoundingClientRect();
+  const videoTop = rect.top - contentRect.top;
+  const shouldPip = videoTop < -PIP_THRESHOLD || (rect.bottom < contentRect.top);
+  if (shouldPip !== pipActive.value) {
+    // 切换前同步播放位置
+    if (pipActive.value !== shouldPip) {
+      savedPlayTime = document.querySelector('.video-wrap video')?.currentTime || 0;
+    }
+    pipActive.value = shouldPip;
+    // 切换后恢复播放位置
+    nextTick(() => {
+      const targetVideo = pipActive.value ? pipVideoElRef.value : document.querySelector('.video-wrap video') as HTMLVideoElement | null;
+      if (targetVideo && savedPlayTime > 0) {
+        targetVideo.currentTime = savedPlayTime;
+        targetVideo.play().catch(() => {});
+      }
+    });
+  }
+}
+
+onMounted(() => {
+  pipScrollTarget = document.querySelector('.content') as HTMLElement | null;
+  if (!pipScrollTarget) return;
+  pipScrollTarget.addEventListener('scroll', checkPip, { passive: true });
+  // 初始检查
+  checkPip();
+});
+
+onUnmounted(() => {
+  if (pipScrollTarget) {
+    pipScrollTarget.removeEventListener('scroll', checkPip);
+  }
+});
+
 
 type MvItem = {
   id: number;
@@ -225,7 +311,6 @@ watch(
 </script>
 
 <style scoped>
-@import '../styles/detail-page.css';
 .mv-play-page {
   padding: var(--space-4);
   width: 100%;
@@ -374,6 +459,96 @@ watch(
 /* Comments */
 .mv-play-comments {
   grid-area: comment;
+}
+
+
+/* ── 画中画（PiP）── */
+.video-section {
+  position: relative;
+}
+
+.video-wrap--pip-hidden {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pip-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  pointer-events: none;
+}
+
+/* ── Teleport 到 body 的浮动画中画 ── */
+.mv-pip-floating {
+  position: fixed;
+  bottom: calc(var(--player-bar-height, 84px) + 16px);
+  right: 16px;
+  width: min(360px, 40vw);
+  z-index: 99999;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  cursor: pointer;
+  animation: pip-enter 0.35s cubic-bezier(0.34, 1, 0.64, 1);
+}
+
+.pip-floating-wrap {
+  width: 100%;
+  line-height: 0;
+}
+
+.pip-video {
+  width: 100%;
+  display: block;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.pip-floating-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.mv-pip-floating:hover .pip-floating-close {
+  opacity: 1;
+}
+
+@keyframes pip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 980px) {
+  .mv-pip-floating {
+    right: 8px;
+    bottom: calc(var(--player-bar-height, 84px) + 8px);
+    width: min(280px, 50vw);
+  }
 }
 
 @media (max-width: 980px) {
