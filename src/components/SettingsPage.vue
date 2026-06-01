@@ -632,6 +632,8 @@ const unblockPkgs: AboutPkg[] = [
 ];
 
 const otherPkgs: AboutPkg[] = [
+  { name: '@tanstack/vue-query', version: '5.100.14', license: 'MIT', author: 'Tanner Linsley — TanStack Query 的 Vue 适配，提供声明式服务端状态管理与缓存', url: 'https://github.com/TanStack/query', icon: 'https://github.com/TanStack.png?size=48' },
+  { name: '@tanstack/vue-virtual', version: '3.13.24', license: 'MIT', author: 'Tanner Linsley — 高性能虚拟滚动库，用于长列表渲染优化', url: 'https://github.com/TanStack/virtual', icon: 'https://github.com/TanStack.png?size=48' },
   { name: 'lucide-vue-next', version: '0.507.0', license: 'ISC', author: 'Lucide — 开源图标库，提供一致的应用图标体系', url: 'https://github.com/lucide-icons/lucide', icon: 'https://github.com/lucide-icons.png?size=48' },
   { name: 'bezier-easing', version: '3.0.0', license: 'MIT', author: 'Gaëtan Renaudeau — 贝塞尔曲线缓动函数，用于动画时间曲线', url: 'https://github.com/gre/bezier-easing', icon: 'https://github.com/gre.png?size=48' },
   { name: 'jss', version: '10.10.0', license: 'MIT', author: 'JSS Team — CSS-in-JS 方案，用于动态样式生成', url: 'https://github.com/cssinjs/jss', icon: 'https://github.com/cssinjs.png?size=48' },
