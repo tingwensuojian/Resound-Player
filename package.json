@@ -152,7 +152,7 @@
         "NSQuitAlwaysKeepsWindows": false,
         "LSUIElement": false
       },
-      "artifactName": "${name}-Mac-${arch}-${version}.${ext}"
+      "artifactName": "${productName}-Mac-${arch}-${version}.${ext}"
     }
   }
 }
