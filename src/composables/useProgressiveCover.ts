@@ -1,5 +1,4 @@
 import { ref, computed, watch, type WatchSource } from 'vue'
-import { platform } from '../utils/platform'
 import { normalizeImageUrl } from '../utils/image'
 
 /**
@@ -24,33 +23,10 @@ function resolveUrl(base: string, param: string): string {
 }
 
 // ── 设备能力检测（单例，只计一次） ──
-let _deviceTier: 'low' | 'mid' | 'high' | null = null
 
-function getDeviceTier(): 'low' | 'mid' | 'high' {
-  if (_deviceTier) return _deviceTier
-
-  const conn = (navigator as any).connection
-  const mem = (navigator as any).deviceMemory
-  const cpu = navigator.hardwareConcurrency
-  const isDesktop = platform.isDesktop
-
-  const isSlowNetwork = conn && (
-    conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g' || conn.saveData
-  )
-  const isLowMem = mem !== undefined && mem < 4
-  const isLowCpu = cpu !== undefined && cpu <= 4
-
-  if (isSlowNetwork || isLowMem || (isLowCpu && !isDesktop)) {
-    _deviceTier = 'low'
-  } else if ((mem !== undefined && mem < 8) || (cpu !== undefined && cpu <= 8)) {
-    _deviceTier = 'mid'
-  } else {
-    _deviceTier = 'high'
-  }
-
-  return _deviceTier
+function getDeviceTier(): 'high' {
+  return 'high'
 }
-
 export interface ProgressiveCoverOptions {
   /** 目标全尺寸：'thumb' | 'medium' | 'large'，默认 'large'（1024px） */
   targetSize?: keyof typeof COVER_PARAMS

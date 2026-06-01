@@ -437,7 +437,6 @@ textarea,
   border-radius: var(--radius-lg) !important;
   background: var(--bg-solid) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: none !important;
 }
 
 /* backdrop-filter 仅对半透明背景生效。chromium 中 backdrop-filter 会强制创建 GPU
@@ -480,7 +479,6 @@ textarea,
 :root[data-glass='off'] .item,
 :root[data-glass='off'] .tag {
   background: var(--bg-solid) !important;
-  box-shadow: var(--glass-shadow) !important;
 }
 
 /* Player footer bar should stay solid */
@@ -496,86 +494,7 @@ html body #app .layout footer.bar[data-v-efc867c7] {
   filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  box-shadow: 0 -1px 0 color-mix(in srgb, var(--border) 72%, transparent), 0 -10px 30px rgba(15, 23, 42, 0.08) !important;
 }
-
-/* =========================================
- * GPU 等级降级样式 — 基于 data-device-tier
- * 低端设备：禁用昂贵视觉效果、减少合成层
- * 中端设备：降低 blur 强度、减少合成层
- * 高端设备：全部启用
- * ========================================= */
-[data-device-tier="low"] .playlist-detail-header-wrap {
-  will-change: auto !important;
-}
-[data-device-tier="low"] .playlist-detail-header-wrap::before {
-  opacity: 0 !important;
-}
-[data-device-tier="low"] .playlist-detail-header-wrap,
-[data-device-tier="low"] .panel::before,
-[data-device-tier="low"] .daily-page::before,
-[data-device-tier="low"] .user-detail-page::before {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-device-tier="low"] .content::before {
-  filter: none !important;
-}
-[data-device-tier="low"] .cover {
-  will-change: auto !important;
-  transition: none !important;
-}
-[data-device-tier="low"] .an-enter-card,
-[data-device-tier="low"] .an-enter-media,
-[data-device-tier="low"] .an-enter-modal,
-[data-device-tier="low"] .an-enter-nav,
-[data-device-tier="low"] .an-enter-control,
-[data-device-tier="low"] .an-enter-text {
-  will-change: auto !important;
-  animation-duration: 0.01ms !important;
-}
-[data-device-tier="low"] .hover-play-button,
-[data-device-tier="low"] .hover-play-button-count {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-device-tier="low"] * {
-  transition-duration: 0.1s !important;
-}
-/* 全局禁用 backdrop-filter：低端设备 GPU 无法承受背景重采样成本 */
-[data-device-tier="low"] *,
-[data-device-tier="low"] *::before,
-[data-device-tier="low"] *::after {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-[data-device-tier="low"] [class*="progressive-cover"] {
-  transition: none !important;
-}
-
-[data-device-tier="mid"] .playlist-detail-header-wrap {
-  will-change: auto !important;
-}
-[data-device-tier="mid"] .playlist-detail-header-wrap::before {
-  transition: opacity 0.15s ease !important;
-}
-[data-device-tier="mid"] .content::before {
-  filter: blur(12px) saturate(155%) contrast(1.08);
-}
-[data-device-tier="mid"] .cover {
-  will-change: auto !important;
-}
-[data-device-tier="mid"] .an-enter-card,
-[data-device-tier="mid"] .an-enter-media,
-[data-device-tier="mid"] .an-enter-modal,
-[data-device-tier="mid"] .an-enter-nav,
-[data-device-tier="mid"] .an-enter-control,
-[data-device-tier="mid"] .an-enter-text {
-  will-change: auto !important;
-}
-
-.menu-item:hover,
-.song:hover,
 .hot-item:hover,
 .tab-btn:hover,
 .tag:hover {
@@ -715,7 +634,6 @@ button,
   border-radius: var(--radius-sm) !important;
   background: var(--button-surface-bg) !important;
   border: 1px solid var(--button-surface-border) !important;
-  box-shadow: var(--button-surface-shadow) !important;
 }
 
 .button-surface--danger,
@@ -726,7 +644,6 @@ button,
   border-radius: var(--radius-sm) !important;
   background: var(--button-danger-bg) !important;
   border: 1px solid var(--button-danger-border) !important;
-  box-shadow: var(--button-surface-shadow) !important;
 }
 
 .text-btn,
@@ -1113,7 +1030,6 @@ input[type='range']::-moz-range-thumb,
   background: var(--glass-reflection), var(--bg-muted) !important;
   border: 1px solid var(--border) !important;
   color: var(--text-main) !important;
-  box-shadow: var(--glass-highlight) !important;
 }
 
 .search-input::placeholder,
@@ -1143,7 +1059,6 @@ svg.icon,
 .lucide.icon {
   background: transparent !important;
   border: 0 !important;
-  box-shadow: none !important;
   outline: none !important;
 }
 
@@ -1153,7 +1068,6 @@ svg.icon,
   background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 92%, #fff), color-mix(in srgb, var(--accent) 74%, #000)) !important;
   border-color: color-mix(in srgb, var(--accent) 70%, var(--border)) !important;
   color: #ffffff !important;
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 34%, transparent), var(--glass-highlight) !important;
 }
 
 .row,
@@ -1184,7 +1098,6 @@ svg.icon,
 :root[data-glass='off'] .grid-item,
 :root[data-glass='off'] .tag {
   background: var(--bg-solid) !important;
-  box-shadow: none !important;
 }
 
 /* Overlay glass polish */
@@ -1240,7 +1153,6 @@ textarea:disabled {
   color: var(--control-disabled-text) !important;
   border-color: color-mix(in srgb, var(--border) 70%, transparent) !important;
   background: var(--control-disabled-bg) !important;
-  box-shadow: none !important;
 }
 
 .clear:hover,
