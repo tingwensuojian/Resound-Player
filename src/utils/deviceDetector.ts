@@ -17,7 +17,7 @@ const STORAGE_EXPIRY = 24 * 60 * 60 * 1000
 let _capability: DeviceCapability | null = null
 
 function detectDeviceCapability(): DeviceCapability {
-  const isDesktop = typeof window !== 'undefined' && Boolean((window as any).appEnv?.isDesktop)
+  const isDesktop = typeof window !== 'undefined' && (Boolean((window as any).appEnv?.isDesktop) || /Macintosh|Windows|Linux (?!Android)/i.test(navigator.userAgent || ''))
   const isTouchDevice = typeof navigator !== 'undefined' && (navigator.maxTouchPoints > 0 || ('ontouchstart' in window))
   const isMobile = !isDesktop && (isTouchDevice || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''))
   const memory = (navigator as any).deviceMemory ?? null
