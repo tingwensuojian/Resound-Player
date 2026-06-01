@@ -203,7 +203,7 @@
             </svg>
           </div>
           <div class="about-project-text">
-            <p class="about-project-name">Resound-Player v0.1.0</p>
+            <p class="about-project-name">Resound-Player {{ appVersion }}</p>
             <p class="about-project-desc">基于 Vue 3 + Vite + Electron 构建的桌面音乐播放器，融合网易云音乐生态与多端播放体验。</p>
           </div>
         </div>
@@ -676,10 +676,11 @@ async function fetchChangelog() {
     const res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases?per_page=10');
     if (!res.ok) throw new Error('获取失败');
     const data = await res.json();
-    changelogList.value = (data || []).map((r: any) => ({
+    const releases = Array.isArray(data) ? data : [];
+    changelogList.value = releases.map((r: any) => ({
       tag: r.tag_name || '',
       date: r.published_at ? r.published_at.slice(0, 10) : '',
-      desc: (r.body || '').split('\n')[0].replace(/^[#*\s]+/, '') || '暂无描述',
+      desc: (r.body || '').replace(/^[#\s]+/gm, '').trim() || '暂无描述',
     }));
   } catch {
     changelogList.value = [];
@@ -689,7 +690,8 @@ async function fetchChangelog() {
 }
 
 // 当前版本号
-const CURRENT_VERSION = typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : 'v0.0.0';
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : 'v0.0.0';
+const CURRENT_VERSION = appVersion;
 const UPDATE_CHECKED = ref(false);
 const UPDATE_AVAILABLE = ref(false);
 const UPDATE_LATEST = ref('');
@@ -711,15 +713,23 @@ async function checkUpdate() {
   checkingUpdate.value = true;
   UPDATE_CHECKED.value = true;
   try {
-    const res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases/latest');
-    if (!res.ok) throw new Error('无法获取版本信息');
+    // 先试 /releases/latest，如果 404 则回退到 /releases?per_page=1
+    let res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases/latest');
+    if (res.status === 404) {
+      // 没有正式 Release，从发布列表取第一个
+      res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases?per_page=1');
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    const latestTag = data.tag_name || '';
+    const latestTag = Array.isArray(data) ? (data[0]?.tag_name || '') : (data.tag_name || '');
     UPDATE_LATEST.value = latestTag;
     UPDATE_AVAILABLE.value = semverGt(latestTag, CURRENT_VERSION);
-  } catch {
+    console.log('[UpdateCheck] current:', CURRENT_VERSION, 'latest:', latestTag, 'available:', UPDATE_AVAILABLE.value);
+  } catch (e) {
+    console.warn('[UpdateCheck] 检查更新失败:', e);
     UPDATE_AVAILABLE.value = false;
     UPDATE_LATEST.value = '';
+    UPDATE_CHECKED.value = false; // 失败时重置，让按钮恢复可点击
   } finally {
     checkingUpdate.value = false;
   }
@@ -1811,6 +1821,7 @@ async function handleAction(key: string) {
 }
 
 .changelog-desc {
+      white-space: pre-wrap;
   margin: 0;
   width: 100%;
   font-size: 13px;
