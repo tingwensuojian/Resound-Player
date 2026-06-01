@@ -151,7 +151,8 @@
       "extendInfo": {
         "NSQuitAlwaysKeepsWindows": false,
         "LSUIElement": false
-      }
+      },
+      "artifactName": "${name}-Mac-${arch}-${version}.${ext}"
     }
   }
 }
