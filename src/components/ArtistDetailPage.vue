@@ -219,8 +219,7 @@ import HeroCoverMedia from './HeroCoverMedia.vue';
 import AnimatedAppear from './AnimatedAppear.vue';
 import PlayPauseButton from './ui/PlayPauseButton.vue';
 import { useListScroll } from '../composables/useScrollShrink';
-import { useApiData } from '../composables/useApiData';
-import { CACHE_TTL } from '../stores/apiCache';
+import { useApiQuery } from '../composables/useApiQuery';
 import { useDominantColor } from '../composables/useDominantColor';
 import MvHoverPoster from './MvHoverPoster.vue';
 import SongActions from './ui/SongActions.vue';
@@ -268,10 +267,14 @@ const emit = defineEmits<{
 
 const isDescriptionExpanded = ref(false);
 
-// 歌手详情：useApiData 统一管理 5 个并行 API 的缓存
-const { data: artistFull, loading, error } = useApiData(
-  () => props.artistId ? `artist:full:${props.artistId}` : '',
-  async () => {
+// 歌手详情：useApiQuery 统一管理 5 个并行 API 的缓存
+const {
+  data: artistFull,
+  isPending: loading,
+  error: queryError,
+} = useApiQuery({
+  queryKey: ['artist', 'full', props.artistId],
+  queryFn: async () => {
     const [detailRes, topSongsRes, albumsRes, mvsRes, descRes] = await Promise.all([
       getArtistDetail(props.artistId),
       getArtistTopSongs(props.artistId),
@@ -281,8 +284,10 @@ const { data: artistFull, loading, error } = useApiData(
     ]);
     return { detailRes, topSongsRes, albumsRes, mvsRes, descRes };
   },
-  { ttl: CACHE_TTL.LIST }
-);
+  ttl: 'LIST',
+  enabled: computed(() => Boolean(props.artistId)),
+});
+const error = computed(() => queryError.value?.message ?? '');
 
 const artist = computed<any>(() => {
   const data = artistFull.value?.detailRes?.data || artistFull.value?.detailRes;

@@ -76,6 +76,7 @@ import AlbumDetailPage from './AlbumDetailPage.vue';
 const PodcastDetailPage = defineAsyncComponent(() => import('./PodcastDetailPage.vue'));
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserDetail, getUserPlaylist } from '../api/auth';
 import { getAlbumDetail, getAlbumSublist, getCloudStorage, getCloudStorageDetail, getDjDetail, getDjProgram, getDjSublist, getSongUrl } from '../api/music';
+import { apiCache } from '../stores/apiCache';
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
@@ -364,6 +365,23 @@ function applyPlaylistBuckets(uid: number, playlists: any[]) {
 async function loadUserData() {
   if (!userStore.state.profile?.userId) return;
   const requestId = ++loadUserDataSeq;
+  
+  // 检查缓存：用户数据很少变化，优先使用缓存
+  const cacheKey = `user:panel:${userStore.state.profile.userId}@${userStore.state.profile.userId}`;
+  const cached = apiCache.get(cacheKey);
+  if (cached?.data) {
+    const data = cached.data;
+    detail.value = data.detail;
+    if (data.createdPlaylists) createdPlaylists.value = data.createdPlaylists;
+    if (data.collectedPlaylists) collectedPlaylists.value = data.collectedPlaylists;
+    if (data.albumItems) albumItems.value = data.albumItems;
+    if (data.djSublist) djSublist.value = data.djSublist;
+    if (data.cloudPlaylists) cloudPlaylists.value = data.cloudPlaylists;
+    if (data.cloudDetailItems) cloudDetailItems.value = data.cloudDetailItems;
+    loading.value = false;
+    return;
+  }
+  
   loading.value = true;
   try {
     const uid = userStore.state.profile.userId;
@@ -454,6 +472,17 @@ async function loadUserData() {
       });
     }
 
+    // 写入缓存（用户数据很少变化，10分钟 TTL）
+    apiCache.set(cacheKey, {
+      detail: detail.value,
+      createdPlaylists: createdPlaylists.value,
+      collectedPlaylists: collectedPlaylists.value,
+      albumItems: albumItems.value,
+      djSublist: djSublist.value,
+      cloudPlaylists: cloudPlaylists.value,
+      cloudDetailItems: cloudDetailItems.value,
+    }, 600000); // LIST TTL: 10min
+    
     if (isTabletView()) {
       // 平板端不自动选中，展示列表页
     } else if (activeTab.value === 'playlists' && playlistSubTab.value === 'albums' && currentPlaylistItems.value.length) {

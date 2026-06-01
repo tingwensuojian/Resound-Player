@@ -350,9 +350,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { getPlaylistTrackAll, getToplistDetail } from '../api/music';
-import { apiCache, CACHE_TTL } from '../stores/apiCache';
+import { useApiQuery } from '../composables/useApiQuery';
 import InteractiveCoverMedia from './InteractiveCoverMedia.vue';
 import AnimatedAppear from './AnimatedAppear.vue';
 import HoverPlayButton from './HoverPlayButton.vue';
@@ -397,9 +397,29 @@ const emit = defineEmits<{
   (e: 'open-artist', artist: ArtistBrief): void;
 }>();
 
-const loading = ref(false);
-const error = ref('');
 const list = ref<ToplistItem[]>([]);
+
+const {
+  data: toplistData,
+  isFetching: loading,
+  error: queryError,
+} = useApiQuery({
+  queryKey: ['toplist', 'detail'],
+  queryFn: async () => {
+    const { data } = await getToplistDetail();
+    return (data?.list || []) as ToplistItem[];
+  },
+  ttl: 'LIST_VOLATILE',
+});
+
+const error = computed(() => queryError.value?.message ?? '');
+
+watch(toplistData, (val) => {
+  if (val) {
+    list.value = val;
+    void hydrateCardTracks();
+  }
+}, { immediate: true });
 const cardTracksMap = ref<Record<number, RankTrackDisplay[]>>({});
 
 const featuredList = computed(() => {
@@ -597,35 +617,7 @@ async function hydrateCardTracks() {
   );
 }
 
-async function fetchToplist() {
-  loading.value = true;
-  error.value = '';
 
-  // 检查缓存
-  const cached = apiCache.get('toplist:detail');
-  if (cached?.data) {
-    list.value = cached.data as ToplistItem[];
-    loading.value = false;
-    void hydrateCardTracks();
-    return;
-  }
-
-  try {
-    const { data } = await getToplistDetail();
-    list.value = (data?.list || []) as ToplistItem[];
-    apiCache.set('toplist:detail', list.value, CACHE_TTL.LIST_VOLATILE);
-    loading.value = false;
-    void hydrateCardTracks();
-  } catch (e: any) {
-    error.value = e?.message || '排行榜加载失败';
-    list.value = [];
-    loading.value = false;
-  }
-}
-
-onMounted(() => {
-  fetchToplist();
-});
 </script>
 
 <style scoped>

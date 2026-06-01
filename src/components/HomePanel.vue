@@ -593,7 +593,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useBgLoaded } from '../composables/useBgLoaded';
-import { apiCache, CACHE_TTL } from '../stores/apiCache';
+import { apiCache } from '../stores/apiCache';
 import { getArtistDetail, getPersonalFm, getPlaylistDetail, getRecommendPlaylists, getRecommendSongs, getNewestAlbums, getTopAlbums, getTopArtists, getTopSongs, searchMusic, getAllMvs, getDjRecommend, setPersonalFmMode } from '../api/music';
 import { getUserCreatedPlaylist } from '../api/auth';
 import { usePlayerStore } from '../stores/player'
@@ -932,7 +932,7 @@ async function fetchRadarPlaylists() {
       .map((r) => (r.status === 'fulfilled' ? r.value?.data?.playlist : null))
       .filter(Boolean);
     if (radarPlaylists.value.length) {
-      apiCache.set(cacheKey, radarPlaylists.value, CACHE_TTL.LIST_VOLATILE);
+      apiCache.set(cacheKey, radarPlaylists.value, 300000);
     }
     if (!radarPlaylists.value.length) {
       radarPlaylistsError.value = '雷达歌单获取失败';
@@ -1410,7 +1410,7 @@ async function fetchLatestMusic() {
     }
 
     if (latestSongs.value.length) {
-      apiCache.set(cacheKey, { songs: latestSongs.value, source: latestSongSource.value }, CACHE_TTL.LIST_VOLATILE);
+      apiCache.set(cacheKey, { songs: latestSongs.value, source: latestSongSource.value }, 300000);
     }
 
     if (!latestSongs.value.length) {
@@ -1448,7 +1448,7 @@ async function fetchTopArtists() {
     topArtistsOffset.value = list.length;
     topArtistsHasMore.value = list.length >= ARTISTS_PAGE_SIZE;
     if (topArtists.value.length) {
-      apiCache.set(cacheKey, topArtists.value, CACHE_TTL.LIST);
+      apiCache.set(cacheKey, topArtists.value, 600000);
     }
     if (!topArtists.value.length) {
       topArtistsError.value = '暂未获取到热门歌手';
@@ -1518,7 +1518,7 @@ async function fetchTopAlbums() {
 
     if (albums.value.length) {
       albumLoadNote.value = '来源：/top/album';
-      apiCache.set(cacheKey, albums.value, CACHE_TTL.LIST);
+      apiCache.set(cacheKey, albums.value, 600000);
       return;
     }
 
@@ -1528,7 +1528,7 @@ async function fetchTopAlbums() {
     albums.value = normalizeAlbums(newestPayload).slice(0, 12);
     if (albums.value.length) {
       albumLoadNote.value = '来源：/album/newest';
-      apiCache.set(cacheKey, albums.value, CACHE_TTL.LIST);
+      apiCache.set(cacheKey, albums.value, 600000);
       return;
     }
 
@@ -1550,7 +1550,7 @@ async function fetchTopAlbums() {
 
     if (albums.value.length) {
       albumLoadNote.value = '来源：搜索兜底';
-      apiCache.set(cacheKey, albums.value, CACHE_TTL.LIST_VOLATILE);
+      apiCache.set(cacheKey, albums.value, 300000);
       return;
     }
 
@@ -1589,7 +1589,7 @@ async function fetchMvList() {
       artistName: item.artistName || item.artist?.name || (item as any).creator?.nickname || '',
     })).filter((item: any) => item.id);
     if (mvList.value.length) {
-      apiCache.set(cacheKey, mvList.value, CACHE_TTL.LIST);
+      apiCache.set(cacheKey, mvList.value, 600000);
     }
     if (!mvList.value.length) {
       mvError.value = '暂未获取到 MV 数据';
@@ -1623,7 +1623,7 @@ async function fetchPodcastList() {
       creatorName: item.creator?.nickname || item.radio?.creator?.nickname || '',
     })).filter((item: any) => item.id);
     if (podcastList.value.length) {
-      apiCache.set(cacheKey, podcastList.value, CACHE_TTL.LIST);
+      apiCache.set(cacheKey, podcastList.value, 600000);
     }
     if (!podcastList.value.length) {
       podcastError.value = '暂未获取到播客数据';

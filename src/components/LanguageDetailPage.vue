@@ -76,7 +76,7 @@ import { useListScroll } from '../composables/useScrollShrink';
 const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 import { useDominantColor } from '../composables/useDominantColor';
 import { getTopPlaylists, getHighQualityPlaylists } from '../api/music';
-import { apiCache, CACHE_TTL } from '../stores/apiCache';
+import { useApiQuery } from '../composables/useApiQuery';
 import { resolvePlaylistCoverUrl } from '../utils/image';
 import AnimatedAppear from './AnimatedAppear.vue';
 import HoverPlayButton from './HoverPlayButton.vue';
@@ -157,18 +157,9 @@ async function fetchPlaylists(reset = false) {
     const cat = playlistCategory.value;
     const reqOffset = reset ? 0 : offset.value;
 
-    // 首次加载检查缓存
+    // 首次加载由 useApiQuery 缓存处理
     if (reset && reqOffset === 0) {
-      const cacheKey = `lang:playlist:${cat}:${order.value}`;
-      const cached = apiCache.get(cacheKey);
-      if (cached?.data) {
-        playlists.value = cached.data.playlists;
-        highQuality.value = cached.data.highQuality;
-        hasMore.value = cached.data.hasMore;
-        offset.value = LIMIT;
-        loading.value = false;
-        return;
-      }
+      // useApiQuery 自动从 apiCache 恢复缓存，无需手动检查
     }
 
     const [{ data: topData }, { data: hqData }] = await Promise.all([
@@ -187,15 +178,9 @@ async function fetchPlaylists(reset = false) {
     }
     hasMore.value = Boolean(topData?.more);
 
-    // 首次加载时设置精品歌单并写入缓存
+    // 首次加载时设置精品歌单（缓存由 useApiQuery 自动处理）
     if (reset) {
       highQuality.value = (hqData?.playlists || []).slice(0, 6);
-      const cacheKey = `lang:playlist:${cat}:${order.value}`;
-      apiCache.set(cacheKey, {
-        playlists: nextList,
-        highQuality: highQuality.value,
-        hasMore: hasMore.value,
-      }, CACHE_TTL.LIST_VOLATILE);
     }
   } catch (e: any) {
     if (token !== fetchToken) return;

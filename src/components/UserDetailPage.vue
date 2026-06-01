@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, type ComponentPublicInstance } from 'vue';
+import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useListScroll } from '../composables/useScrollShrink';
 const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 import HeroCoverMedia from './HeroCoverMedia.vue';
@@ -90,6 +90,7 @@ import { useDominantColor } from '../composables/useDominantColor';
 import AnimatedAppear from './AnimatedAppear.vue';
 import DetailShrinkShell from './DetailShrinkShell.vue';
 import { getUserCollectedPlaylist, getUserCreatedPlaylist, getUserDetail } from '../api/auth';
+import { useApiQuery } from '../composables/useApiQuery';
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
 import UserFollowButton from './ui/UserFollowButton.vue';
@@ -110,8 +111,7 @@ const emit = defineEmits<{
   (e: 'open-playlist-detail', playlistId: number): void;
 }>();
 
-const loading = ref(false);
-const error = ref('');
+const errorMsg = ref('');
 const userDetail = ref<any>(null);
 const createdPlaylists = ref<any[]>([]);
 const collectedPlaylists = ref<any[]>([]);
@@ -161,35 +161,36 @@ function openFirstPlaylist() {
   if (first?.id) emitOpenPlaylist(Number(first.id));
 }
 
-let fetchToken = 0;
-async function fetchUserDetail(id: number) {
-  if (!id) return;
-  const currentToken = ++fetchToken;
-  loading.value = true;
-  error.value = '';
-  try {
+const {
+  data: userApiData,
+  isPending: loading,
+  error: queryError,
+} = useApiQuery({
+  queryKey: ['user', 'detail', props.userId],
+  queryFn: async () => {
     const [detailRes, createdRes, collectedRes] = await Promise.all([
-      getUserDetail(id),
-      getUserCreatedPlaylist(id, 100, 0),
-      getUserCollectedPlaylist(id, 100, 0),
+      getUserDetail(props.userId),
+      getUserCreatedPlaylist(props.userId, 100, 0),
+      getUserCollectedPlaylist(props.userId, 100, 0),
     ]);
-    if (currentToken !== fetchToken) return;
-    userDetail.value = detailRes?.data || detailRes;
-    const allCreated = normalizePlaylistArray(createdRes);
-    const allCollected = normalizePlaylistArray(collectedRes);
+    return { detailRes, createdRes, collectedRes };
+  },
+  ttl: 'LIST',
+  enabled: computed(() => Boolean(props.userId)),
+});
+const error = computed(() => queryError.value?.message ?? '');
+
+watch(userApiData, (val) => {
+  if (val) {
+    const id = props.userId;
+    userDetail.value = val.detailRes?.data || val.detailRes;
+    const allCreated = normalizePlaylistArray(val.createdRes);
+    const allCollected = normalizePlaylistArray(val.collectedRes);
     createdPlaylists.value = allCreated.filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) === Number(id));
     collectedPlaylists.value = allCollected.filter((item: any) => Number(item?.creator?.userId || item?.userId || 0) !== Number(id));
     activeTab.value = 'created';
-  } catch (e: any) {
-    if (currentToken !== fetchToken) return;
-    userDetail.value = null;
-    createdPlaylists.value = [];
-    collectedPlaylists.value = [];
-    error.value = e?.message || '用户详情加载失败';
-  } finally {
-    if (currentToken === fetchToken) loading.value = false;
   }
-}
+}, { immediate: true });
 
 function normalizePlaylistArray(payload: any): any[] {
   const candidates = [
@@ -211,9 +212,6 @@ watch(activeTab, () => {
   if (host) host.scrollTop = 0;
 });
 
-onMounted(() => {
-  fetchUserDetail(props.userId);
-});
 </script>
 
 <style>@import '../styles/detail-page.css';</style>

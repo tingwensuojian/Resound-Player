@@ -147,8 +147,7 @@ import DetailShrinkShell from './DetailShrinkShell.vue';
 import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useListScroll } from '../composables/useScrollShrink';
 import { useDominantColor } from '../composables/useDominantColor';
-import { useApiData } from '../composables/useApiData';
-import { CACHE_TTL } from '../stores/apiCache';
+import { useApiQuery } from '../composables/useApiQuery';
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 import { recordLocalHistoryEntry } from '../utils/localHistory';
@@ -203,17 +202,23 @@ const tabs = [
 ] ;
 const searchQuery = ref('');
 
-// 使用 useApiData 获取专辑详情
-const { data: albumData, loading, error } = useApiData(
-  () => props.albumId ? `album:${props.albumId}` : '',
-  () => getAlbumDetail(props.albumId).then(r => {
+// 使用 useApiQuery 获取专辑详情
+const {
+  data: albumData,
+  isPending: loading,
+  error: queryError,
+} = useApiQuery({
+  queryKey: ['album', props.albumId],
+  queryFn: () => getAlbumDetail(props.albumId).then(r => {
     const detail = r?.data?.album;
     const list = r?.data?.songs || [];
     if (!detail) throw new Error('专辑详情为空');
     return { ...detail, songs: list };
   }),
-  { ttl: CACHE_TTL.ENTITY }
-);
+  ttl: 'ENTITY',
+  enabled: computed(() => Boolean(props.albumId)),
+});
+const error = computed(() => queryError.value?.message ?? '');
 
 const album = computed<any>(() => albumData.value);
 const songs = computed<any[]>(() => album.value?.songs || []);

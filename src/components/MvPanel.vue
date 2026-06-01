@@ -93,9 +93,9 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { getAllMvs } from '../api/music';
-import { apiCache, CACHE_TTL } from '../stores/apiCache';
+import { useApiQuery } from '../composables/useApiQuery';
 import AnimatedAppear from './AnimatedAppear.vue';
 import MvHoverPoster from './MvHoverPoster.vue';
 const emit = defineEmits<{ (e: 'open-user', userId: number): void; (e: 'play-mv', item: any): void }>();
@@ -158,6 +158,27 @@ const area = ref<(typeof AREA_OPTIONS)[number]>('全部');
 const mvType = ref<(typeof TYPE_OPTIONS)[number]>('全部');
 const order = ref<(typeof ORDER_OPTIONS)[number]>('上升最快');
 
+// 使用 useApiQuery 管理首次加载缓存（含持久化）
+const firstPageQuery = useApiQuery({
+  queryKey: computed(() => ['mv', 'list', area.value, mvType.value, order.value, 0]),
+  queryFn: async () => {
+    const { data } = await getAllMvs({
+      area: area.value, type: mvType.value, order: order.value, limit: 30, offset: 0,
+    });
+    return { list: (data?.data || []) as MvItem[], hasMore: Boolean(data?.hasMore) };
+  },
+  ttl: 'LIST_VOLATILE',
+});
+
+// 首次加载数据恢复：优先使用缓存数据
+watch(firstPageQuery.data, (val) => {
+  if (val && list.value.length === 0) {
+    list.value = val.list;
+    hasMore.value = val.hasMore;
+  }
+}, { immediate: true });
+
+
 const limit = 30;
 const loadMoreTrigger = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
@@ -170,16 +191,10 @@ async function fetchMvs(reset = false) {
   try {
     const offset = reset ? 0 : list.value.length;
 
-    // 首次加载检查缓存
+    // 首次加载由 useApiQuery 缓存处理
     if (reset && offset === 0) {
-      const cacheKey = `mv:list:${area.value}:${mvType.value}:${order.value}:0`;
-      const cached = apiCache.get(cacheKey);
-      if (cached?.data) {
-        list.value = cached.data.list as MvItem[];
-        hasMore.value = cached.data.hasMore;
-        loading.value = false;
-        return;
-      }
+      // useApiQuery 通过 apiCache 持久化，首次加载时自动恢复缓存
+      // 此处无需手动检查缓存
     }
 
     const { data } = await getAllMvs({
@@ -194,11 +209,7 @@ async function fetchMvs(reset = false) {
     list.value = reset ? next : [...list.value, ...next];
     hasMore.value = Boolean(data?.hasMore);
 
-    // 首次加载结果写入缓存
-    if (reset && offset === 0) {
-      const cacheKey = `mv:list:${area.value}:${mvType.value}:${order.value}:0`;
-      apiCache.set(cacheKey, { list: next, hasMore: hasMore.value }, CACHE_TTL.LIST_VOLATILE);
-    }
+    // 首次加载结果由 useApiQuery 自动缓存
   } catch (e: any) {
     error.value = e?.message || 'MV 加载失败';
     if (reset) list.value = [];

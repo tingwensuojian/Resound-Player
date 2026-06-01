@@ -192,7 +192,7 @@ import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 import { useUserStore } from '../stores/user';
 const userStore = useUserStore();
-import { apiCache, CACHE_TTL } from '../stores/apiCache';
+import { apiCache } from '../stores/apiCache';
 import { recordLocalHistoryEntry } from '../utils/localHistory';
 import { useAuthAction } from '../composables/useAuthAction';
 import AnimatedAppear from './AnimatedAppear.vue';
@@ -384,7 +384,7 @@ async function fetchDetail(id: number) {
       tracks: rawTracks,
     };
     detailLoading.value = false;
-    apiCache.set(`playlist:${id}`, { playlist: detail }, CACHE_TTL.LIST);
+    apiCache.set(`playlist:${id}`, { playlist: detail }, 600000);
 
     // 如果一开始就没歌曲则跳过补全
     if (!rawTracks.length) return;

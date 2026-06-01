@@ -68,8 +68,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import { getDjRadioHot, getDjRecommendType } from '../api/music';
+import { useApiQuery } from '../composables/useApiQuery';
 import AnimatedAppear from './AnimatedAppear.vue';
 import InteractiveCoverMedia from './InteractiveCoverMedia.vue';
 
@@ -81,7 +82,6 @@ const emit = defineEmits<{
 
 const activeTab = ref<'hot' | 'recommend'>('hot');
 const itemsByTab = ref<Record<'hot' | 'recommend', any[]>>({ hot: [], recommend: [] });
-const loading = ref(false);
 const hotPage = ref(1);
 const hotHasMore = ref(false);
 const hotLoadingMore = ref(false);
@@ -93,7 +93,7 @@ const categoryTabs = [
 const items = computed(() => itemsByTab.value[activeTab.value] || []);
 const fallbackCover = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="32" fill="#e2e8f0"/><circle cx="100" cy="84" r="40" fill="#cbd5e1"/><rect x="46" y="136" width="108" height="20" rx="10" fill="#cbd5e1"/></svg>`);
 
-watch(() => props.category.id, () => { void loadCategoryContent(); }, { immediate: true });
+// 数据加载由 useApiQuery 通过 queryKey computed 自动管理
 watch(activeTab, () => { requestAutoLoadHot(); });
 
 function findScrollRoot(): Element | null {
@@ -145,34 +145,36 @@ onUnmounted(() => {
   cancelAnimationFrame(scrollTick);
 });
 
-async function loadCategoryContent() {
-  if (!props.category?.id) {
-    itemsByTab.value = { hot: [], recommend: [] };
-    return;
-  }
-
-  loading.value = true;
-  hotPage.value = 1;
-  hotHasMore.value = false;
-  hotLoadingMore.value = false;
-  try {
+const {
+  data: categoryData,
+  isFetching: loading,
+  error: queryError,
+} = useApiQuery({
+  queryKey: computed(() => ['podcast', 'category', props.category?.id]),
+  queryFn: async () => {
     const [hotRes, recommendRes] = await Promise.all([
       getDjRadioHot({ cateId: props.category.id, limit: PAGE_SIZE, offset: 0 }),
       getDjRecommendType(props.category.id),
     ]);
-
-    itemsByTab.value = {
+    return {
       hot: normalizeVoiceItems(hotRes),
       recommend: normalizeVoiceItems(recommendRes),
+      hotHasMore: extractHasMore(hotRes),
     };
-    hotHasMore.value = extractHasMore(hotRes);
-  } catch {
-    itemsByTab.value = { hot: [], recommend: [] };
-  } finally {
-    loading.value = false;
+  },
+  ttl: 'LIST_VOLATILE',
+  enabled: computed(() => Boolean(props.category?.id)),
+});
+
+watch(categoryData, (val) => {
+  if (val) {
+    itemsByTab.value = { hot: val.hot, recommend: val.recommend };
+    hotHasMore.value = val.hotHasMore;
+    hotPage.value = 1;
+    hotLoadingMore.value = false;
     requestAutoLoadHot();
   }
-}
+}, { immediate: true });
 
 function normalizeVoiceItems(payload: any) {
   const candidates = [

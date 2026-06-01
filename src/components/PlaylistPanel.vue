@@ -80,7 +80,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { getHighQualityPlaylists, getPlaylistCatList, getTopPlaylists } from '../api/music';
-import { apiCache, CACHE_TTL } from '../stores/apiCache';
+import { useApiQuery } from '../composables/useApiQuery';
 import { resolvePlaylistCoverUrl } from '../utils/image';
 import AnimatedAppear from './AnimatedAppear.vue';
 import GradientCard from './ui/GradientCard.vue';
@@ -114,11 +114,63 @@ const props = withDefaults(
 const loading = ref(false);
 const error = ref('');
 const order = ref<'hot' | 'new'>('hot');
+const activeCat = ref('每日推荐');
 const limit = 30;
 const hasMore = ref(false);
 
 const allCats = ref<Record<string, string[]>>({});
-const activeCat = ref('每日推荐');
+
+// 歌单分类缓存
+const { data: catData } = useApiQuery({
+  queryKey: ['playlist', 'cats'],
+  queryFn: async () => {
+    const { data } = await getPlaylistCatList();
+    const sub = data?.sub || [];
+    const categoriesMap: Record<number, string> = data?.categories || {};
+    const groupMap: Record<string, string[]> = {};
+    for (const item of sub) {
+      const group = categoriesMap[item.category] || '其他';
+      if (!groupMap[group]) groupMap[group] = [];
+      groupMap[group].push(item.name);
+    }
+    return groupMap;
+  },
+  ttl: 'LIST',
+});
+
+// 歌单列表首次加载缓存
+const { data: listCacheData } = useApiQuery({
+  queryKey: computed(() => ['playlist', 'list', activeCat.value === '每日推荐' ? '全部' : activeCat.value, order.value, 0]),
+  queryFn: async () => {
+    const { data } = await getTopPlaylists({
+      cat: activeCat.value === '每日推荐' ? '全部' : activeCat.value,
+      order: order.value,
+      limit,
+      offset: 0,
+    });
+    return { list: (data?.playlists || []) as PlaylistItem[], hasMore: Boolean(data?.more) };
+  },
+  ttl: 'LIST_VOLATILE',
+});
+
+// 恢复首次加载缓存
+watch(listCacheData, (val) => {
+  if (val && playlists.value.length === 0) {
+    playlists.value = val.list;
+    hasMore.value = val.hasMore;
+  }
+}, { immediate: true });
+
+// 精品歌单缓存
+const { data: hqData } = useApiQuery({
+  queryKey: computed(() => ['playlist', 'highquality', activeCat.value]),
+  queryFn: async () => {
+    const { data } = await getHighQualityPlaylists({ cat: activeCat.value, limit: 6 });
+    return (data?.playlists || []) as PlaylistItem[];
+  },
+  ttl: 'LIST_VOLATILE',
+});
+
 
 const playlists = ref<PlaylistItem[]>([]);
 const highQuality = ref<PlaylistItem[]>([]);
@@ -167,25 +219,21 @@ async function setCat(cat: string) {
 }
 
 async function loadCategories() {
-  // 分类数据很少变化，优先使用缓存
-  const cached = apiCache.get(`playlist:cats`);
-  if (cached?.data) {
-    allCats.value = cached.data;
+  // 分类数据由 useApiQuery 管理缓存
+  if (catData.value) {
+    allCats.value = catData.value;
     return;
   }
   const { data } = await getPlaylistCatList();
   const sub = data?.sub || [];
   const categoriesMap: Record<number, string> = data?.categories || {};
   const groupMap: Record<string, string[]> = {};
-
   for (const item of sub) {
     const group = categoriesMap[item.category] || '其他';
     if (!groupMap[group]) groupMap[group] = [];
     groupMap[group].push(item.name);
   }
-
   allCats.value = groupMap;
-  apiCache.set(`playlist:cats`, groupMap, CACHE_TTL.LIST);
 }
 
 async function loadTopPlaylists(reset = false) {
@@ -197,16 +245,9 @@ async function loadTopPlaylists(reset = false) {
     const cat = activeCat.value === '每日推荐' ? '全部' : activeCat.value;
     const offset = reset ? 0 : playlists.value.length;
 
-    // 首次加载检查缓存
+    // 首次加载由 useApiQuery 缓存处理
     if (reset && offset === 0) {
-      const cacheKey = `playlist:list:${cat}:${order.value}:0`;
-      const cached = apiCache.get(cacheKey);
-      if (cached?.data) {
-        playlists.value = cached.data.list as PlaylistItem[];
-        hasMore.value = cached.data.hasMore;
-        loading.value = false;
-        return;
-      }
+      // 缓存由 useApiQuery 自动管理
     }
 
     const { data } = await getTopPlaylists({
@@ -222,8 +263,7 @@ async function loadTopPlaylists(reset = false) {
 
     // 首次加载结果写入缓存
     if (reset && offset === 0) {
-      const cacheKey = `playlist:list:${cat}:${order.value}:0`;
-      apiCache.set(cacheKey, { list: nextList, hasMore: hasMore.value }, CACHE_TTL.LIST_VOLATILE);
+      // 缓存由 useApiQuery 自动处理
     }
   } catch (e: any) {
     error.value = e?.message || '加载歌单失败';
@@ -234,10 +274,9 @@ async function loadTopPlaylists(reset = false) {
 }
 
 async function loadHighQuality() {
-  const cacheKey = `playlist:highquality:${activeCat.value}`;
-  const cached = apiCache.get(cacheKey);
-  if (cached?.data) {
-    highQuality.value = cached.data as PlaylistItem[];
+
+  if (hqData.value) {
+    highQuality.value = hqData.value as PlaylistItem[];
     return;
   }
   try {
@@ -246,7 +285,7 @@ async function loadHighQuality() {
       limit: 6,
     });
     highQuality.value = data?.playlists || [];
-    apiCache.set(cacheKey, highQuality.value, CACHE_TTL.LIST_VOLATILE);
+    // 缓存由 useApiQuery 自动处理
   } catch {
     highQuality.value = [];
   }

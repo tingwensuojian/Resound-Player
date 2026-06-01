@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
+import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query';
 import App from './App.vue';
 import './styles/animations.css';
 import './styles/interactive-media.css';
@@ -58,6 +59,18 @@ if ('serviceWorker' in navigator) {
   registerCoverCacheSW().catch(() => {});
 }
 
+// ── TanStack Query ──
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 const app = createApp(App);
 app.use(createPinia());
+app.use(VueQueryPlugin, { queryClient });
 app.mount('#app');
