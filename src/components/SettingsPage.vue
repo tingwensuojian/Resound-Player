@@ -237,7 +237,7 @@
       <AnimatedAppear
         tag="section"
         variant="content" rhythm="body"
-        index="1"
+        :index="1"
         class-name="setting-group"
       >
         <AnimatedAppear tag="h3" variant="title" rhythm="title" class-name="group-title">开源致谢</AnimatedAppear>
@@ -354,7 +354,7 @@
       <AnimatedAppear
         tag="section"
         variant="content" rhythm="body"
-        index="2"
+        :index="2"
         class-name="setting-group"
       >
         <AnimatedAppear tag="h3" variant="title" rhythm="title" class-name="group-title">开发者</AnimatedAppear>
@@ -373,7 +373,7 @@
         tag="section"
         variant="content"
         rhythm="body"
-        index="3"
+        :index="3"
         class-name="setting-group"
       >
         <AnimatedAppear tag="h3" variant="title" rhythm="title" class-name="group-title">捐赠支持</AnimatedAppear>
