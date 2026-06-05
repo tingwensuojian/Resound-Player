@@ -5,7 +5,11 @@ import path from 'node:path';
 
 const root = process.cwd();
 const buildDir = path.join(root, 'build');
-const sourceIcon = path.join(buildDir, 'icon.png');
+const sourceIconCandidates = [
+  path.join(buildDir, 'icon-mac.png'),
+  path.join(root, 'public', 'logo.png'),
+  path.join(buildDir, 'icon.png'),
+];
 const iconsetDir = path.join(buildDir, 'icon.iconset');
 const outputIcon = path.join(buildDir, 'icon.icns');
 
@@ -15,14 +19,35 @@ if (process.platform !== 'darwin') {
   process.exit(1);
 }
 
-if (fs.existsSync(outputIcon) && !process.env.RESOUND_FORCE_REBUILD_MAC_ICON) {
-  console.log(`Using existing ${path.relative(root, outputIcon)}.`);
-  process.exit(0);
+const sourceIcon = sourceIconCandidates.find((candidate) => fs.existsSync(candidate));
+
+if (!sourceIcon) {
+  console.error('Missing macOS icon source. Expected one of:');
+  for (const candidate of sourceIconCandidates) {
+    console.error(`- ${path.relative(root, candidate)}`);
+  }
+  process.exit(1);
 }
 
-if (!fs.existsSync(sourceIcon)) {
-  console.error('Missing build/icon.png. Please copy the app PNG icon to build/icon.png first.');
-  process.exit(1);
+if (fs.existsSync(outputIcon) && !process.env.RESOUND_FORCE_REBUILD_MAC_ICON) {
+  const sourceMtime = fs.statSync(sourceIcon).mtimeMs;
+  const outputMtime = fs.statSync(outputIcon).mtimeMs;
+  if (outputMtime >= sourceMtime) {
+    console.log(`Using existing ${path.relative(root, outputIcon)}.`);
+    process.exit(0);
+  }
+}
+
+const sourceInfo = execFileSync('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', sourceIcon], {
+  encoding: 'utf8',
+});
+const sourceWidth = Number(sourceInfo.match(/pixelWidth:\s*(\d+)/)?.[1] ?? 0);
+const sourceHeight = Number(sourceInfo.match(/pixelHeight:\s*(\d+)/)?.[1] ?? 0);
+
+if (sourceWidth < 1024 || sourceHeight < 1024) {
+  console.warn(
+    `Warning: ${path.relative(root, sourceIcon)} is ${sourceWidth}x${sourceHeight}; macOS icons look best from a 1024x1024 source.`,
+  );
 }
 
 fs.rmSync(iconsetDir, { recursive: true, force: true });
