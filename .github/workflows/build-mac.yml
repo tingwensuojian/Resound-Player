@@ -66,5 +66,29 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG="${{ inputs.release_tag }}"
           fi
+          VERSION="${TAG#v}"
+          NOTES_FILE="$(mktemp)"
+          cat > "${NOTES_FILE}" <<EOF
+          ## 更新内容
+
+          - 修复桌面端音源替换的内置匹配桥返回值问题。
+          - 避免音源匹配结果因进程通信数据不可克隆而回退失败。
+          - 保持 macOS 应用图标整体缩放效果。
+
+          ## 安装说明
+
+          - 下载适用于苹果芯片的 macOS 安装包。
+          - 如果安装后仍看到旧图标，请先移除旧应用，再重新安装。
+          EOF
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release edit "${TAG}" \
+              --title "Resound-Player 版本 ${VERSION}" \
+              --notes-file "${NOTES_FILE}"
+          else
+            gh release create "${TAG}" \
+              --target "${GITHUB_SHA}" \
+              --title "Resound-Player 版本 ${VERSION}" \
+              --notes-file "${NOTES_FILE}"
+          fi
           echo "Uploading DMG to release ${TAG}..."
           gh release upload "${TAG}" dist-build/*.dmg dist-build/*.dmg.blockmap --clobber

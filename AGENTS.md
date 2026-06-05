@@ -16,6 +16,14 @@
 - 所有改动完成后必须做 lint 自检
 - 样式优先使用 token 和公共样式，不在页面内堆叠硬编码数值
 
+### 1.1 发布与 Release 文案规范
+
+- GitHub Releases 的标题、正文、更新说明、安装说明、校验说明必须使用中文
+- 禁止在 Release 描述中使用英文说明性文案，如 `Changes`、`Build`、`Checksums`、`Release Notes`
+- 文件名、版本号、命令、技术专有名词可保留原始形式，例如 `v1.0.1`、`npm run dist:mac`、`.dmg`、`.blockmap`
+- 替换已有 Release 时，必须同步检查 Release 标题、正文和资产说明，确保没有遗留英文说明
+- 通过 GitHub Actions 构建并上传 Release 资产时，Release 描述仍必须按上述中文规范维护
+
 ## 2. 样式统一规范
 
 ### 2.1 spacing 统一

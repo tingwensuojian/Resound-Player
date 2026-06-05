@@ -12,6 +12,17 @@ function getEffectiveSources(sources) {
   return (process.env.UNBLOCK_SOURCES || 'bodian,kugou,migu,qq,bilibili').split(',').filter(Boolean);
 }
 
+function toStringOrNull(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text || null;
+}
+
+function toNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
 export async function initNativeUnblockMatch({ sources, proxyUrl } = {}) {
   if (matchModulePromise) return ready;
   global.source = getEffectiveSources(sources);
@@ -66,10 +77,10 @@ export async function nativeUnblockMatchSong(id, sources) {
       console.log('[unblock-native-match] ✗ no match for song %d', id);
     }
     return {
-      url: result?.url || null,
-      source: result?.source || null,
-      br: result?.br || 0,
-      size: result?.size || 0,
+      url: toStringOrNull(result?.url),
+      source: toStringOrNull(result?.source),
+      br: toNumber(result?.br),
+      size: toNumber(result?.size),
       errors: [],
     };
   } catch (err) {
