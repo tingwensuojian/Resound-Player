@@ -226,6 +226,59 @@ function installNodePath(extraNodePaths) {
   process.env.NODE_PATH = merged.join(path.delimiter);
   Module._initPaths();
 }
+
+/**
+ * 将 API 包从 asar 解压到临时目录，确保子进程 require() 不依赖 asar 路径。
+ * @param {string} pkgRoot asar 内 API 包的绝对路径
+ * @returns {string} 解压后的临时目录路径
+ */
+function extractApiToTemp(pkgRoot) {
+  const tempDir = path.join(os.tmpdir(), 'resound-player-api');
+  const apiTempPath = path.join(tempDir, 'api');
+
+  if (!pkgRoot.includes('.asar') && isFile(path.join(apiTempPath, 'package.json'))) {
+    writeServiceLog('[extractApiToTemp] already extracted (non-asar)');
+    return apiTempPath;
+  }
+
+  if (isFile(path.join(apiTempPath, 'package.json'))) {
+    writeServiceLog('[extractApiToTemp] already extracted');
+    return apiTempPath;
+  }
+
+  writeServiceLog('[extractApiToTemp] extracting API from', pkgRoot);
+
+  if (!isExists(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  if (!isExists(apiTempPath)) {
+    fs.mkdirSync(apiTempPath, { recursive: true });
+  }
+
+  function copyRecursive(src, dest) {
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+      if (entry.isDirectory()) {
+        fs.mkdirSync(destPath, { recursive: true });
+        copyRecursive(srcPath, destPath);
+      } else if (entry.isFile()) {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  }
+
+  try {
+    copyRecursive(pkgRoot, apiTempPath);
+    writeServiceLog('[extractApiToTemp] done, temp path:', apiTempPath);
+    return apiTempPath;
+  } catch (err) {
+    writeServiceLog('[extractApiToTemp] failed:', err.message);
+    throw err;
+  }
+}
+
 function resolvePackageRoot(packageParts) {
   const roots = [...getPackagedRoots(), getAppRoot()];
   for (const root of roots) {
