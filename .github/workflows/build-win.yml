@@ -1,4 +1,4 @@
-﻿name: Build Windows App
+name: Build Windows App
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -26,58 +26,13 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: npm
 
       - name: Install dependencies
-        run: |\n            rm -f package-lock.json\n            rm -rf node_modules\n            npm install --no-audit --no-fund
+        run: |
+          rm -f package-lock.json
+          rm -rf node_modules
+          npm install --no-audit --no-fund
 
       - name: Build Windows package
         run: npm run dist:win
 
-      - name: Inspect build output
-        if: always()
-        shell: pwsh
-        run: |
-          echo "dist-build contents:"
-          Get-ChildItem -Path dist-build -Recurse -Depth 2 | Select-Object Name, Length | Format-Table
-
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: Resound-Player-Win-Setup
-          path: dist-build/*.exe
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Upload to Release
-        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: pwsh
-        run: |
-          $TAG = "${{ inputs.release_tag }}"
-          $VERSION = $TAG -replace "^v", ""
-          $NOTES_FILE = New-TemporaryFile
-          @"
-          ## 更新内容
-
-          - 修复桌面端音源替换的内置匹配桥参数与返回值问题。
-          - 避免音源匹配参数或结果因进程通信数据不可克隆而回退失败。
-          - 迷你窗口固定 350px 宽度，修复 Windows 回缩问题。
-
-          ## 安装说明
-
-          - 下载适用于 Windows 的安装包，双击运行即可。
-          - 如果安装后仍看到旧版本，请先卸载旧应用再重新安装。
-          "@ | Out-File -FilePath $NOTES_FILE -Encoding utf8
-
-          $RELEASE_EXISTS = gh release view $TAG 2>$null
-          if ($RELEASE_EXISTS) {
-            gh release edit $TAG --title "Resound-Player 版本 $VERSION" --notes-file $NOTES_FILE
-          } else {
-            gh release create $TAG --target "${{ github.sha }}" --title "Resound-Player 版本 $VERSION" --notes-file $NOTES_FILE
-          }
-          Write-Host "Uploading installer to release ${TAG}..."
-          Get-ChildItem dist-build/*.exe, dist-build/*.exe.blockmap | ForEach-Object {
-            gh release upload $TAG $_.FullName --clobber
-          }
