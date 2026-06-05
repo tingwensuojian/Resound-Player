@@ -1,50 +1,56 @@
-# Resound Player
+# Resound-Player
 
-一个基于 `Vue 3 + Vite + Electron` 构建的桌面音乐播放器项目，聚焦于统一歌单详情体验、桌面端沉浸式播放交互，以及面向后续迭代的稳定工程结构。
+Resound-Player 是一个基于 `Vue 3 + TypeScript + Vite + Electron` 构建的音乐播放器项目，围绕网易云音乐生态、桌面端沉浸式播放体验和本地音乐管理能力持续演进。
 
-## 项目状态
+当前仓库已经完成 `v1.0.2` 发布，既可以作为桌面应用继续迭代，也保留了 Web 调试与独立部署能力。
 
-- 当前状态：稳定可用
-- 仓库状态：已完成首个稳定版本归档，可作为后续功能迭代与发布主仓库持续维护
-- 运行形态：支持桌面端开发运行，内嵌 API 启动链路已接通
-- 适用场景：本地开发、界面迭代、播放链路联调、桌面端工程扩展
+## 项目现状
 
-## 项目简介
+- 当前版本：`1.0.2`
+- 主要形态：`Electron` 桌面应用
+- 调试形态：支持 `Web` 前端单独运行或前后端联调
+- 桌面端状态：开发模式会自动拉起 `Vite + Netease API + Unblock Proxy + Unblock Match`
+- 代码库状态：已沉淀较完整的页面体系、播放链路、桌面端桥接能力和工程文档
 
-Resound Player 当前以桌面端音乐播放器为核心形态，整合了首页推荐、搜索、歌单、专辑、歌手、排行榜、MV、播客、用户中心、历史记录与设置等页面能力，并通过统一详情页与统一播放工具收敛多来源数据体验。
+## 核心能力
 
-项目当前重点不只是“能播放音乐”，而是建立一套可持续维护的桌面音乐应用基础架构，包括：
+### 在线内容与播放
 
-- 统一歌单详情页模型
-- 统一播放 URL 解析与播放触发逻辑
-- 统一页面入场动画规范
-- Electron 内嵌 API 启动方式
-- 面向后续发布的稳定项目结构
+- 首页推荐、搜索、歌单、专辑、歌手、排行榜、MV、播客、有声书、用户中心、历史记录、设置页
+- 统一详情页模型与通用 Hero / Sticky 交互
+- 底部播放器、展开态播放器、播放队列、评论页
+- 官方音源优先、按需解析播放 URL、失败后自动降级或回退
+- 音源替换能力，支持 `bodian / kugou / migu / qq / bilibili`
+- 下载弹窗、歌词下载、多档音质选择
+- Apple Music 风格歌词渲染与自定义歌词渲染双路线共存
 
-## 功能特性
+### 桌面端专属
 
-### 已具备的主要功能
+- Electron 内嵌 API 启动链路与端口自动探测
+- 原生 Unblock 匹配桥，HTTP match 服务作为 fallback
+- 迷你模式、系统托盘控制、播放状态同步
+- 桌面歌词浮窗（滚动列表 / 单行 / 双行）
+- macOS 菜单栏歌词
+- 本地音乐扫描、播放、封面缓存、最近播放与统计
+- 本地歌单管理
+- 本地歌曲歌词匹配、缺失标签补全、写入回滚
 
-- 首页推荐与内容入口聚合
-- 搜索页与多类型结果跳转
-- 歌单列表与歌单详情浏览
-- 每日推荐与统一歌单化展示
-- 专辑详情、歌手详情、用户详情
-- 排行榜与榜单详情浏览
-- MV 列表与播放弹层
-- 播客列表与播客详情
-- 用户中心、历史记录、设置页
-- 底部播放器与展开态播放器
-- 统一播放链路与按需解析歌曲 URL
-- 统一入场动画接入规范
+### 本地音乐能力边界
 
-### 当前工程特性
+本地音乐仅在桌面端启用，扫描器当前支持：
 
-- 基于 `Electron` 提供桌面应用壳
-- 基于 `Vite` 提供前端开发与构建能力
-- 启动桌面端时可自动拉起内嵌 API
-- 页面结构已按模块拆分，便于后续维护
-- 关键设计与规范文档已统一沉淀到 `docs/` 目录
+- `mp3`
+- `flac`
+- `wav`
+- `ogg`
+- `m4a`
+- `aac`
+- `wma`
+- `ape`
+- `dsf`
+- `opus`
+- `aiff`
+- `alac`
 
 ## 技术栈
 
@@ -53,33 +59,41 @@ Resound Player 当前以桌面端音乐播放器为核心形态，整合了首�
 - `Vue 3`
 - `TypeScript`
 - `Vite`
+- `@tanstack/vue-query`
+- `@tanstack/vue-virtual`
 - `lucide-vue-next`
-- `Axios`
+- `axios`
 
 ### 桌面端
 
 - `Electron`
+- `electron-builder`
 
-### 音乐 API
+### 音乐与歌词相关
 
 - `@neteasecloudmusicapienhanced/api`
+- `@unblockneteasemusic/server`
+- `@applemusic-like-lyrics/*`
+- `sql.js`
 
-### 工程辅助
+## 开发环境
 
-- `concurrently`
-- `wait-on`
+建议使用：
 
-## 启动方式
+- `Node.js 22+`
+- `npm 10+`
 
-### 1. 安装依赖
+安装依赖：
 
 ```bash
 npm install
 ```
 
-### 2. 桌面端开发模式
+## 快速开始
 
-启动渲染进程并拉起 Electron：
+### 1. 桌面端开发
+
+最常用的启动方式：
 
 ```bash
 npm run dev
@@ -91,13 +105,32 @@ npm run dev
 npm run dev:desktop
 ```
 
-### 3. 仅启动前端页面
+该命令会自动启动：
+
+- `Vite` 开发服务器
+- `Netease API`
+- `Unblock Proxy`
+- `Unblock Match`
+- `Electron`
+
+默认涉及端口：
+
+- `5173`：Vite
+- `38761`：Netease API
+- `38762`：Unblock Proxy
+- `38763`：Unblock Match
+
+项目内置端口探测与开发启动编排；端口被占用时会优先尝试清理默认端口，再按实际可用端口启动服务。
+
+### 2. 仅启动 Web 前端
 
 ```bash
 npm run dev:web
 ```
 
-### 4. 启动前端并连接独立 API 调试
+适合只调页面和交互，不自动启动 API / 桌面壳。
+
+### 3. Web 全链路联调
 
 ```bash
 npm run dev:web:full
@@ -105,134 +138,185 @@ npm run dev:web:full
 
 该模式会并行启动：
 
-- 本地 API 服务
-- Vite 前端开发服务
+- `Netease API`
+- `Unblock Proxy`
+- `Unblock Match`
+- `Vite`
 
-### 5. 启动内嵌 Electron 应用
-
-如果前端资源已准备好，也可直接运行：
-
-```bash
-npm start
-```
-
-### 6. 构建前端资源
+### 4. 仅启动 API
 
 ```bash
-# 构建前端（仅 web，默认 base=/）
-npm run build:web
-
-# 构建前端（自定义部署路径）
-VITE_BASE_URL=/music/ npm run build:web
+npm run dev:api
 ```
+
+### 5. 单独启动音源替换服务
+
+```bash
+npm run dev:unblock
+npm run dev:unblock-match
+```
+
+### 6. Headless 桌面调试
+
+```bash
+npm run dev:desktop:headless
+```
+
+适合 CI、远程图形环境或无桌面交互场景。
 
 ## 常用脚本
 
 | 命令 | 说明 |
 | --- | --- |
-| `npm run dev` | 启动桌面端开发环境 |
-| `npm run dev:desktop` | 启动 Vite + Electron |
+| `npm run dev` | 启动桌面开发环境 |
+| `npm run dev:desktop` | 启动桌面开发编排器 |
+| `npm run dev:desktop:headless` | Headless 桌面开发模式 |
 | `npm run dev:web` | 仅启动前端页面 |
-| `npm run dev:web:full` | 启动前端与独立 API 调试环境（并行：API + Unblock + 前端） |
-| `npm run dev:api` | 单独启动 API 服务 |
-| `npm run dev:unblock` | 启动音源替换代理（端口 38762） |
-| `npm run dev:unblock-match` | 启动音源匹配服务（端口 38763） |
-| `npm run build:web` | 构建前端资源（Vite 构建，支持 `VITE_BASE_URL` 环境变量） |
-| `npm run check:animated-rhythm` | 检查动画节奏规范 |
-| `npm run fix:animated-rhythm` | 自动补齐缺失的动画节奏配置 |
+| `npm run dev:web:full` | 启动前端与独立 API / 音源服务 |
+| `npm run dev:api` | 单独启动 Netease API |
+| `npm run dev:unblock` | 启动音源替换代理 |
+| `npm run dev:unblock-match` | 启动音源匹配服务 |
+| `npm run build:web` | 构建 Web 前端产物 |
+| `npm run pack:desktop` | 打包桌面目录产物 |
+| `npm run build:desktop` | 构建 Linux AppImage |
+| `npm run dist:linux` | 生成 Linux AppImage |
+| `npm run dist:linux:deb` | 生成 Linux deb 包 |
+| `npm run dist:win` | 生成 Windows 安装包 |
+| `npm run pack:win` | 生成 Windows dir 包 |
+| `npm run dist:mac` | 生成 macOS dmg |
+| `npm run pack:mac` | 生成 macOS dir 包 |
+| `npm run clean:desktop` | 清理桌面构建产物 |
+| `npm run check:animated-rhythm` | 检查统一动画节奏配置 |
+| `npm run fix:animated-rhythm` | 自动修正动画节奏配置 |
 | `npm start` | 直接启动 Electron 应用 |
 
-## 生产部署
+## 构建与发布
 
-项目支持以下两种生产部署方式，详见 [`deploy/README.md`](./deploy/README.md)：
+### Web 构建
 
-- **pm2 + Nginx**（推荐）：适用于有 root 权限的 VPS 或专用服务器
-- **Docker Compose**：适用于容器化环境，一键编排前端、API、Unblock 三服务
+```bash
+npm run build:web
+```
 
-部署前构建前端时需通过 `VITE_BASE_URL` 指定部署子路径（如 `VITE_BASE_URL=/ npm run build:web`）。
+如果需要部署到子路径，可指定：
+
+```bash
+VITE_BASE_URL=/music/ npm run build:web
+```
+
+### 桌面打包
+
+```bash
+# Linux
+npm run dist:linux
+npm run dist:linux:deb
+
+# Windows
+npm run dist:win
+
+# macOS
+npm run dist:mac
+```
+
+Electron 打包配置位于 `package.json` 的 `build` 字段，当前已配置：
+
+- Linux：`AppImage`、`deb`
+- Windows：`nsis`
+- macOS：`dmg`
+
+## Web 与桌面端差异
+
+### Web 端可用
+
+- 在线内容浏览与播放
+- 搜索、歌单、详情页、MV、播客、评论、设置等前端能力
+- 独立部署到 Nginx / Docker / PM2 环境
+
+### 仅桌面端可用
+
+- 本地音乐
+- 桌面歌词
+- macOS 菜单栏歌词
+- 系统托盘控制
+- 迷你模式
+- 本地标签写入 / 回滚
+- 文件系统访问与本地封面缓存
 
 ## 目录结构
 
 ```text
 .
-├── deploy/             # 生产部署（Docker、Nginx、pm2、SSL）
-├── docs/               # 项目文档与规范
-├── electron/           # Electron 主进程、预加载与内嵌 API 启动逻辑
-├── scripts/            # 工程辅助脚本
-├── server/             # 音源匹配服务
+├── build/                     # 图标与构建资源
+├── deploy/                    # Nginx / Docker / PM2 部署文件
+├── docs/                      # 架构、规范、功能说明
+├── electron/                  # Electron 主进程、预加载、桌面服务
+│   └── services/              # 本地音乐、扫描、IPC、元数据写入
+├── scripts/                   # 启动、构建、修复、检查脚本
+├── server/                    # Unblock Match 服务
 ├── src/
-│   ├── api/            # 接口访问层
-│   ├── components/     # 页面组件与通用组件
-│   ├── stores/         # 全局状态
-│   ├── styles/         # 主题与动画样式
-│   └── utils/          # 播放、图片与数据适配工具
-├── index.html          # 前端入口 HTML
-├── package.json        # 项目脚本与依赖配置
-└── vite.config.ts      # Vite 配置
+│   ├── api/                   # API 访问层
+│   ├── components/            # 页面组件与通用组件
+│   ├── composables/           # 复用逻辑
+│   ├── config/                # 音质、音源等配置
+│   ├── player/                # 播放解析与运行时控制
+│   ├── stores/                # 全局状态
+│   ├── styles/                # 主题、动画、详情页样式
+│   ├── utils/                 # 平台、图片、性能、存储工具
+│   └── views/                 # 本地音乐等子视图
+├── README.md
+├── package.json
+└── vite.config.ts
 ```
 
-## 核心架构要点
+## 核心架构摘要
 
-### 统一详情页模型
+### 播放链路
 
-项目已将不同来源的内容统一收敛为一致的歌单详情体验，核心思路是：
+- 用户触发播放后再按需解析歌曲 URL，而不是页面加载时批量请求
+- 官方源优先，失败后按音质回退，再视设置走 Unblock
+- 当前实际交付音质与用户默认偏好分离展示
 
-- 统一数据模型
-- 统一详情页组件
-- 统一播放行为
-- 保留数据源差异，收敛展示层体验
+### 桌面启动链路
 
-当前统一能力主要覆盖：
+- 开发模式由 `scripts/start-desktop.mjs` 统一编排
+- 自动探测服务端口并注入到 Electron preload
+- 渲染进程通过 `window.appEnv` 和 `window.localApi` 使用桌面能力
 
-- 普通歌单
-- 每日推荐
-- 云盘/伪歌单化内容
+### 本地音乐链路
 
-### 统一播放链路
+- 主进程使用 `sql.js` 维护本地曲库
+- 通过 IPC 暴露目录扫描、封面读取、歌词匹配、标签写入与歌单 CRUD
+- 渲染进程通过 `src/stores/localMusic.ts` 统一消费桌面能力
 
-播放逻辑已抽离为通用工具，重点优化方向是：
+## 部署说明
 
-- 首屏避免批量请求所有歌曲播放地址
-- 用户真正触发播放时再按需解析 URL
-- 首页、详情页、云盘等入口复用同一播放逻辑
+生产部署文档见：
 
-### Electron 内嵌 API 模式
+- [deploy/README.md](./deploy/README.md)
 
-桌面端启动时会自动：
+当前提供：
 
-1. 选择可用端口
-2. 启动内嵌 API 进程
-3. 等待 API 可用
-4. 创建 Electron 主窗口
+- `pm2 + Nginx`
+- `Docker Compose`
+- 仅前端 Docker 部署
 
-这使项目在桌面端开发和运行时具备更稳定的一体化体验。
+## 文档入口
 
-## 文档说明
+优先阅读：
 
-详细设计、规范与架构文档统一维护在 `docs/` 目录。
-
-推荐阅读：
-
-- [文档入口](./docs/README.md)
+- [docs/README.md](./docs/README.md)
 - [统一架构说明](./docs/统一架构说明.md)
-- [统一入场动画规范](./docs/统一入场动画规范.md)
-- [组件说明](./docs/组件说明.md)
-- [接口说明](./docs/接口说明.md)
 - [播放链路说明](./docs/播放链路说明.md)
+- [本地歌曲功能开发实现总结](./docs/本地歌曲功能开发实现总结.md)
+- [本地歌词匹配与标签补全复用说明](./docs/本地歌词匹配与标签补全复用说明.md)
+- [桌面歌词功能说明](./docs/桌面歌词功能说明.md)
+- [macOS 菜单栏歌词功能说明](./docs/macOS%20菜单栏歌词功能说明.md)
+- [下载流程说明](./docs/下载流程说明.md)
+- [音质体系说明](./docs/音质体系说明.md)
+- [跨平台开发规范](./docs/跨平台开发规范.md)
 
-## 首次提交说明
+## 相关仓库信息
 
-建议作为首次提交说明使用：
+- GitHub 仓库：<https://github.com/tingwensuojian/Resound-Player>
+- Release 页面：<https://github.com/tingwensuojian/Resound-Player/releases>
 
-- 中文：`初始化 Resound Player 主工程，导入稳定可运行版本并补齐基础项目结构`
-- 英文：`Initialize Resound Player with the stable runnable app, core Electron/Vite setup, and baseline project structure`
-
-## 首次发布说明
-
-建议本仓库首个稳定版本使用如下发布标题：
-
-- `Resound Player - Stable Initial Release`
-
-更完整的发布文案已整理到：
-
-- [初始发布说明](./docs/初始发布说明.md)
