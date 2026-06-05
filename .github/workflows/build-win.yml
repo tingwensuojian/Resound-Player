@@ -29,7 +29,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: |\n            rm -f package-lock.json\n            rm -rf node_modules\n            npm install --no-audit --no-fund
 
       - name: Build Windows package
         run: npm run dist:win
