@@ -35,7 +35,13 @@ contextBridge.exposeInMainWorld('appEnv', {
   },
   // ── 内置 unblock 匹配桥 ──
   unblockBridge: {
-    matchSong: (id, sources) => ipcRenderer.invoke('unblock:match-song', id, Array.isArray(sources) ? [...sources] : []),
+    matchSong: (id, sources) => {
+      const safeId = Number(id) || 0;
+      const safeSources = Array.isArray(sources)
+        ? sources.map((source) => String(source || '').trim()).filter(Boolean)
+        : [];
+      return ipcRenderer.invoke('unblock:match-song', safeId, safeSources);
+    },
     isReady: () => ipcRenderer.invoke('unblock:is-native-ready'),
   },
   // ── 系统托盘歌词 API ──

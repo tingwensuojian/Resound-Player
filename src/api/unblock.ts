@@ -19,6 +19,11 @@ export interface UnblockMatchResult {
   errors?: string[];
 }
 
+function normalizeSources(sources: string[]): string[] {
+  if (!Array.isArray(sources)) return [];
+  return sources.map((source) => String(source || '').trim()).filter(Boolean);
+}
+
 // ---- 服务器健康状态管理 ----
 let _serverAvailable: boolean | null = null; // null=未检测, true=可用, false=不可用
 let _failureCount = 0;
@@ -85,13 +90,15 @@ export function resetUnblockHealth(): void {
 
 export async function tryUnblockMatch(id: number, sources: string[]): Promise<UnblockMatchResult> {
   const defaultResult: UnblockMatchResult = { url: null, source: null, br: 0, size: 0 };
+  const safeId = Number(id) || 0;
+  const safeSources = normalizeSources(sources);
 
-  if (!id) return defaultResult;
+  if (!safeId) return defaultResult;
 
   // 桌面端：优先走 native bridge
   if (platform.hasNativeUnblockBridge) {
     try {
-      const result = await platform.unblockBridge!.matchSong(id, sources);
+      const result = await platform.unblockBridge!.matchSong(safeId, safeSources);
       if (result?.url) {
         _failureCount = 0;
         console.log('[unblock] native bridge matched: source=%s br=%d', result.source, result.br);
@@ -118,7 +125,7 @@ export async function tryUnblockMatch(id: number, sources: string[]): Promise<Un
 
   try {
     const res = await fetch(
-      `${getMatchServerBaseUrl()}/match?id=${id}&sources=${sources.join(',')}`,
+      `${getMatchServerBaseUrl()}/match?id=${safeId}&sources=${safeSources.join(',')}`,
       { signal: AbortSignal.timeout(8000) },
     );
     if (!res.ok) {

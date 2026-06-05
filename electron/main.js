@@ -974,14 +974,21 @@ function updateTrayState(win) {
   setTrayMenu(win);
 }
 
-const LOGO_ICON_PATH = path.join(__dirname, '..', 'public', 'logo.png');
+const TRAY_ICON_CANDIDATES = [
+  path.join(__dirname, '..', 'dist', 'logo.png'),
+  path.join(__dirname, '..', 'public', 'logo.png'),
+];
 
-const TRAY_ICONS = {
-  logo: LOGO_ICON_PATH,
-};
+function resolveTrayIconPath() {
+  return TRAY_ICON_CANDIDATES.find((candidate) => fs.existsSync(candidate)) || TRAY_ICON_CANDIDATES[0];
+}
 
-function createTrayIcon(source, template = false) {
+function createTrayIcon(template = false) {
+  const source = resolveTrayIconPath();
   const img = nativeImage.createFromPath(source);
+  if (img.isEmpty()) {
+    writeMainLog('[tray] empty tray icon image', { source, candidates: TRAY_ICON_CANDIDATES });
+  }
   const resized = img.resize({ width: 18, height: 18 });
   if (template) resized.setTemplateImage(true);
   return resized;
@@ -1023,7 +1030,7 @@ function initializeMainTray(win) {
   try {
     if (isMac) {
       // 先创建主托盘（右侧）：Logo 图标
-      const icon = createTrayIcon(TRAY_ICONS.logo, false);
+      const icon = createTrayIcon(false);
       mainTray = new Tray(icon);
       mainTray.setTitle('');
 
@@ -1069,7 +1076,7 @@ function setTrayDisplay(lyricText) {
   if (!mainTray || process.platform !== 'darwin') return;
   const cfg = getTrayLyricConfig();
   // mainTray 永远只显示 Logo，不显示文字
-  mainTray.setImage(createTrayIcon(TRAY_ICONS.logo, false));
+  mainTray.setImage(createTrayIcon(false));
   mainTray.setTitle('');
   // lyricTray 承担所有文字显示
   // enabled=true: 优先显示歌词，其次歌名；enabled=false: 显示歌名
