@@ -117,6 +117,12 @@
       "node_modules/.pnpm/@neteasecloudmusicapienhanced+unblockmusic-utils@*/**/*",
       "node_modules/@neteasecloudmusicapienhanced/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
     "npmRebuild": true,
     "linux": {
       "icon": "build/icon.png",

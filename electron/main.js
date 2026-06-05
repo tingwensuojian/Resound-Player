@@ -19,7 +19,20 @@ const mainLogFile = path.join(os.tmpdir(), 'resound-player-main.log');
 const WINDOWS_APP_ID = 'com.resound.player';
 
 function getWindowIconPath() {
+  if (process.platform === 'win32' && app.isPackaged && process.resourcesPath) {
+    return path.join(process.resourcesPath, 'icon.ico');
+  }
   return path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+}
+
+function applyWindowsTaskbarDetails(targetWindow, iconPath) {
+  if (process.platform !== 'win32' || !targetWindow || targetWindow.isDestroyed()) return;
+  targetWindow.setAppDetails({
+    appId: WINDOWS_APP_ID,
+    appIconPath: iconPath,
+    relaunchDisplayName: 'Resound-Player',
+    relaunchCommand: `"${process.execPath}"`,
+  });
 }
 
 function writeMainLog(...parts) {
@@ -410,6 +423,7 @@ async function createMainWindow(ports) {
       additionalArguments: portArgs,
     },
   });
+  applyWindowsTaskbarDetails(win, iconPath);
 
   // 内容准备就绪后再显示窗口，避免 resize 时因 GPU 效果滞后导致卡顿
   win.once('ready-to-show', () => {
@@ -524,6 +538,7 @@ function createMiniWindow(ports) {
       additionalArguments: portArgs,
     },
   });
+  applyWindowsTaskbarDetails(miniWin, getWindowIconPath());
 
   miniWin.on('closed', () => {
     miniWin = null;
@@ -553,6 +568,7 @@ async function createErrorWindow(errorMessage) {
     icon: getWindowIconPath(),
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
+  applyWindowsTaskbarDetails(errorWin, getWindowIconPath());
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>启动失败</title>
