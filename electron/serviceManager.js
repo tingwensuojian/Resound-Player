@@ -1,5 +1,6 @@
+import Module from 'node:module';
 import { spawn, spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -77,12 +78,11 @@ function getAppRoot() {
   return path.join(__dirname, '..');
 }
 
-function getPackagedRoots() {
+function getPackagedRoots(preferUnpacked = false) {
   if (!isPackaged() || !process.resourcesPath) return [];
-  return [
-    path.join(process.resourcesPath, 'app.asar'),
-    path.join(process.resourcesPath, 'app.asar.unpacked'),
-  ];
+  const packedRoot = path.join(process.resourcesPath, 'app.asar');
+  const unpackedRoot = path.join(process.resourcesPath, 'app.asar.unpacked');
+  return preferUnpacked ? [unpackedRoot, packedRoot] : [packedRoot, unpackedRoot];
 }
 
 /**
@@ -145,8 +145,10 @@ function resolveApiEntrypath(pkgRoot) {
   return null;
 }
 
-function resolveApiPackageRoot() {
-  const roots = [...getPackagedRoots(), getAppRoot()];
+function resolveApiPackageRoot(preferUnpacked = false) {
+  // In packaged mode, in-process API loads should prefer app.asar so package
+  // dependencies like dotenv still resolve through the packed node_modules tree.
+  const roots = [...getPackagedRoots(preferUnpacked), getAppRoot()];
   for (const root of roots) {
     const pkgRoot = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
     if (isFile(path.join(pkgRoot, 'package.json'))) {
@@ -154,7 +156,7 @@ function resolveApiPackageRoot() {
     }
   }
 
-   const fallbackRoots = [...getPackagedRoots(), getAppRoot()];
+  const fallbackRoots = [...getPackagedRoots(preferUnpacked), getAppRoot()];
   for (const root of fallbackRoots) {
     const basePath = path.join(root, 'node_modules', '@neteasecloudmusicapienhanced', 'api');
     const resolved = resolveApiEntrypath(basePath);
@@ -165,6 +167,65 @@ function resolveApiPackageRoot() {
   throw new Error('Cannot resolve api-enhanced package root');
 }
 
+function dedupeExistingPaths(paths) {
+  const seen = new Set();
+  return paths.filter((candidate) => {
+    if (!candidate || seen.has(candidate) || !isExists(candidate)) {
+      return false;
+    }
+    seen.add(candidate);
+    return true;
+  });
+}
+
+function collectNestedNodeModulePaths(nodeModulesRoot) {
+  if (!isExists(nodeModulesRoot)) return [];
+
+  const nestedRoots = [];
+  try {
+    const entries = fs.readdirSync(nodeModulesRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      if (entry.name.startsWith('@')) {
+        const scopeRoot = path.join(nodeModulesRoot, entry.name);
+        const scopedEntries = fs.readdirSync(scopeRoot, { withFileTypes: true });
+        for (const scopedEntry of scopedEntries) {
+          if (!scopedEntry.isDirectory()) continue;
+          nestedRoots.push(path.join(scopeRoot, scopedEntry.name, 'node_modules'));
+        }
+        continue;
+      }
+
+      nestedRoots.push(path.join(nodeModulesRoot, entry.name, 'node_modules'));
+    }
+  } catch {
+    return [];
+  }
+
+  return dedupeExistingPaths(nestedRoots);
+}
+
+function getNodeModulePathsForPackage(pkgRoot) {
+  const topLevelRoots = dedupeExistingPaths([
+    path.resolve(pkgRoot, '..', '..'),
+    ...getPackagedRoots().map((root) => path.join(root, 'node_modules')),
+    path.join(getAppRoot(), 'node_modules'),
+  ]);
+
+  const nestedRoots = topLevelRoots.flatMap(collectNestedNodeModulePaths);
+  return dedupeExistingPaths([...topLevelRoots, ...nestedRoots]);
+}
+
+function installNodePath(extraNodePaths) {
+  const currentNodePath = String(process.env.NODE_PATH || '')
+    .split(path.delimiter)
+    .filter(Boolean);
+  const merged = Array.from(new Set([...extraNodePaths, ...currentNodePath]));
+  if (!merged.length) return;
+  process.env.NODE_PATH = merged.join(path.delimiter);
+  Module._initPaths();
+}
 function resolvePackageRoot(packageParts) {
   const roots = [...getPackagedRoots(), getAppRoot()];
   for (const root of roots) {
@@ -194,11 +255,15 @@ function findEntry(pkgRoot) {
 
 function spawnNeteaseApi(port) {
   const apiPkgRoot = resolveApiPackageRoot();
+  // 解压 API 到临时目录，避免子进程 asar require 问题
+  const apiTempRoot = extractApiToTemp(apiPkgRoot);
+  const apiNodePaths = getNodeModulePathsForPackage(apiPkgRoot);
   const appRoot = getAppRoot();
 const bootstrap = `
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const Module = require('node:module');
 const logFile = process.env.RESOUND_SERVICE_LOG_FILE;
 function writeLog(...parts) {
   if (!logFile) return;
@@ -214,6 +279,18 @@ function writeLog(...parts) {
 
 (async () => {
   const pkgRoot = process.env.RESOUND_API_PKG_ROOT;
+  const extraNodePaths = String(process.env.RESOUND_API_NODE_PATHS || '')
+    .split(path.delimiter)
+    .filter(Boolean);
+  if (extraNodePaths.length) {
+    // The extracted temp copy only contains the API package itself, so we
+    // restore module lookup roots explicitly before requiring its entry files.
+    const currentNodePath = String(process.env.NODE_PATH || '')
+      .split(path.delimiter)
+      .filter(Boolean);
+    process.env.NODE_PATH = Array.from(new Set([...extraNodePaths, ...currentNodePath])).join(path.delimiter);
+    Module._initPaths();
+  }
   writeLog('[api-wrapper] boot', { pkgRoot, cwd: process.cwd(), resourcesPath: process.resourcesPath });
   const tokenFile = path.resolve(os.tmpdir(), 'anonymous_token');
   if (!fs.existsSync(tokenFile)) {
@@ -259,7 +336,8 @@ if (process.stdin && !process.stdin.isTTY) {
       ELECTRON_RUN_AS_NODE: '1',
       PORT: String(port),
       CORS_ALLOW_ORIGIN: '*',
-      RESOUND_API_PKG_ROOT: apiPkgRoot,
+      RESOUND_API_PKG_ROOT: apiTempRoot,
+      RESOUND_API_NODE_PATHS: apiNodePaths.join(path.delimiter),
       RESOUND_SERVICE_LOG_FILE: serviceLogFile,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -382,6 +460,33 @@ function killProcess(name, child) {
 /**
  * Kill all child processes gracefully.
  */
+/**
+ * 在主进程内直接启动 Netease API 服务（而非子进程），
+ * 避免 ELECTRON_RUN_AS_NODE 模式下 require() 对 asar 依赖解析失败的问题。
+ */
+export async function startApiInProcess(port) {
+  const pkgRoot = resolveApiPackageRoot();
+  installNodePath(getNodeModulePathsForPackage(pkgRoot));
+  writeServiceLog('[startApiInProcess] resolved api package root', pkgRoot);
+
+  try {
+    const serverPath = path.join(pkgRoot, 'server.js');
+    const serverUrl = pathToFileURL(serverPath).href;
+    const apiModule = await import(serverUrl);
+    const { serveNcmApi } = apiModule;
+    writeServiceLog('[startApiInProcess] serveNcmApi:start', { port });
+    const app = await serveNcmApi({
+      checkVersion: false,
+      port,
+    });
+    writeServiceLog('[startApiInProcess] serveNcmApi:ready', { port });
+    return app;
+  } catch (err) {
+    writeServiceLog('[startApiInProcess] error', err);
+    console.error('[serviceManager] in-process API startup failed:', err);
+    throw err;
+  }
+}
 export function killAllServices(children) {
   for (const [name, child] of Object.entries(children)) {
     killProcess(name, child);
