@@ -86,7 +86,7 @@ viewBox="30 30 140 140"
 ### 4.1 环境要求
 
 - macOS（使用 `qlmanage` + `sips` + `iconutil` 等系统内置工具）
-- Node.js（运行 `scripts/gen-ico.mjs`）
+- Node.js（运行 `scripts/prepare-win-icon.mjs`）
 
 ### 4.2 生成命令
 
@@ -104,8 +104,8 @@ for size in 16 32 64 128 256 512; do
 done
 iconutil -c icns -o build/icon.icns /tmp/resound-player.iconset
 
-# 4. 生成 .ico（通过 Node.js 脚本）
-node scripts/gen-ico.mjs
+# 4. 生成 .ico（Windows 构建链）
+node scripts/prepare-win-icon.mjs
 ```
 
 ### 4.3 输出文件
@@ -114,7 +114,8 @@ node scripts/gen-ico.mjs
 build/
 ├── icon.png      # 512×512 PNG（electron-builder 主源图）
 ├── icon.icns     # macOS 图标（16–512px 多尺寸）
-└── icon.ico      # Windows 图标（16–256px 7 尺寸）
+├── icon.ico      # Windows 图标（16–256px 多尺寸）
+└── icon-win.ico  # Windows 安装器 / 卸载器图标
 ```
 
 ### 4.4 electron-builder 配置引用
@@ -130,6 +131,13 @@ build/
   }
 }
 ```
+
+### 4.5 Windows 图标实现说明
+
+- Windows `.ico` 优先从高质量 PNG 主源生成，而不是直接从 `public/favicon.svg` 缩放。
+- 当前主源优先级为：`build/icon-mac.png` → `public/logo.png` → `build/icon-win.png` → `build/icon.png`。
+- `16 / 20 / 24 / 32 / 48` 等小尺寸会额外应用更紧凑的主体缩放和轻量锐化，减少桌面图标发糊、主体偏小的问题。
+- 生成脚本会输出 `build/icon-preview-16.png`、`icon-preview-32.png`、`icon-preview-48.png`、`icon-preview-256.png`，方便在提交前做肉眼检查。
 
 ## 5. 更新流程
 
