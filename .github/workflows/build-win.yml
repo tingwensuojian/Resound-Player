@@ -1,38 +1,24 @@
 name: Build Windows App
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 on:
   workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "上传到指定 Release tag（留空则只保存为 artifact）"
-        required: false
-        type: string
 
 jobs:
   build-win:
-    name: Build Windows NSIS Installer
     runs-on: windows-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
-
-      - name: Install dependencies
-        run: |
-          rm -f package-lock.json
-          rm -rf node_modules
-          npm install --no-audit --no-fund
-
-      - name: Build Windows package
-        run: npm run dist:win
-
+      - run: npm install
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Resound-Player-Win-Setup
+          path: dist-build/*.exe
+          if-no-files-found: warn
+          retention-days: 14
