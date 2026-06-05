@@ -733,6 +733,7 @@ export const usePlayerStore = defineStore('player', () => {
   function shouldUseCorsProxy(playUrl: string) {
     if (!playUrl || playUrl.startsWith('/dl-proxy')) return false;
     if (playUrl.startsWith('blob:') || playUrl.startsWith('local:')) return false;
+    if (typeof window !== 'undefined' && window.location.protocol === 'file:') return false;
     try {
       const url = new URL(playUrl, window.location.href);
       return url.protocol === 'http:' || url.protocol === 'https:';

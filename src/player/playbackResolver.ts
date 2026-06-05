@@ -104,6 +104,10 @@ function getFallbackLevels(level: string) {
   return QUALITY_FALLBACK_ORDER.slice(idx + 1);
 }
 
+function canUseWebDlProxy() {
+  return typeof location === 'undefined' || location.protocol !== 'file:';
+}
+
 async function fetchOfficialUrl(apiBaseUrl: string, trackId: number, level: string, loginCookie: string | undefined) {
   const qs = `id=${trackId}&level=${level}${loginCookie ? '&cookie=' + encodeURIComponent(loginCookie) : ''}`;
   const directRes = await fetch(`${apiBaseUrl}/song/url/v1?${qs}`, {
@@ -289,8 +293,9 @@ export async function resolvePlayUrl(ctx: ResolveContext): Promise<ResolveResult
     currentSource = 'official';
   }
 
-  // 5. 非官方音源 → 通过 dl-proxy 代理加载（绕过 CORS）
-  if (currentSource !== 'official' && playUrl && !playUrl.startsWith(typeof location !== 'undefined' ? location.origin + '/' : '')) {
+  // 5. 非官方音源 → Web 端通过 dl-proxy 代理加载（绕过 CORS）
+  // Electron 打包后页面是 file://，相对 /dl-proxy 会变成 file:///dl-proxy，必须直接使用远程 URL。
+  if (canUseWebDlProxy() && currentSource !== 'official' && playUrl && !playUrl.startsWith(typeof location !== 'undefined' ? location.origin + '/' : '')) {
     playUrl = '/dl-proxy?url=' + encodeURIComponent(playUrl);
   }
 
