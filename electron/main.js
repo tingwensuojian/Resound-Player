@@ -16,6 +16,11 @@ import { initNativeUnblockMatch, isNativeUnblockMatchReady, nativeUnblockMatchSo
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const mainLogFile = path.join(os.tmpdir(), 'resound-player-main.log');
+const WINDOWS_APP_ID = 'com.resound.player';
+
+function getWindowIconPath() {
+  return path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+}
 
 function writeMainLog(...parts) {
   const line = `[${new Date().toISOString()}] ${parts.map((part) => {
@@ -37,6 +42,10 @@ writeMainLog('[module-load]', {
   resourcesPath: process.resourcesPath,
   argv: process.argv,
 });
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId(WINDOWS_APP_ID);
+}
 
 app.commandLine.appendSwitch('no-sandbox');
 
@@ -375,8 +384,7 @@ async function createMainWindow(ports) {
   ];
 
   const isMac = process.platform === 'darwin';
-
-  const iconPath = path.join(__dirname, '..', 'build', isMac ? 'icon.png' : 'icon.png');
+  const iconPath = getWindowIconPath();
 
   win = new BrowserWindow({
     width: 1280,
@@ -507,6 +515,7 @@ function createMiniWindow(ports) {
     titleBarStyle: isMac ? 'hidden' : undefined,
     trafficLightPosition: isMac ? { x: -100, y: -100 } : undefined,
     backgroundColor: '#1a1a2e',
+    icon: getWindowIconPath(),
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -541,7 +550,7 @@ async function createErrorWindow(errorMessage) {
     width: 600,
     height: 500,
     resizable: false,
-    icon: path.join(__dirname, '..', 'build', 'icon.png'),
+    icon: getWindowIconPath(),
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
 
