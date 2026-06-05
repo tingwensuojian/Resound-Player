@@ -242,6 +242,32 @@ Electron 打包配置位于 `package.json` 的 `build` 字段，当前已配置�
 - 本地标签写入 / 回滚
 - 文件系统访问与本地封面缓存
 
+## macOS 安装提示
+
+如果用户在 macOS 上安装后打开 `Resound-Player` 时看到“已损坏，无法打开”之类的提示，可任选以下一种方式处理：
+
+### 方式 A：终端命令
+
+在终端窗口输入以下命令，按回车键后输入系统密码（不可见）并再次按回车键即可：
+
+```bash
+sudo xattr -r -d com.apple.quarantine /Applications/Resound-Player.app
+```
+
+如果在 `macOS 15` 及以上版本运行以上命令时报错，请尝试运行下方的替代命令：
+
+```bash
+sudo xattr -d com.apple.quarantine /Applications/Resound-Player.app
+```
+
+### 方式 B：Sentinel 图形化处理
+
+用户也可以使用 [alienator88/Sentinel](https://github.com/alienator88/Sentinel) 处理隔离属性。打开 `Sentinel` 后，将 `/Applications/Resound-Player.app` 拖入解隔离区域即可；如果已经启用它的 Finder 扩展，也可以在 Finder 中右键应用直接执行解隔离。
+
+更完整说明见：
+
+- [macOS 安装已损坏修复说明](./docs/macOS%20安装已损坏修复说明.md)
+
 ## 目录结构
 
 ```text
@@ -309,6 +335,7 @@ Electron 打包配置位于 `package.json` 的 `build` 字段，当前已配置�
 - [播放链路说明](./docs/播放链路说明.md)
 - [本地歌曲功能开发实现总结](./docs/本地歌曲功能开发实现总结.md)
 - [本地歌词匹配与标签补全复用说明](./docs/本地歌词匹配与标签补全复用说明.md)
+- [macOS 安装已损坏修复说明](./docs/macOS%20安装已损坏修复说明.md)
 - [桌面歌词功能说明](./docs/桌面歌词功能说明.md)
 - [macOS 菜单栏歌词功能说明](./docs/macOS%20菜单栏歌词功能说明.md)
 - [下载流程说明](./docs/下载流程说明.md)
@@ -319,4 +346,3 @@ Electron 打包配置位于 `package.json` 的 `build` 字段，当前已配置�
 
 - GitHub 仓库：<https://github.com/tingwensuojian/Resound-Player>
 - Release 页面：<https://github.com/tingwensuojian/Resound-Player/releases>
-
