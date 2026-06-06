@@ -413,13 +413,6 @@ const {
 });
 
 const error = computed(() => queryError.value?.message ?? '');
-
-watch(toplistData, (val) => {
-  if (val) {
-    list.value = val;
-    void hydrateCardTracks();
-  }
-}, { immediate: true });
 const cardTracksMap = ref<Record<number, RankTrackDisplay[]>>({});
 
 const featuredList = computed(() => {
@@ -616,6 +609,13 @@ async function hydrateCardTracks() {
     }),
   );
 }
+
+watch(toplistData, (val) => {
+  if (val) {
+    list.value = val;
+    void hydrateCardTracks();
+  }
+}, { immediate: true });
 
 
 </script>

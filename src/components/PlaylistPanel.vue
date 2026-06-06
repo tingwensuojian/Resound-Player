@@ -119,6 +119,17 @@ const limit = 30;
 const hasMore = ref(false);
 
 const allCats = ref<Record<string, string[]>>({});
+const playlists = ref<PlaylistItem[]>([]);
+const highQuality = ref<PlaylistItem[]>([]);
+const loadMoreTrigger = ref<HTMLElement | null>(null);
+const listWrapRef = ref<HTMLElement | null>(null);
+const catHeaderRef = ref<HTMLElement | null>(null);
+const stickyFallbackActive = ref(false);
+const stickyTopOffset = ref(0);
+let observer: IntersectionObserver | null = null;
+let stickyFallbackHost: HTMLElement | Window | null = null;
+let stickyFallbackTop = 0;
+const mountedReady = ref(false);
 
 // 歌单分类缓存
 const { data: catData } = useApiQuery({
@@ -170,19 +181,6 @@ const { data: hqData } = useApiQuery({
   },
   ttl: 'LIST_VOLATILE',
 });
-
-
-const playlists = ref<PlaylistItem[]>([]);
-const highQuality = ref<PlaylistItem[]>([]);
-const loadMoreTrigger = ref<HTMLElement | null>(null);
-const listWrapRef = ref<HTMLElement | null>(null);
-const catHeaderRef = ref<HTMLElement | null>(null);
-const stickyFallbackActive = ref(false);
-const stickyTopOffset = ref(0);
-let observer: IntersectionObserver | null = null;
-let stickyFallbackHost: HTMLElement | Window | null = null;
-let stickyFallbackTop = 0;
-const mountedReady = ref(false);
 
 const allCatsFlat = computed(() => {
   const set = new Set<string>();

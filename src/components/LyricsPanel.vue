@@ -216,7 +216,11 @@ function translationStyle(idx: number, line: any) {
 }
 
 /* ---- AMLL 相关 ---- */
-const amllLines = computed(() => convertToAmmlLyrics(lyricLines.value));
+const amllLines = computed(() => convertToAmmlLyrics(lyricLines.value).map((line) => ({
+  ...line,
+  translatedLyric: lyricsSettings.state.showTranslation ? line.translatedLyric : '',
+  romanLyric: lyricsSettings.state.showRomalrc ? line.romanLyric : '',
+})));
 const amllCurrentTime = computed(() => Math.round(effectiveTime.value * 1000));
 const amllAnchor = computed(() => mapAnchorPos(lyricsSettings.state.anchorPos));
 

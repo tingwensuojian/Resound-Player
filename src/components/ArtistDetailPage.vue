@@ -273,7 +273,7 @@ const {
   isPending: loading,
   error: queryError,
 } = useApiQuery({
-  queryKey: ['artist', 'full', props.artistId],
+  queryKey: computed(() => ['artist', 'full', props.artistId]),
   queryFn: async () => {
     const [detailRes, topSongsRes, albumsRes, mvsRes, descRes] = await Promise.all([
       getArtistDetail(props.artistId),
@@ -374,6 +374,18 @@ async function fetchAllSongs(reset = false) {
 watch(() => activeTab.value, (tab) => {
   if (tab === 'all-songs' && allSongs.value.length === 0 && !allSongsLoading.value) {
     fetchAllSongs(true);
+  }
+});
+
+watch(() => props.artistId, () => {
+  resetScroll();
+  isDescriptionExpanded.value = false;
+  allSongs.value = [];
+  allSongsOffset.value = 0;
+  allSongsHasMore.value = true;
+
+  if (activeTab.value === 'all-songs') {
+    void fetchAllSongs(true);
   }
 });
 
