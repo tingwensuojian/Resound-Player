@@ -402,7 +402,7 @@ watch(
 
 .podcast-song-item {
   display: grid;
-  grid-template-columns: 40px 72px minmax(0, 1fr);
+  grid-template-columns: 40px 52px minmax(0, 1fr);
   align-items: flex-start;
   column-gap: var(--space-3);
   transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
@@ -428,9 +428,9 @@ watch(
 }
 
 .song-cover {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
   object-fit: cover;
   background: var(--bg-surface);
 }
@@ -524,13 +524,13 @@ watch(
 
 @media (max-width: 767px) {
   .podcast-song-item {
-    grid-template-columns: 40px 56px minmax(0, 1fr);
+    grid-template-columns: 40px 52px minmax(0, 1fr);
   }
 
   .song-cover {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
   }
 }
 

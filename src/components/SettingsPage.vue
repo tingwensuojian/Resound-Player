@@ -773,7 +773,7 @@ const currentGroups = computed(() => {
           return false;
         }
         // 系统托盘功能仅桌面端可用
-        if (['trayLyricEnabled'].includes(item.key) && !platform.isDesktop) {
+        if (['trayLyricEnabled', 'miniAlwaysOnTop'].includes(item.key) && !platform.isDesktop) {
           return false;
         }
         // 桌面歌词：仅桌面端可见
