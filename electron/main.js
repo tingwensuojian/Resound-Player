@@ -166,7 +166,7 @@ let miniWin = null;
 let currentServicePorts = {};
 let latestPlaybackSnapshot = null;
 
-const MINI_WINDOW_WIDTH = 340;
+const MINI_WINDOW_WIDTH = process.platform === 'win32' ? 380 : 340;
 const MINI_BAR_HEIGHT = 70;
 const MINI_MAX_HEIGHT = 500;
 
@@ -536,16 +536,22 @@ async function createMainWindow(ports) {
   }
 }
 
-function getMiniWindowBounds() {
+function getMiniWindowContentBounds(height = MINI_BAR_HEIGHT) {
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth } = display.workAreaSize;
-  const margin = 20;
+  const clampedHeight = Math.max(MINI_BAR_HEIGHT, Math.min(Math.round(height), MINI_MAX_HEIGHT));
   return {
-    x: screenWidth - MINI_WINDOW_WIDTH - margin,
-    y: margin,
+    x: screenWidth - MINI_WINDOW_WIDTH - 20,
+    y: 20,
     width: MINI_WINDOW_WIDTH,
-    height: MINI_BAR_HEIGHT,
+    height: clampedHeight,
   };
+}
+
+function setMiniWindowContentBounds(height) {
+  if (!miniWin || miniWin.isDestroyed()) return;
+  const bounds = getMiniWindowContentBounds(height);
+  miniWin.setContentBounds(bounds);
 }
 
 function createMiniWindow(ports) {
@@ -556,11 +562,11 @@ function createMiniWindow(ports) {
     `--service-ports=${JSON.stringify(ports)}`,
     '--window-role=mini',
   ];
-  const bounds = getMiniWindowBounds();
+  const contentBounds = getMiniWindowContentBounds();
   const isMac = process.platform === 'darwin';
 
   miniWin = new BrowserWindow({
-    ...bounds,
+    ...contentBounds,
     minHeight: MINI_BAR_HEIGHT,
     maxHeight: MINI_MAX_HEIGHT,
     resizable: false,
@@ -579,6 +585,9 @@ function createMiniWindow(ports) {
       additionalArguments: portArgs,
     },
   });
+  // Keep the initial mini window geometry on the same content-bounds basis
+  // as later playlist expand/collapse resizes.
+  miniWin.setContentBounds(contentBounds);
   applyWindowsTaskbarDetails(miniWin, getWindowIconPath());
 
   miniWin.on('closed', () => {
@@ -843,8 +852,7 @@ ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
 
 ipcMain.on('mini-mode:resize', (_event, height) => {
   if (!miniWin || miniWin.isDestroyed()) return;
-  const clampedHeight = Math.max(MINI_BAR_HEIGHT, Math.min(height, MINI_MAX_HEIGHT));
-  miniWin.setContentSize(MINI_WINDOW_WIDTH, clampedHeight);
+  setMiniWindowContentBounds(height);
 });
 
 ipcMain.on('playback:publish-state', (_event, snapshot) => {

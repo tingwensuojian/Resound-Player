@@ -13,7 +13,7 @@
 
       <!-- 歌曲信息 -->
       <div class="song-info" @click="onFullscreen">
-        <div class="song-title">{{ playerStore.state.currentTrack?.name || '未在播放' }}</div>
+        <div class="song-title">{{ miniTitleText }}</div>
         <div class="song-artist">{{ artistText }}</div>
         <LocalMetadataStatusBadge
           v-if="isLocalCurrentTrack && localMetadataStatus"
@@ -165,8 +165,15 @@ const { isCurrentLiked, likeLoading, toggleCurrentLike } = useCurrentTrackLike()
 const showPlaylist = ref(false);
 const hoveredIdx = ref<number | null>(null);
 
+const MINI_TITLE_CHAR_LIMIT = 4;
 const MINI_BAR_HEIGHT = 70;
 const MINI_PLAYLIST_HEIGHT = 360;
+
+function truncateMiniTitle(text: string) {
+  const chars = Array.from(text || '');
+  if (chars.length <= MINI_TITLE_CHAR_LIMIT) return text;
+  return `${chars.slice(0, MINI_TITLE_CHAR_LIMIT).join('')}…`;
+}
 
 function resizeMiniWindow(height: number) {
   window.appEnv?.miniMode?.resize?.(height);
@@ -231,6 +238,8 @@ const artistText = computed(() => {
   if (!ar || !ar.length) return '';
   return ar.map((a: { name: string }) => a.name).join(' / ');
 });
+
+const miniTitleText = computed(() => truncateMiniTitle(playerStore.state.currentTrack?.name || '未在播放'));
 
 const miniLyricText = computed(() => playerStore.state.miniLyricText || '');
 
