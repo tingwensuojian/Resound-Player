@@ -74,6 +74,7 @@ contextBridge.exposeInMainWorld('appEnv', {
   miniMode: {
     enter: (alwaysOnTop) => ipcRenderer.send('mini-mode:enter', alwaysOnTop),
     exit: () => ipcRenderer.send('mini-mode:exit'),
+    rendererReady: () => ipcRenderer.send('mini-mode:renderer-ready'),
     setAlwaysOnTop: (enabled) => ipcRenderer.send('mini-mode:set-always-on-top', enabled),
     resize: (height) => ipcRenderer.send('mini-mode:resize', height),
     onStateChange: (cb) => {

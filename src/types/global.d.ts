@@ -60,6 +60,14 @@ interface Window {
       clear: () => Promise<boolean>
     }
     windowRole?: 'main' | 'mini'
+    miniMode?: {
+      enter?: (alwaysOnTop?: boolean) => void
+      exit?: () => void
+      rendererReady?: () => void
+      setAlwaysOnTop?: (enabled: boolean) => void
+      resize?: (height: number) => void
+      onStateChange?: (cb: (isMini: boolean) => void) => () => void
+    }
     window?: {
       setBackgroundColor?: (color: string) => void
     }

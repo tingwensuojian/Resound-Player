@@ -244,15 +244,55 @@ function enterMiniMode(alwaysOnTop = false) {
   function openMiniWindow() {
     const targetMiniWin = createMiniWindow(currentServicePorts);
     applyMiniAlwaysOnTopToWindow(targetMiniWin, !!alwaysOnTop);
-    targetMiniWin.once('ready-to-show', () => {
+
+    let electronReady = targetMiniWin.isVisible();
+    let rendererReady = false;
+    let miniShown = false;
+    let fallbackTimer = null;
+
+    const cleanupMiniShowGate = () => {
+      ipcMain.removeListener('mini-mode:renderer-ready', onMiniRendererReady);
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+    };
+
+    const showMiniWindowWhenStable = () => {
+      if (miniShown || !electronReady || !rendererReady) return;
+      if (!win || win.isDestroyed() || targetMiniWin.isDestroyed()) return;
+      miniShown = true;
+      cleanupMiniShowGate();
       targetMiniWin.show();
       targetMiniWin.focus();
       targetMiniWin.webContents.send('mini-mode:state-change', true);
+      win.hide();
+      win.webContents.send('mini-mode:state-change', true);
+      setTrayMenu(win);
+    };
+
+    function onMiniRendererReady(event) {
+      if (event.sender !== targetMiniWin.webContents) return;
+      rendererReady = true;
+      showMiniWindowWhenStable();
+    }
+
+    ipcMain.on('mini-mode:renderer-ready', onMiniRendererReady);
+
+    targetMiniWin.once('ready-to-show', () => {
+      electronReady = true;
+      showMiniWindowWhenStable();
     });
+    targetMiniWin.once('closed', cleanupMiniShowGate);
     if (targetMiniWin.isVisible()) targetMiniWin.focus();
-    win.hide();
-    win.webContents.send('mini-mode:state-change', true);
-    setTrayMenu(win);
+
+    fallbackTimer = setTimeout(() => {
+      if (miniShown) return;
+      console.warn('[mini-mode] renderer did not report first-frame readiness; cancelling mini mode');
+      cleanupMiniShowGate();
+      restoreMainWindowFromMiniMode();
+      setTrayMenu(win);
+    }, 3000);
   }
 
   if (win.isFullScreen()) {

@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import MiniPlayBar from './components/MiniPlayBar.vue';
 import { usePlayerStore } from './stores/player';
@@ -24,3 +24,12 @@ playerStore.init();
 void userStore.hydrate().catch(() => {});
 
 app.mount('#app');
+
+async function notifyMiniRendererReady() {
+  await nextTick();
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  window.appEnv?.miniMode?.rendererReady?.();
+}
+
+void notifyMiniRendererReady();
