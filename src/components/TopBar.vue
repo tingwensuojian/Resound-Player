@@ -139,6 +139,7 @@
 
   <Teleport to="body">
     <HeartbeatActivateEffect
+      :key="heartbeatEffectKey"
       :visible="showHeartbeatEffect"
       @done="showHeartbeatEffect = false"
     />
@@ -146,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Sparkles, Search, PictureInPicture2 } from 'lucide-vue-next';
 import AnimatedAppear from './AnimatedAppear.vue';
 import { platform } from '../utils/platform';
@@ -216,6 +217,15 @@ const { checkAuth } = useAuthAction(
 );
 
 const showHeartbeatEffect = ref(false);
+const heartbeatEffectKey = ref(0);
+
+function triggerHeartbeatEffect() {
+  showHeartbeatEffect.value = false;
+  heartbeatEffectKey.value += 1;
+  void nextTick(() => {
+    showHeartbeatEffect.value = true;
+  });
+}
 
 async function handleIntelligencePlay() {
   if (playerStore.state.currentIntelligenceLoading) return;
@@ -225,7 +235,7 @@ async function handleIntelligencePlay() {
     playerStore.state.isIntelligenceActive = false;
     playerStore.clearPlaylist();
     loginModalStore.showGlobalToast('已退出心动模式', 'success');
-    showHeartbeatEffect.value = true;
+    triggerHeartbeatEffect();
     return;
   }
 
@@ -245,7 +255,7 @@ async function handleIntelligencePlay() {
   } else {
     playerStore.state.isIntelligenceActive = true;
     loginModalStore.showGlobalToast('已开启心动模式', 'success');
-    showHeartbeatEffect.value = true;
+    triggerHeartbeatEffect();
   }
 }
 
@@ -254,7 +264,7 @@ watch(() => playerStore.state.currentPlaylistId, () => {
   if (playerStore.state.isIntelligenceActive) {
     playerStore.state.isIntelligenceActive = false;
     loginModalStore.showGlobalToast('已退出心动模式', 'success');
-    showHeartbeatEffect.value = true;
+    triggerHeartbeatEffect();
   }
 });
 

@@ -1,15 +1,19 @@
 <template>
-  <canvas
+  <div
     v-if="visible"
-    ref="canvasRef"
-    class="heartbeat-canvas"
-    :class="{ 'heartbeat-canvas--fade-out': fadingOut }"
-    @animationend="onAnimationEnd"
-  />
+    class="heartbeat-host"
+  >
+    <canvas
+      ref="canvasRef"
+      class="heartbeat-canvas"
+      :class="{ 'heartbeat-canvas--fade-out': fadingOut }"
+      @animationend="onAnimationEnd"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
+import { nextTick, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -152,12 +156,16 @@ function stopRandomCameraMove() {
 }
 
 function createTubes(canvas: HTMLCanvasElement) {
+  destroyTubes();
+  fadingOut.value = false;
+
   // 1. 拦截 mousemove 监听器
   blockMouseMove();
 
   import('threejs-components/build/cursors/tubes1.min.js')
     .then((mod) => {
       const TubesCursor = mod.default;
+      canvas.style.background = 'transparent';
       const app = TubesCursor(canvas, {
         tubes: {
           colors: ['#5e72e4', '#8965e0', '#f5365c'],
@@ -171,11 +179,26 @@ function createTubes(canvas: HTMLCanvasElement) {
       // 2. 恢复事件监听并移除库注册的 mousemove
       if (restoredMouseHandler) restoredMouseHandler();
 
+      const renderer = (app as any)?.three?.renderer;
+      const scene = (app as any)?.three?.scene;
+      if (renderer) {
+        if (typeof renderer.setClearColor === 'function') renderer.setClearColor(0x000000, 0);
+        if (typeof renderer.setClearAlpha === 'function') renderer.setClearAlpha(0);
+        if (renderer.domElement) {
+          renderer.domElement.style.background = 'transparent';
+          renderer.domElement.style.mixBlendMode = 'plus-lighter';
+          renderer.domElement.style.filter = 'brightness(1.16) contrast(1.22) saturate(1.08)';
+        }
+      }
+      if (scene && 'background' in scene) {
+        scene.background = null;
+      }
+
       // 3. 设置透明背景
       makeTransparent(app);
 
       // 4. 查找相机，启动随机运动
-      const camera = findCamera(app);
+      const camera = (app as any)?.three?.camera ?? findCamera(app);
       if (camera) startRandomCameraMove(camera);
 
       disposeApp = () => {
@@ -185,7 +208,8 @@ function createTubes(canvas: HTMLCanvasElement) {
 
       fadeTimer = setTimeout(() => { fadingOut.value = true; }, 2500);
     })
-    .catch(() => {
+    .catch((error) => {
+      console.error('[HeartbeatActivateEffect] failed to initialize tubes effect', error);
       if (restoredMouseHandler) restoredMouseHandler();
       fadeTimer = setTimeout(() => { fadingOut.value = true; }, 500);
     });
@@ -205,25 +229,43 @@ function onAnimationEnd(e: AnimationEvent) {
   }
 }
 
-watch(() => props.visible, (val) => {
-  if (val) {
-    requestAnimationFrame(() => {
-      if (canvasRef.value) createTubes(canvasRef.value);
-    });
+watch(() => props.visible, async (val) => {
+  if (!val) {
+    fadingOut.value = false;
+    destroyTubes();
+    return;
   }
-});
+
+  await nextTick();
+  if (!canvasRef.value) {
+    console.warn('[HeartbeatActivateEffect] canvas is not ready when effect becomes visible');
+    return;
+  }
+  createTubes(canvasRef.value);
+}, { flush: 'post' });
 
 onUnmounted(() => { destroyTubes(); });
 </script>
 
 <style scoped>
-.heartbeat-canvas {
+.heartbeat-host {
   position: fixed;
   inset: 0;
   z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  background: transparent !important;
+}
+
+.heartbeat-canvas {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
   width: 100%;
   height: 100%;
+  background: transparent !important;
+  filter: brightness(1.16) contrast(1.22) saturate(1.08);
   animation: heartbeat-fade-in 0.4s ease-out both;
 }
 
@@ -243,7 +285,13 @@ onUnmounted(() => { destroyTubes(); });
 </style>
 
 <style>
+.heartbeat-host {
+  background: transparent !important;
+}
+
 .heartbeat-canvas {
-  mix-blend-mode: screen;
+  background: transparent !important;
+  mix-blend-mode: plus-lighter;
+  filter: brightness(1.16) contrast(1.22) saturate(1.08);
 }
 </style>
