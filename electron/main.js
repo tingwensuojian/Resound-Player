@@ -166,6 +166,10 @@ let miniWin = null;
 let currentServicePorts = {};
 let latestPlaybackSnapshot = null;
 
+const MINI_WINDOW_WIDTH = 340;
+const MINI_BAR_HEIGHT = 70;
+const MINI_MAX_HEIGHT = 500;
+
 function isWindowFullscreen() {
   if (!win || win.isDestroyed()) return false;
   if (process.platform === 'darwin') return win.isSimpleFullScreen();
@@ -535,14 +539,12 @@ async function createMainWindow(ports) {
 function getMiniWindowBounds() {
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth } = display.workAreaSize;
-  const miniWidth = 340;
-  const miniHeight = 70;
   const margin = 20;
   return {
-    x: screenWidth - miniWidth - margin,
+    x: screenWidth - MINI_WINDOW_WIDTH - margin,
     y: margin,
-    width: miniWidth,
-    height: miniHeight,
+    width: MINI_WINDOW_WIDTH,
+    height: MINI_BAR_HEIGHT,
   };
 }
 
@@ -559,13 +561,12 @@ function createMiniWindow(ports) {
 
   miniWin = new BrowserWindow({
     ...bounds,
-    minWidth: 340,
-    minHeight: 70,
-    maxWidth: 340,
-    maxHeight: 500,
+    minHeight: MINI_BAR_HEIGHT,
+    maxHeight: MINI_MAX_HEIGHT,
     resizable: false,
     show: false,
     frame: false,
+    useContentSize: true,
     titleBarStyle: isMac ? 'hidden' : undefined,
     trafficLightPosition: isMac ? { x: -100, y: -100 } : undefined,
     backgroundColor: '#1a1a2e',
@@ -842,8 +843,8 @@ ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
 
 ipcMain.on('mini-mode:resize', (_event, height) => {
   if (!miniWin || miniWin.isDestroyed()) return;
-  const clampedHeight = Math.max(70, Math.min(height, 500));
-  miniWin.setSize(340, clampedHeight);
+  const clampedHeight = Math.max(MINI_BAR_HEIGHT, Math.min(height, MINI_MAX_HEIGHT));
+  miniWin.setContentSize(MINI_WINDOW_WIDTH, clampedHeight);
 });
 
 ipcMain.on('playback:publish-state', (_event, snapshot) => {
