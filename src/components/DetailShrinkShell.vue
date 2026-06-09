@@ -57,7 +57,7 @@ defineProps<{
   width: 100%;
   padding: 12px 24px 16px 24px;
   z-index: 1;
-  overflow: hidden;
+  /* overflow removed — let hero-actions remain visible */
   box-sizing: border-box;
   transition:
     height 0.3s ease,

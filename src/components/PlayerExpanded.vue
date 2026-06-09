@@ -273,14 +273,28 @@
           </div>
           <div class="cc-right">
             <button v-if="isLocalCurrentTrack" class="con-btn lyric-match-btn" type="button" data-tooltip="歌词匹配" aria-label="歌词匹配" @click="showLyricMatchDialog = true">词</button>
-            <button class="con-btn" :class="{ active: showEqPanel }" title="均衡器" @click="showEqPanel = !showEqPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg></button>
+            <button class="con-btn" :class="{ active: showEqPanel }" data-tooltip="均衡器" @click="showEqPanel = !showEqPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="20" cy="14" r="2"/></svg></button>
             <button v-if="playerStore.state.isIntelligenceActive &amp;&amp; uiStore.state.showIntelligenceIndicator" class="con-btn intel-icon" type="button" aria-label="心动模式"><Sparkles :size="10" /></button>
+            <div class="soda-volume" ref="volumeRef" @mouseenter="onVolumeEnter" @mouseleave="onVolumeLeave">
+              <button class="con-btn soda-vol-icon" type="button" :aria-label="playerStore.state.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()">
+                <VolumeX v-if="playerStore.state.muted || playerStore.state.volume === 0" :size="14" />
+                <Volume v-else-if="playerStore.state.volume < 0.33" :size="14" />
+                <Volume1 v-else-if="playerStore.state.volume < 0.66" :size="14" />
+                <Volume2 v-else :size="14" />
+              </button>
+              <Transition name="soda-volume">
+                <div v-if="showVolumePanel" class="soda-vol-panel" ref="volumePanelRef">
+                  <div class="soda-vol-box">
+                    <div class="soda-vol-slider-track" ref="sliderTrackRef" @mousedown.prevent="onSliderStart">
+                      <div class="soda-vol-fill" :style="{ height: volPercent + '%' }"></div>
+                      <div class="soda-vol-thumb" :style="{ bottom: volPercent + '%' }"></div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
             <button v-if="isPersonalFmCurrentTrack" class="con-btn con-fm-label" type="button" aria-label="当前为私人 FM" disabled>FM</button>
             <button v-else class="con-btn" @click="uiStore.togglePlayQueue()" data-tooltip="查看播放列表" aria-label="查看播放列表"><AlignJustify :size="14" /></button>
-            <div class="con-volume">
-              <button class="con-btn con-vol-icon" type="button" :aria-label="playerStore.state.muted ? '取消静音' : '静音'" @click="playerStore.toggleMute()"><VolumeX v-if="playerStore.state.muted || playerStore.state.volume === 0" :size="14" /><Volume v-else-if="playerStore.state.volume < 0.33" :size="14" /><Volume1 v-else-if="playerStore.state.volume < 0.66" :size="14" /><Volume2 v-else :size="14" /></button>
-              <input class="con-vol-slider" type="range" min="0" max="100" :value="Math.round((playerStore.state.muted ? 0 : playerStore.state.volume) * 100)" @input="onVolume" />
-            </div>
           </div>
         </AnimatedAppear>
 
@@ -715,6 +729,57 @@ watch(trackId, (newId, oldId) => {
 
 function onVolume(e: Event) { playerStore.setVolume(Number((e.target as HTMLInputElement).value) / 100); }
 function onSeekStart() { isSeeking.value = true; seekPreviewTime.value = playerStore.state.currentTime || 0; }
+const showVolumePanel = ref(false);
+const volumeHoverTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const volumeLeaveTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const isVolumeDragging = ref(false);
+const volumeRef = ref<HTMLElement | null>(null);
+const volumePanelRef = ref<HTMLElement | null>(null);
+const sliderTrackRef = ref<HTMLElement | null>(null);
+const volPercent = computed(() => {
+  const v = playerStore.state.muted ? 0 : playerStore.state.volume;
+  return Math.round(v * 100);
+});
+function clearVolumeTimers() {
+  if (volumeHoverTimer.value) { clearTimeout(volumeHoverTimer.value); volumeHoverTimer.value = null; }
+  if (volumeLeaveTimer.value) { clearTimeout(volumeLeaveTimer.value); volumeLeaveTimer.value = null; }
+}
+function onVolumeEnter() {
+  clearVolumeTimers();
+  volumeHoverTimer.value = setTimeout(() => { showVolumePanel.value = true; }, 50);
+}
+function onVolumeLeave(e: MouseEvent) {
+  if (isVolumeDragging.value) return;
+  const panel = volumePanelRef.value;
+  if (panel && e.relatedTarget && panel.contains(e.relatedTarget as Node)) return;
+  clearVolumeTimers();
+  volumeLeaveTimer.value = setTimeout(() => { showVolumePanel.value = false; }, 100);
+}
+function onSliderStart(e: MouseEvent) {
+  isVolumeDragging.value = true;
+  updateVolumeFromMouse(e);
+  window.addEventListener("mousemove", onSliderMove);
+  window.addEventListener("mouseup", onSliderEnd);
+}
+function onSliderMove(e: MouseEvent) {
+  updateVolumeFromMouse(e);
+}
+function onSliderEnd() {
+  isVolumeDragging.value = false;
+  window.removeEventListener("mousemove", onSliderMove);
+  window.removeEventListener("mouseup", onSliderEnd);
+  setTimeout(() => { if (!isVolumeDragging.value) showVolumePanel.value = false; }, 1000);
+}
+function updateVolumeFromMouse(e: MouseEvent) {
+  const track = sliderTrackRef.value;
+  if (!track) return;
+  const rect = track.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const h = rect.height;
+  let pct = 1 - Math.max(0, Math.min(1, y / h));
+  playerStore.setVolume(pct);
+  if (playerStore.state.muted) playerStore.toggleMute();
+}
 function onSeek(e: Event) { const t = Number((e.target as HTMLInputElement).value); seekPreviewTime.value = t; playerStore.seek(t); }
 function onSeekEnd() { seekPreviewTime.value = playerStore.state.currentTime || 0; setTimeout(() => { isSeeking.value = false; }, 80); }
 
@@ -906,13 +971,13 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
   padding: 0 var(--space-5) var(--space-3);
   z-index: 70;
 }
-.console-progress { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: var(--space-2); justify-self: center; width: 175%; }
+.console-progress { grid-column: 2; grid-row: 2; display: flex; align-items: center; gap: var(--space-2); justify-self: center; width: 175%; max-width: 44vw; }
 .console-time { color: rgba(255,255,255,0.5); font-size: var(--text-label-xs); min-width: 32px; font-variant-numeric: tabular-nums; }
 .console-time:last-child { text-align: right; }
 .console-bar { flex: 1; height: 10px; accent-color: var(--accent, #c39c76); cursor: pointer; border-radius: 5px; }
 .cc-left { grid-column: 1; grid-row: 1 / 3; display: flex; align-items: flex-end; gap: var(--space-2); padding-bottom: 6px; }
 .cc-center { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: center; gap: var(--space-2); padding-top: var(--space-2); }
-.cc-right { grid-column: 3; grid-row: 1 / 3; display: flex; align-items: flex-end; justify-content: flex-end; gap: var(--space-2); padding-bottom: 6px; }
+.cc-right { grid-column: 3; grid-row: 1 / 3; display: flex; align-items: flex-end; justify-content: flex-end; gap: var(--space-2); padding: 0 0 6px; margin-right: var(--space-5); }
 .cc-left .con-btn, .cc-right .con-btn { width: 44px; height: 44px; }
 .cc-left .con-btn svg, .cc-right .con-btn svg { width: 22px; height: 22px; }
 .cc-right .con-vol-icon { width: 40px; height: 40px; }
@@ -937,9 +1002,21 @@ function formatOffset(v: number) { if (v === 0) return '0s'; const sign = v > 0 
 .con-play:hover { background: rgba(255,255,255,0.22); }
 .con-fm-label { font-size: var(--text-label-md); font-weight: 700; letter-spacing: 0.04em; background: transparent !important; border-radius: 0 !important; opacity: 1 !important; cursor: default !important; }
 .con-fm-label:hover { transform: none !important; background: transparent !important; }
-.con-volume { display: flex; align-items: center; gap: 4px; }
-.con-vol-icon { width: 28px; height: 28px; }
-.con-vol-slider { width: 64px; height: 4px; accent-color: var(--accent, #c39c76); }
+.soda-volume { position: relative; display: flex; align-items: center; }
+.soda-vol-icon { width: 28px; height: 28px; display: grid; place-items: center; }
+.soda-vol-panel { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 8px; z-index: 100; }
+.soda-vol-box { background: var(--panel-bg, #1a1d27); height: 140px; width: 36px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); padding: 10px 0; display: flex; justify-content: center; }
+.soda-vol-slider-track { position: relative; width: 4px; height: 100%; background: rgba(255,255,255,0.15); border-radius: 10px; cursor: pointer; }
+.soda-vol-fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent, #c39c76); border-radius: 10px; transition: height 0.08s ease; }
+.soda-vol-thumb { position: absolute; left: -4px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4); transform: translateY(50%); transition: bottom 0.08s ease; }
+
+.soda-volume-enter-active .soda-vol-box,
+.soda-volume-leave-active .soda-vol-box { transition: opacity 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), scale 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.soda-volume-leave-active .soda-vol-box { transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1), scale 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+.soda-volume-enter-from .soda-vol-box,
+.soda-volume-leave-to .soda-vol-box { opacity: 0; scale: 0.85; }
+.soda-volume-enter-to .soda-vol-box,
+.soda-volume-leave-from .soda-vol-box { opacity: 1; scale: 1; }
 .con-fav.saved { color: var(--accent) !important; }
 .con-fav.saved :deep(svg) { fill: currentColor; }
 .lyric-match-btn { font-size: 15px; font-weight: 800; color: var(--accent, #c39c76); }
