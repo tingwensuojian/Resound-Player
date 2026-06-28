@@ -68,7 +68,13 @@ export default defineConfig(({ mode }) => {
                   res.end();
                   proxyRes.resume();
                 } else {
-                  proxyRes.pipe(res);
+                  // P2: Handle client abort gracefully
+                  proxyRes.on('error', () => {});
+                  if (!res.writableEnded && !res.destroyed) {
+                    proxyRes.pipe(res);
+                  } else {
+                    proxyRes.resume();
+                  }
                 }
               }).on('error', (err) => { res.statusCode = 500; res.end(err.message); }).end();
             } catch { res.statusCode = 400; res.end('Invalid URL'); }

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div
     class="wrapper"
     :data-theme="isDark ? 'dark' : 'light'"
@@ -66,6 +66,7 @@ const widgetState = ref<'docked' | 'free'>('docked');
 const isDark = ref(false);
 const isPlaying = ref(false);
 const isLiked = ref(false);
+let lastUserToggleTime = 0;
 const currentTrack = ref<any>(null);
 const mediaDetail = ref<any>(null);
 const coverUrl = ref('');
@@ -107,7 +108,8 @@ function applySnapshot(snap: any) {
   currentTrack.value = snap.track || null;
   mediaDetail.value = snap.mediaDetail || null;
   isPlaying.value = snap.playing || false;
-  isLiked.value = snap.liked || false;
+  if (Date.now() - lastUserToggleTime > 3000) { isLiked.value = snap.liked || false; }
+console.log('[widget] applySnapshot isLiked:', { liked: snap.liked, isLiked: snap.isLiked, track_liked: snap.track?.liked });
   coverUrl.value = snap.track?.cover_url || '';
   trackTitle.value = snap.track?.name || '';
   currentTime.value = snap.currentTime || 0;
@@ -189,8 +191,12 @@ onUnmounted(() => {
 });
 function sendCmd(cmd: any) { widgetApi?.sendCommand?.(cmd); }
 function onDragHandlerMouseDown() { widgetApi?.startDrag?.(); }
-function toggleCollect() { widgetApi?.sendCommand?.({ type: 'toggleLike' }); }
+function toggleCollect() { isLiked.value = !isLiked.value; lastUserToggleTime = Date.now(); widgetApi?.sendCommand?.({ type: 'toggleLike' }); }
 </script>
+
+
+
+
 
 
 

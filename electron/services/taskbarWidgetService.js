@@ -1,4 +1,4 @@
-﻿import { BrowserWindow, ipcMain, screen, app } from 'electron';
+import { BrowserWindow, ipcMain, screen, app } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -132,6 +132,7 @@ function getWidgetSize() {
 function convertSnapshot(raw) {
   if (!raw) return null;
   var track = raw.currentTrack || raw.track;
+  console.log('[taskbarWidget] convertSnapshot track.liked:', track?.liked, 'track.isLiked:', track?.isLiked, 'raw.liked:', raw.liked, 'id:', track?.id);
   var fullLyrics = raw.fullLyrics || [];
   var mediaDetail = raw.mediaDetail || null;
   if (!mediaDetail && fullLyrics.length > 0) {
@@ -234,7 +235,7 @@ function startTopmostTimer() {
       if (widgetWin && !widgetWin.isDestroyed()) {
         try { addon.ensureAboveTaskbar(widgetWin.getNativeWindowHandle()); } catch (e) {}
       }
-      // Shadow visibility managed by showShadow/hideShadow — topmost timer must not re-show it
+      // Shadow visibility managed by showShadow/hideShadow —topmost timer must not re-show it
     }, 1000);
   } catch (e) {}
 }
@@ -297,6 +298,7 @@ async function createWidgetWindow() {
     positionWidget(pos.x, pos.y);
   }
 
+  widgetWin.webContents.openDevTools({ mode: 'detach' });
   if (addon) {
     try {
       const hwndBuf = widgetWin.getNativeWindowHandle();

@@ -952,6 +952,9 @@ export const usePlayerStore = defineStore('player', () => {
           _track.isLiked = _next;
 
 
+          console.log('[player] toggleLike result:', { liked: _track.liked, isLiked: _track.isLiked, id: _track.id });
+
+
           syncRuntimeState();
 
 

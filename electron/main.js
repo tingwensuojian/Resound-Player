@@ -465,7 +465,25 @@ async function createMainWindow(ports) {
   });
 
   if (process.env.VITE_DEV_SERVER_URL) {
-    await win.loadURL(process.env.VITE_DEV_SERVER_URL);
+  // P1: Auto-retry when Vite is not ready yet (dev mode)
+  if (process.env.VITE_DEV_SERVER_URL) {
+    let failRetries = 0;
+    const MAX_FAIL_RETRIES = 10;
+    win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+      if (failRetries >= MAX_FAIL_RETRIES) return;
+      failRetries++;
+      const delay = Math.min(1000 * Math.pow(1.5, failRetries - 1), 10000);
+      console.log('[main] loadURL failed (' + errorDescription + '), retry ' + failRetries + '/' + MAX_FAIL_RETRIES + ' in ' + delay + 'ms');
+      setTimeout(() => {
+        if (!win.isDestroyed()) {
+          win.loadURL(process.env.VITE_DEV_SERVER_URL).catch(function(e) {
+            console.error('[main] loadURL retry failed:', e.message);
+          });
+        }
+      }, delay);
+    });
+  }
+    await win.loadURL(process.env.VITE_DEV_SERVER_URL).catch(function(e) { console.error('[main] initial loadURL failed:', e.message); });
   } else {
     await win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
@@ -523,7 +541,7 @@ function createMiniWindow(ports) {
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
   if (devServerUrl) {
-    miniWin.loadURL(`${devServerUrl.replace(/\/$/, '')}/mini.html`);
+    miniWin.loadURL(`${devServerUrl.replace(/\/$/, '')}/mini.html`).catch(function(e) { console.error('[mini] loadURL failed:', e.message); });
   } else {
     miniWin.loadFile(path.join(__dirname, '..', 'dist', 'mini.html'));
   }
