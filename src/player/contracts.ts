@@ -1,4 +1,4 @@
-export type WindowRole = 'main' | 'mini';
+﻿export type WindowRole = 'main' | 'mini';
 
 export type PlaybackCommand =
   | { type: 'togglePlay' }
@@ -11,6 +11,7 @@ export type PlaybackCommand =
   | { type: 'removeFromPlaylist'; index: number }
   | { type: 'openExpanded' }
   | { type: 'closeExpanded' };
+  | { type: 'toggleLike' };
 
 export type QualityDowngradeInfo = {
   from: string;

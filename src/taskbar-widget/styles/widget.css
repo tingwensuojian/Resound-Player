@@ -21,7 +21,7 @@ html, body, #app {
   overflow: hidden;
 }
 
-/* ── wrapper ── */
+/* wrapper */
 .wrapper {
   width: 100%;
   height: 100%;
@@ -32,17 +32,19 @@ html, body, #app {
 .wrapper[data-theme=dark] { color-scheme: dark; }
 
 .container {
-  position: relative;
   width: 100%;
   height: 100%;
-  padding-inline: 22px 12px;
+  padding-inline: 22px 8px;
   display: flex;
+  align-items: center;
+  gap: 8px;
   border-radius: 8px;
   border: 0.5px solid transparent;
   transition-property: border-color, background-color;
   transition-duration: 0.1s;
   transition-timing-function: ease-out;
 }
+
 /* Hover state */
 .wrapper[data-hover] .container {
   border-color: light-dark(rgba(255,255,255,0.08), rgba(255,255,255,0.04));
@@ -54,7 +56,7 @@ html, body, #app {
   background-color: light-dark(rgba(255,255,255,0.9), rgba(0,0,0,0.7));
 }
 
-/* ── Drag handler ── */
+/* Drag handler — always visible at low opacity */
 .drag-handler-wrapper {
   position: absolute;
   top: 0;
@@ -65,11 +67,10 @@ html, body, #app {
   align-items: center;
   justify-content: center;
   -webkit-app-region: drag;
-  opacity: 0;
+  opacity: 0.4;
   transition: opacity 0.1s ease-out;
 }
-.wrapper[data-hover] .drag-handler-wrapper,
-.wrapper[data-widget-state=free] .drag-handler-wrapper {
+.wrapper[data-hover] .drag-handler-wrapper {
   opacity: 1;
 }
 .drag-handler-wrapper .drag-handler {
@@ -84,11 +85,11 @@ html, body, #app {
   background: light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.5));
 }
 
-/* ── Cover ── */
+/* Cover */
 .cover-wrapper {
   display: flex;
   align-items: center;
-  justify-content: center;
+  flex-shrink: 0;
 }
 .cover {
   position: relative;
@@ -118,27 +119,22 @@ html, body, #app {
   height: 12px;
 }
 
-/* ── Main info area ── */
+/* Main info area — flex:1 to fill remaining space */
 .main-wrapper {
-  position: relative;
+  flex: 1;
   display: flex;
-  margin-left: 10px;
   align-items: center;
-}
-/* Lyric display area */
-.info-wrapper {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  max-height: 32px;
-  transition: opacity 0.1s ease-out;
-  width: 128px;
+  min-width: 0;
   overflow: hidden;
 }
-/* When docked variant: hide info on hover to reveal actions */
-.wrapper[data-hover] .info-wrapper {
-  opacity: 0;
-  pointer-events: none;
+.info-wrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  max-height: 32px;
 }
 .title-wrapper {
   display: flex;
@@ -156,76 +152,76 @@ html, body, #app {
   color: light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.5));
 }
 
-/* ── Action buttons (prev/play/next) ── */
+/* Action buttons — always visible */
 .action-wrapper {
   display: flex;
   align-items: center;
-  gap: 10px;
-  transition: opacity 0.1s ease-out;
-}
-/* In docked mode, actions overlay on info area, hidden by default */
-.action-wrapper {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-}
-.wrapper[data-hover] .action-wrapper {
-  opacity: 1;
-  pointer-events: auto;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 .action-btn {
-  height: 32px;
-  width: 32px;
+  height: 28px;
+  width: 28px;
   border: none;
   background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: light-dark(rgba(0,0,0,0.7), rgba(255,255,255,0.7));
+  color: light-dark(rgba(0,0,0,0.6), rgba(255,255,255,0.6));
   cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
 }
 .action-btn:hover {
   color: light-dark(#000, #fff);
+  background: light-dark(rgba(0,0,0,0.06), rgba(255,255,255,0.08));
 }
 .action-btn--playback {
-  width: 48px;
+  width: 32px;
+  height: 32px;
   border-radius: 9999px;
-  background: light-dark(rgba(0,0,0,0.07), rgba(255,255,255,0.07));
+  background: light-dark(rgba(0,0,0,0.06), rgba(255,255,255,0.06));
 }
 .action-btn--playback:hover {
   background: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.12));
 }
 
-/* ── Collect (heart) button ── */
+/* Collect (heart) button — always visible */
 .side-wrapper {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding-left: 12px;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 .heart-icon {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   background: transparent;
   cursor: pointer;
-  color: light-dark(rgba(0,0,0,0.7), rgba(255,255,255,0.7));
-  font-size: 16px;
+  color: light-dark(rgba(0,0,0,0.6), rgba(255,255,255,0.6));
+  font-size: 14px;
   line-height: 1;
+  border-radius: 4px;
 }
 .heart-icon:hover {
   color: light-dark(#000, #fff);
+  background: light-dark(rgba(0,0,0,0.06), rgba(255,255,255,0.08));
 }
 .heart-icon.heart--filled,
 .heart-icon.heart--filled:hover {
   color: #e0214f;
 }
+.heart--filled svg {
+  fill: currentColor;
+}
 
-/* ── Close button ── */
+/* Close button */
 .close-wrapper {
   position: absolute;
   top: 4px;
@@ -241,3 +237,4 @@ html, body, #app {
 .close-wrapper:hover {
   color: light-dark(rgba(0,0,0,0.5), rgb(255,255,255));
 }
+

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div
     class="wrapper"
     :data-theme="isDark ? 'dark' : 'light'"
@@ -46,7 +46,11 @@
 
       <!-- Collect button -->
       <div class="side-wrapper">
-        <span :class="['heart-icon', isLiked ? 'heart--filled' : 'heart--outline']" @click.stop="toggleCollect">&#x2665;</span>
+        <span :class="['heart-icon', isLiked ? 'heart--filled' : 'heart--outline']" @click.stop="toggleCollect">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart-icon lucide-heart">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+          </svg>
+        </span>
       </div>
     </div>
   </div>
@@ -185,8 +189,9 @@ onUnmounted(() => {
 });
 function sendCmd(cmd: any) { widgetApi?.sendCommand?.(cmd); }
 function onDragHandlerMouseDown() { widgetApi?.startDrag?.(); }
-function toggleCollect() { isLiked.value = !isLiked.value; }
+function toggleCollect() { widgetApi?.sendCommand?.({ type: 'toggleLike' }); }
 </script>
+
 
 
 
