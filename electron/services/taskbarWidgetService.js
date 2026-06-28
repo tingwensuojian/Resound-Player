@@ -132,7 +132,7 @@ function getWidgetSize() {
 function convertSnapshot(raw) {
   if (!raw) return null;
   var track = raw.currentTrack || raw.track;
-  console.log('[taskbarWidget] convertSnapshot track.liked:', track?.liked, 'track.isLiked:', track?.isLiked, 'raw.liked:', raw.liked, 'id:', track?.id);
+  console.log('[taskbarWidget] convertSnapshot ALL fields:', JSON.stringify(raw?.currentTrack || raw?.track)); console.log('[taskbarWidget] convertSnapshot track.liked:', track?.liked, 'track.isLiked:', track?.isLiked, 'raw.liked:', raw.liked, 'id:', track?.id);
   var fullLyrics = raw.fullLyrics || [];
   var mediaDetail = raw.mediaDetail || null;
   if (!mediaDetail && fullLyrics.length > 0) {
@@ -180,7 +180,7 @@ function convertSnapshot(raw) {
 function syncPlaybackState() {
   if (widgetWin && !widgetWin.isDestroyed() && latestSnapshot) {
     try {
-      widgetWin.webContents.send('playback:state', convertSnapshot(latestSnapshot));
+      var _snap2 = convertSnapshot(latestSnapshot); console.log('[taskbarWidget] sending playback:state liked:', _snap2.liked, 'name:', _snap2.track?.name); widgetWin.webContents.send('playback:state', _snap2);
     } catch (e) {
     }
   }
@@ -238,6 +238,12 @@ function startTopmostTimer() {
       // Shadow visibility managed by showShadow/hideShadow —topmost timer must not re-show it
     }, 1000);
   } catch (e) {}
+}
+
+function updateLikeStatus(liked) {
+  if (widgetWin && !widgetWin.isDestroyed()) {
+    try { widgetWin.webContents.send('taskbar-widget:like-status', Boolean(liked)); } catch (e) {}
+  }
 }
 
 function stopTopmostTimer() {
@@ -622,12 +628,18 @@ export function registerIpc() {
     }
 
   });
+  ipcMain.on('taskbar-widget:like-status', function(_event, liked) {
+    updateLikeStatus(liked);
+  });
+
   ipcMain.handle('taskbar-widget:get-taskbar-info', function() {
     const tb = getTaskbarBounds();
     return { taskbar: tb, layout: null };
   });
 
 }
+
+
 
 
 

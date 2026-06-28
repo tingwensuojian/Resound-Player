@@ -66,6 +66,7 @@ const widgetState = ref<'docked' | 'free'>('docked');
 const isDark = ref(false);
 const isPlaying = ref(false);
 const isLiked = ref(false);
+const likePending = ref(false);
 let lastUserToggleTime = 0;
 const currentTrack = ref<any>(null);
 const mediaDetail = ref<any>(null);
@@ -105,10 +106,12 @@ function stopTimeAnimation() {
 
 function applySnapshot(snap: any) {
   if (!snap) return;
+  const oldTrackId = currentTrack.value?.id;
   currentTrack.value = snap.track || null;
   mediaDetail.value = snap.mediaDetail || null;
   isPlaying.value = snap.playing || false;
-  if (Date.now() - lastUserToggleTime > 3000) { isLiked.value = snap.liked || false; }
+  // Track changed or initial load: set isLiked from snapshot
+  if (lastUserToggleTime === 0 || (oldTrackId && oldTrackId !== snap.track?.id)) { isLiked.value = snap.liked || false; lastUserToggleTime = 0; }
 console.log('[widget] applySnapshot isLiked:', { liked: snap.liked, isLiked: snap.isLiked, track_liked: snap.track?.liked });
   coverUrl.value = snap.track?.cover_url || '';
   trackTitle.value = snap.track?.name || '';
@@ -141,6 +144,15 @@ onMounted(async () => {
   if (widgetApi?.onDragRegionChanged) {
     cleanupFns.push(widgetApi.onDragRegionChanged((inDrag: boolean) => {
       inDragRegion.value = inDrag;
+    }));
+  }
+
+  // Subscribe to like status changes (dedicated IPC, bypasses snapshot guard)
+  if (widgetApi?.onLikeStatusChanged) {
+    cleanupFns.push(widgetApi.onLikeStatusChanged((liked: boolean) => {
+      isLiked.value = liked; console.log('[widget] liked from IPC:', { liked, track: currentTrack.value?.name });
+      lastUserToggleTime = Date.now();
+      likePending.value = false;
     }));
   }
 
@@ -191,8 +203,17 @@ onUnmounted(() => {
 });
 function sendCmd(cmd: any) { widgetApi?.sendCommand?.(cmd); }
 function onDragHandlerMouseDown() { widgetApi?.startDrag?.(); }
-function toggleCollect() { isLiked.value = !isLiked.value; lastUserToggleTime = Date.now(); widgetApi?.sendCommand?.({ type: 'toggleLike' }); }
+function toggleCollect() {
+    if (likePending.value) return;
+    likePending.value = true;
+    isLiked.value = !isLiked.value;
+    lastUserToggleTime = Date.now();
+    widgetApi?.sendCommand?.({ type: 'toggleLike' });
+    setTimeout(() => { likePending.value = false; }, 5000);
+  }
 </script>
+
+
 
 
 

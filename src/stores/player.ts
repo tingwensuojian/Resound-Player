@@ -166,6 +166,8 @@ let _activeLocalObjectUrl = '';
 
 
 
+
+
 export function getTrackPlaybackKey(track?: Track | null) {
 
 
@@ -646,6 +648,7 @@ export const usePlayerStore = defineStore('player', () => {
     const runtime = getRuntime();
 
 
+    // Sync all state to runtime for downstream consumers
     runtime.state.currentTrack = cloneTrack(state.currentTrack) as any;
 
 
@@ -700,9 +703,25 @@ export const usePlayerStore = defineStore('player', () => {
     runtime.state.qualityDowngradeInfo = state.qualityDowngradeInfo;
 
 
+    // Cross-reference liked state against userStore.likedSongIds on every call
+    if (state.currentTrack?.id && userStore.state.likedSongIds && userStore.state.isLogin) {
+      var trackId = Number(state.currentTrack.id);
+      if (trackId > 0) {
+        var isLiked = userStore.state.likedSongIds.includes(trackId);
+        if (state.currentTrack.liked !== isLiked) {
+          state.currentTrack.liked = isLiked;
+          state.currentTrack.isLiked = isLiked;
+          console.log('[syncRuntimeState] cross-ref liked:', { trackId: trackId, isLiked: isLiked });
+          if (runtime.state.currentTrack) {
+            runtime.state.currentTrack.liked = isLiked;
+            runtime.state.currentTrack.isLiked = isLiked;
+          }
+        }
+      }
+    }
+
+
     runtime.notify();
-
-
   }
 
 
@@ -954,6 +973,18 @@ export const usePlayerStore = defineStore('player', () => {
 
           console.log('[player] toggleLike result:', { liked: _track.liked, isLiked: _track.isLiked, id: _track.id });
 
+
+          // Sync to runtime state so widget snapshot carries the correct liked value
+          try {
+            const runtime = getRuntime();
+            if (runtime.state.currentTrack) {
+              runtime.state.currentTrack.liked = _next;
+              runtime.state.currentTrack.isLiked = _next;
+            }
+          } catch (e) {}
+
+          // Notify taskbar widget via dedicated IPC
+          try { window.appEnv?.taskbarWidget?.notifyLikeStatus?.(_next); } catch (e) {}
 
           syncRuntimeState();
 

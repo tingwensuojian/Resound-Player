@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld('appEnv', {
     setItem: (data) => ipcRenderer.invoke('cache:set', data),
     clear: () => ipcRenderer.invoke('cache:clear'),
   },
-  // ── 内置 unblock 匹配桥 ──
+  // ── 内置 unblock 匹配�?──
   unblockBridge: {
     matchSong: (id, sources) => {
       const safeId = Number(id) || 0;
@@ -70,7 +70,7 @@ contextBridge.exposeInMainWorld('appEnv', {
       return () => ipcRenderer.removeListener('desktop-lyric:config-changed', handler);
     },
   },
-    // ── 任务栏播控 API ──
+    // ── 任务栏播�?API ──
   taskbarWidget: {
     getConfig: () => ipcRenderer.invoke('taskbar-widget:get-config'),
     setConfig: (cfg) => ipcRenderer.invoke('taskbar-widget:set-config', cfg),
@@ -79,7 +79,8 @@ contextBridge.exposeInMainWorld('appEnv', {
       const handler = (_e, config) => cb(config);
       ipcRenderer.on('taskbar-widget:config-changed', handler);
       return () => ipcRenderer.removeListener('taskbar-widget:config-changed', handler);
-    },
+  },
+  notifyLikeStatus: (liked) => ipcRenderer.send('taskbar-widget:like-status', liked),
   },
   // ── 迷你模式 API ──
   miniMode: {
@@ -185,11 +186,11 @@ contextBridge.exposeInMainWorld('localApi', {
   getStats: () => ipcRenderer.invoke('local:get-stats'),
 });
 
-// ── 窗口控制：通过主进程 page-title-updated 事件实现 ──
+// ── 窗口控制：通过主进�?page-title-updated 事件实现 ──
 // 最小化/最大化通过 document.title 触发 page-title-updated 事件
-// 关闭使用原生 window.close()（Electron 会将其转为 BrowserWindow.close()）
+// 关闭使用原生 window.close()（Electron 会将其转�?BrowserWindow.close()�?
 
-// 主进程广播最大化状态 → data-win-maximized 渲染进程通过 MutationObserver 获取
+// 主进程广播最大化状�?�?data-win-maximized 渲染进程通过 MutationObserver 获取
 ipcRenderer.on('win-state-change', (_event, maximized) => {
   if (maximized) {
     document.documentElement.dataset.winMaximized = '';
@@ -206,7 +207,7 @@ ipcRenderer.on('win-fullscreen-change', (_event, fullscreen) => {
   }
 });
 
-// ── 系统托盘动作 → 自定义 DOM 事件 ──
+// ── 系统托盘动作 �?自定�?DOM 事件 ──
 // 渲染进程通过 document.addEventListener('tray-action', handler) 监听
 ipcRenderer.on('tray:play-pause', () => {
   document.dispatchEvent(new CustomEvent('tray-action', { detail: 'togglePlay' }));
@@ -222,13 +223,14 @@ ipcRenderer.on('tray-action', (_event, action) => {
   document.dispatchEvent(new CustomEvent('tray-action', { detail: action }));
 });
 
-// ── 迷你模式状态变更 → 自定义 DOM 事件 ──
+// ── 迷你模式状态变�?�?自定�?DOM 事件 ──
 ipcRenderer.on('mini-mode:state-change', (_event, isMini) => {
   document.dispatchEvent(new CustomEvent('mini-mode-state', { detail: isMini, bubbles: true }));
 });
 
-// 标记桌面端及平台，供 CSS 选择器控制平台专属 UI 显隐
+// 标记桌面端及平台，供 CSS 选择器控制平台专�?UI 显隐
 document.addEventListener('DOMContentLoaded', () => {
   document.documentElement.classList.add('resound-desktop');
   document.documentElement.dataset.platform = process.platform;
 });
+

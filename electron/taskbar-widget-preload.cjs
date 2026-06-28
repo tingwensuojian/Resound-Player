@@ -51,6 +51,12 @@ contextBridge.exposeInMainWorld('widgetEnv', {
     },
 
     // Drag region state
+    onLikeStatusChanged: (cb) => {
+      const handler = (_e, liked) => cb(liked);
+      ipcRenderer.on('taskbar-widget:like-status', handler);
+      return () => ipcRenderer.removeListener('taskbar-widget:like-status', handler);
+    },
+
     onDragRegionChanged: (cb) => {
       const handler = (_e, inDragRegion) => cb(inDragRegion);
       ipcRenderer.on('taskbar-widget:drag-region-changed', handler);
@@ -64,5 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.documentElement.dataset.platform = process.platform;
   document.documentElement.dataset.windowRole = 'taskbarWidget';
 });
+
+
 
 
