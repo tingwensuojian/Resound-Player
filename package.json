@@ -107,7 +107,8 @@
       "!**/.vscode/**",
       "!**/.github/**",
       "!**/test/**",
-      "!**/tests/**"
+      "!**/tests/**",
+      "native/**/*"
     ],
     "asar": true,
     "asarUnpack": [
@@ -116,7 +117,8 @@
       "node_modules/.pnpm/@unblockneteasemusic+server@*/**/*",
       "node_modules/@unblockneteasemusic/**/*",
       "node_modules/.pnpm/@neteasecloudmusicapienhanced+unblockmusic-utils@*/**/*",
-      "node_modules/@neteasecloudmusicapienhanced/**/*"
+      "node_modules/@neteasecloudmusicapienhanced/**/*",
+      "native/**/*.node"
     ],
     "extraResources": [
       {
