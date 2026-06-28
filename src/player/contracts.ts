@@ -74,4 +74,5 @@ export type PlaybackSnapshot = {
   currentQualityDowngraded: boolean;
   qualityDowngradeInfo: QualityDowngradeInfo | null;
   lastError: string | null;
+  fullLyrics: { time: number; text: string; words: { text: string; startTime: number; duration: number; space?: boolean }[] }[];
 };

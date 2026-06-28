@@ -139,6 +139,7 @@ export const usePlayerStore = defineStore('player', () => {
   currentTrack: null as Track | null,
   currentSongId: 0,
   miniLyricText: '',
+  fullLyrics: [] as { time: number; text: string; words: { text: string; startTime: number; duration: number; space?: boolean }[] }[],
   currentQualityBr: 0,
   currentQualityLabel: '',
   currentQualityDowngraded: false,
@@ -217,6 +218,7 @@ export const usePlayerStore = defineStore('player', () => {
     runtime.state.playlist = state.playlist.map((track) => cloneTrack(track) as any);
     runtime.state.currentIndex = state.currentIndex;
     runtime.state.miniLyricText = state.miniLyricText;
+    runtime.state.fullLyrics = state.fullLyrics;
     runtime.state.isPlaying = state.isPlaying;
     runtime.state.currentTime = state.currentTime;
     runtime.state.duration = state.duration;
@@ -239,6 +241,12 @@ export const usePlayerStore = defineStore('player', () => {
     if (state.miniLyricText === nextText) return;
     state.miniLyricText = nextText;
     syncRuntimeState();
+  }
+
+  function setFullLyrics(lyrics: { time: number; text: string; words: { text: string; startTime: number; duration: number; space?: boolean }[] }[]) {
+    if (isMiniWindow()) return;
+    state.fullLyrics = lyrics;
+    try { syncRuntimeState(); } catch {}
   }
 
   async function executeHostCommand(command: PlaybackCommand) {
@@ -909,6 +917,26 @@ export const usePlayerStore = defineStore('player', () => {
     return -1;
   }
 
+  /**
+   * 异步加载本地歌曲封面（data URL）并更新到 currentTrack.al.picUrl，
+   * 触发 syncRuntimeState() 使任务栏播控等跨进程组件能正确显示封面。
+   * 仅在桌面端通过 IPC 读取嵌入封面或目录封面文件。
+   */
+  async function loadLocalTrackCoverAsync(track: Track) {
+    if (!platform.localApi || track.source !== 'local' || !track.path) return;
+    try {
+      const coverDataUrl = await platform.localApi.getCover(track.path);
+      if (!coverDataUrl) return;
+      if (!isSamePlaybackResource(track, state.currentTrack) || !state.currentTrack) return;
+      state.currentTrack.al = {
+        ...(state.currentTrack.al || {}),
+        picUrl: coverDataUrl,
+        name: state.currentTrack.al?.name || '',
+      };
+      syncRuntimeState();
+    } catch {}
+  }
+
   async function playTrack(track: Track, seekToOrOptions?: number | PlayTrackOptions, maybeOptions?: PlayTrackOptions) {
     const { seekTo, options } = parsePlayTrackArgs(seekToOrOptions, maybeOptions);
     const reason: PlayReason = options.reason || (isSamePlaybackResource(track, state.currentTrack) ? 'reload-source' : 'switch-track');
@@ -1006,7 +1034,9 @@ export const usePlayerStore = defineStore('player', () => {
           rollbackPlaybackTransaction(previous, requestSeq, reason);
           return false;
         }
-        return commitPlaybackTransaction({ track, index: targetIndex, requestSeq, reason, sourceInfo });
+        const committed = commitPlaybackTransaction({ track, index: targetIndex, requestSeq, reason, sourceInfo });
+        loadLocalTrackCoverAsync(track).catch(() => {});
+        return committed;
       }
 
       // URL 决议：fee 探测 → 音质选择 → 缓存 → unblock → 降级检测 → 代理回退
@@ -1501,6 +1531,6 @@ export const usePlayerStore = defineStore('player', () => {
     setPlaybackRate, setDefaultPlaybackRate, setCurrentSource, setDefaultQuality,
     adjustLyricsOffset, resetLyricsOffset,
     openExpanded, closeExpanded, toggleExpanded,
-    seek, pausePlayback, syncThemeState, recordCurrentTrackToHistory, setMiniLyricText,
+    seek, pausePlayback, syncThemeState, recordCurrentTrackToHistory, setFullLyrics, setMiniLyricText,
   };
 });

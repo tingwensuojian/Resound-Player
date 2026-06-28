@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AnimatedAppear tag="div" variant="content" rhythm="shell" class-name="home-page">
 
     <AnimatedAppear tag="section" variant="content" rhythm="head" class-name="home-top-reco">
@@ -209,7 +209,7 @@
       >
         <template v-if="topArtists.length">
           <button v-for="artist in topArtists" :key="artist.id" class="artist-chip" @click="openArtistDetail(artist)">
-            <span class="artist-avatar hover-scale-image" :style="{ backgroundImage: `url(${artist.picUrl || artist.img1v1Url || ''})` }"></span>
+            <span class="artist-avatar hover-scale-image" :style="{ backgroundImage: `url(${resolveSizedImageUrl(artist.picUrl || artist.img1v1Url, 220)})` }"></span>
             <span class="artist-name">{{ artist.name }}</span>
           </button>
           <span
@@ -596,6 +596,7 @@ import { useBgLoaded } from '../composables/useBgLoaded';
 import { apiCache } from '../stores/apiCache';
 import { getArtistDetail, getPersonalFm, getPlaylistDetail, getRecommendPlaylists, getRecommendSongs, getNewestAlbums, getTopAlbums, getTopArtists, getTopSongs, searchMusic, getAllMvs, getDjRecommend, setPersonalFmMode } from '../api/music';
 import { getUserCreatedPlaylist } from '../api/auth';
+import { resolveSizedImageUrl } from '../utils/image';
 import { usePlayerStore } from '../stores/player'
 const playerStore = usePlayerStore();
 import { useUiStore } from '../stores/ui';

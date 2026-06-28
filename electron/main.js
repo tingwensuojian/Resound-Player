@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
+import { init as initTaskbarWidget, registerIpc as registerTaskbarWidgetIpc, enable as enableTaskbarWidget, disable as disableTaskbarWidget, getConfig as getTaskbarWidgetConfig, updatePlaybackSnapshot as updateTaskbarWidgetSnapshot } from './services/taskbarWidgetService.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,24 +17,6 @@ import { initNativeUnblockMatch, isNativeUnblockMatchReady, nativeUnblockMatchSo
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const mainLogFile = path.join(os.tmpdir(), 'resound-player-main.log');
-const WINDOWS_APP_ID = 'com.resound.player';
-
-function getWindowIconPath() {
-  if (process.platform === 'win32' && app.isPackaged && process.resourcesPath) {
-    return path.join(process.resourcesPath, 'icon.ico');
-  }
-  return path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
-}
-
-function applyWindowsTaskbarDetails(targetWindow, iconPath) {
-  if (process.platform !== 'win32' || !targetWindow || targetWindow.isDestroyed()) return;
-  targetWindow.setAppDetails({
-    appId: WINDOWS_APP_ID,
-    appIconPath: iconPath,
-    relaunchDisplayName: 'Resound-Player',
-    relaunchCommand: `"${process.execPath}"`,
-  });
-}
 
 function writeMainLog(...parts) {
   const line = `[${new Date().toISOString()}] ${parts.map((part) => {
@@ -55,10 +38,6 @@ writeMainLog('[module-load]', {
   resourcesPath: process.resourcesPath,
   argv: process.argv,
 });
-
-if (process.platform === 'win32') {
-  app.setAppUserModelId(WINDOWS_APP_ID);
-}
 
 app.commandLine.appendSwitch('no-sandbox');
 
@@ -166,10 +145,6 @@ let miniWin = null;
 let currentServicePorts = {};
 let latestPlaybackSnapshot = null;
 
-const MINI_WINDOW_WIDTH = process.platform === 'win32' ? 380 : 340;
-const MINI_BAR_HEIGHT = 70;
-const MINI_MAX_HEIGHT = 500;
-
 function isWindowFullscreen() {
   if (!win || win.isDestroyed()) return false;
   if (process.platform === 'darwin') return win.isSimpleFullScreen();
@@ -248,55 +223,15 @@ function enterMiniMode(alwaysOnTop = false) {
   function openMiniWindow() {
     const targetMiniWin = createMiniWindow(currentServicePorts);
     applyMiniAlwaysOnTopToWindow(targetMiniWin, !!alwaysOnTop);
-
-    let electronReady = targetMiniWin.isVisible();
-    let rendererReady = false;
-    let miniShown = false;
-    let fallbackTimer = null;
-
-    const cleanupMiniShowGate = () => {
-      ipcMain.removeListener('mini-mode:renderer-ready', onMiniRendererReady);
-      if (fallbackTimer) {
-        clearTimeout(fallbackTimer);
-        fallbackTimer = null;
-      }
-    };
-
-    const showMiniWindowWhenStable = () => {
-      if (miniShown || !electronReady || !rendererReady) return;
-      if (!win || win.isDestroyed() || targetMiniWin.isDestroyed()) return;
-      miniShown = true;
-      cleanupMiniShowGate();
+    targetMiniWin.once('ready-to-show', () => {
       targetMiniWin.show();
       targetMiniWin.focus();
       targetMiniWin.webContents.send('mini-mode:state-change', true);
-      win.hide();
-      win.webContents.send('mini-mode:state-change', true);
-      setTrayMenu(win);
-    };
-
-    function onMiniRendererReady(event) {
-      if (event.sender !== targetMiniWin.webContents) return;
-      rendererReady = true;
-      showMiniWindowWhenStable();
-    }
-
-    ipcMain.on('mini-mode:renderer-ready', onMiniRendererReady);
-
-    targetMiniWin.once('ready-to-show', () => {
-      electronReady = true;
-      showMiniWindowWhenStable();
     });
-    targetMiniWin.once('closed', cleanupMiniShowGate);
     if (targetMiniWin.isVisible()) targetMiniWin.focus();
-
-    fallbackTimer = setTimeout(() => {
-      if (miniShown) return;
-      console.warn('[mini-mode] renderer did not report first-frame readiness; cancelling mini mode');
-      cleanupMiniShowGate();
-      restoreMainWindowFromMiniMode();
-      setTrayMenu(win);
-    }, 3000);
+    win.hide();
+    win.webContents.send('mini-mode:state-change', true);
+    setTrayMenu(win);
   }
 
   if (win.isFullScreen()) {
@@ -441,7 +376,8 @@ async function createMainWindow(ports) {
   ];
 
   const isMac = process.platform === 'darwin';
-  const iconPath = getWindowIconPath();
+
+  const iconPath = path.join(__dirname, '..', 'build', isMac ? 'icon.png' : 'icon.png');
 
   win = new BrowserWindow({
     width: 1280,
@@ -467,7 +403,6 @@ async function createMainWindow(ports) {
       additionalArguments: portArgs,
     },
   });
-  applyWindowsTaskbarDetails(win, iconPath);
 
   // 内容准备就绪后再显示窗口，避免 resize 时因 GPU 效果滞后导致卡顿
   win.once('ready-to-show', () => {
@@ -536,22 +471,18 @@ async function createMainWindow(ports) {
   }
 }
 
-function getMiniWindowContentBounds(height = MINI_BAR_HEIGHT) {
+function getMiniWindowBounds() {
   const display = screen.getPrimaryDisplay();
   const { width: screenWidth } = display.workAreaSize;
-  const clampedHeight = Math.max(MINI_BAR_HEIGHT, Math.min(Math.round(height), MINI_MAX_HEIGHT));
+  const miniWidth = 340;
+  const miniHeight = 70;
+  const margin = 20;
   return {
-    x: screenWidth - MINI_WINDOW_WIDTH - 20,
-    y: 20,
-    width: MINI_WINDOW_WIDTH,
-    height: clampedHeight,
+    x: screenWidth - miniWidth - margin,
+    y: margin,
+    width: miniWidth,
+    height: miniHeight,
   };
-}
-
-function setMiniWindowContentBounds(height) {
-  if (!miniWin || miniWin.isDestroyed()) return;
-  const bounds = getMiniWindowContentBounds(height);
-  miniWin.setContentBounds(bounds);
 }
 
 function createMiniWindow(ports) {
@@ -562,21 +493,21 @@ function createMiniWindow(ports) {
     `--service-ports=${JSON.stringify(ports)}`,
     '--window-role=mini',
   ];
-  const contentBounds = getMiniWindowContentBounds();
+  const bounds = getMiniWindowBounds();
   const isMac = process.platform === 'darwin';
 
   miniWin = new BrowserWindow({
-    ...contentBounds,
-    minHeight: MINI_BAR_HEIGHT,
-    maxHeight: MINI_MAX_HEIGHT,
+    ...bounds,
+    minWidth: 340,
+    minHeight: 70,
+    maxWidth: 340,
+    maxHeight: 500,
     resizable: false,
     show: false,
     frame: false,
-    useContentSize: true,
     titleBarStyle: isMac ? 'hidden' : undefined,
     trafficLightPosition: isMac ? { x: -100, y: -100 } : undefined,
     backgroundColor: '#1a1a2e',
-    icon: getWindowIconPath(),
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -585,10 +516,6 @@ function createMiniWindow(ports) {
       additionalArguments: portArgs,
     },
   });
-  // Keep the initial mini window geometry on the same content-bounds basis
-  // as later playlist expand/collapse resizes.
-  miniWin.setContentBounds(contentBounds);
-  applyWindowsTaskbarDetails(miniWin, getWindowIconPath());
 
   miniWin.on('closed', () => {
     miniWin = null;
@@ -615,10 +542,9 @@ async function createErrorWindow(errorMessage) {
     width: 600,
     height: 500,
     resizable: false,
-    icon: getWindowIconPath(),
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
-  applyWindowsTaskbarDetails(errorWin, getWindowIconPath());
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>启动失败</title>
@@ -642,6 +568,8 @@ p{color:rgba(255,255,255,0.65);line-height:1.6;font-size:14px}
 
 async function bootstrap() {
   writeMainLog('[bootstrap] start');
+  initTaskbarWidget();
+  registerTaskbarWidgetIpc();
   console.log('[main] 应用启动中...');
   console.log('[main] 平台:', process.platform, 'cwd:', process.cwd());
 
@@ -852,11 +780,13 @@ ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
 
 ipcMain.on('mini-mode:resize', (_event, height) => {
   if (!miniWin || miniWin.isDestroyed()) return;
-  setMiniWindowContentBounds(height);
+  const clampedHeight = Math.max(70, Math.min(height, 500));
+  miniWin.setSize(340, clampedHeight);
 });
 
 ipcMain.on('playback:publish-state', (_event, snapshot) => {
   latestPlaybackSnapshot = snapshot;
+  updateTaskbarWidgetSnapshot(snapshot);
   if (miniWin && !miniWin.isDestroyed()) {
     miniWin.webContents.send('playback:state', snapshot);
   }

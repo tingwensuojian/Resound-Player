@@ -19,6 +19,7 @@ export type RuntimeState = {
   currentQualityDowngraded: boolean;
   qualityDowngradeInfo: QualityDowngradeInfo | null;
   lastError: string | null;
+  fullLyrics: { time: number; text: string; words: { text: string; startTime: number; duration: number; space?: boolean }[] }[];
 };
 
 export function createInitialRuntimeState(): RuntimeState {
@@ -41,6 +42,7 @@ export function createInitialRuntimeState(): RuntimeState {
     currentQualityDowngraded: false,
     qualityDowngradeInfo: null,
     lastError: null,
+    fullLyrics: [],
   };
 }
 
@@ -88,5 +90,19 @@ export function toPlaybackSnapshot(state: RuntimeState): PlaybackSnapshot {
     currentQualityDowngraded: state.currentQualityDowngraded,
     qualityDowngradeInfo: state.qualityDowngradeInfo,
     lastError: state.lastError,
+    fullLyrics: Array.isArray(state.fullLyrics)
+      ? state.fullLyrics.map(l => ({
+          time: Number(l?.time || 0),
+          text: String(l?.text || ''),
+          words: Array.isArray(l?.words)
+            ? l.words.map(w => ({
+                text: String(w?.text || ''),
+                startTime: Number(w?.startTime || 0),
+                duration: Number(w?.duration || 0),
+                space: Boolean(w?.space),
+              }))
+            : [],
+        }))
+      : [],
   };
 }

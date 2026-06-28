@@ -44,7 +44,12 @@
 
           <div class="right">
             <div v-if="item.type === 'switch'" class="control-slot switch-slot">
-              <FancySwitch v-model="switchState[item.key]" />
+              <FancySwitch
+                v-if="item.key === 'taskbarWidgetEnabled'"
+                :model-value="switchState.taskbarWidgetEnabled"
+                @update:model-value="setTaskbarWidgetEnabled"
+              />
+              <FancySwitch v-else v-model="switchState[item.key]" />
             </div>
 
             <div v-else-if="item.type === 'source-order'" class="source-order-wrap">
@@ -570,6 +575,7 @@ const groupsMap: Record<string, SettingGroup[]> = {
         { key: 'desktopLyricHighlightColor', label: '高亮颜色', desc: '当前播放歌词的颜色', type: 'action' },
         { key: 'desktopLyricTextColor', label: '未播放颜色', desc: '未播放歌词的文字颜色', type: 'action' },
         { key: 'desktopLyricAlwaysShowBg', label: '始终显示背景', desc: '开启后桌面歌词始终显示毛玻璃背景（锁定状态除外）', type: 'switch' },
+        { key: 'taskbarWidgetEnabled', label: '启用任务栏播控', desc: '在 Windows 任务栏上方显示迷你播控组件', type: 'switch' },
       ],
     },
   ],
@@ -780,6 +786,10 @@ const currentGroups = computed(() => {
         if (['desktopLyricEnabled', 'desktopLyricMode', 'desktopLyricFontSize', 'desktopLyricHighlightColor', 'desktopLyricTextColor', 'desktopLyricAlwaysShowBg'].includes(item.key) && !platform.isDesktop) {
           return false;
         }
+        // 任务栏播控：仅 Windows 桌面端可见
+        if (['taskbarWidgetEnabled'].includes(item.key) && !(platform.isDesktop && platform.isWindows)) {
+          return false;
+        }
         // 桌面歌词子选项仅在启用时可见
         if (['desktopLyricMode', 'desktopLyricFontSize', 'desktopLyricHighlightColor', 'desktopLyricTextColor', 'desktopLyricAlwaysShowBg'].includes(item.key) && !switchState.desktopLyricEnabled) {
           return false;
@@ -802,6 +812,7 @@ const switchState = reactive<Record<string, boolean>>({
   trayLyricEnabled: false, // 实际值从主进程加载
   desktopLyricEnabled: false, // 实际值从主进程加载
   desktopLyricAlwaysShowBg: false, // 实际值从主进程加载
+  taskbarWidgetEnabled: false, // 实际值从主进程加载
 });
 
 const selectState = reactive<Record<string, string>>({
@@ -1218,6 +1229,58 @@ watch(() => switchState.desktopLyricAlwaysShowBg, (alwaysShowBg) => {
 onUnmounted(() => {
   cleanupDesktopLyricListener?.();
 });
+
+
+// ──────── 任务栏播控设置（仅 Windows 桌面端） ────────
+let cleanupTaskbarWidgetListener: (() => void) | null = null;
+let isApplyingTaskbarWidgetConfig = false;
+let isTaskbarWidgetConfigReady = false;
+
+function applyTaskbarWidgetEnabledFromConfig(enabled: boolean) {
+  isApplyingTaskbarWidgetConfig = true;
+  switchState.taskbarWidgetEnabled = Boolean(enabled);
+  queueMicrotask(() => {
+    isApplyingTaskbarWidgetConfig = false;
+    isTaskbarWidgetConfigReady = true;
+  });
+}
+
+onMounted(async () => {
+  if (!platform.isDesktop || !platform.isWindows || !window.appEnv?.taskbarWidget) return;
+  try {
+    const config = await window.appEnv.taskbarWidget.getConfig();
+    // 仅在用户未操作过开关时才设置初始值，避免 getConfig() 异步返回覆盖用户操作
+    applyTaskbarWidgetEnabledFromConfig(config.enabled);
+  } catch (e) {
+    isTaskbarWidgetConfigReady = true;
+    console.warn('[settings] 加载任务栏播控配置失败:', e);
+  }
+  cleanupTaskbarWidgetListener = window.appEnv.taskbarWidget.onConfigChanged((config: any) => {
+    console.log('[settings] taskbar onConfigChanged fired:', JSON.stringify(config));
+    applyTaskbarWidgetEnabledFromConfig(config.enabled);
+  });
+});
+onUnmounted(() => {
+  if (cleanupTaskbarWidgetListener) {
+    cleanupTaskbarWidgetListener();
+    cleanupTaskbarWidgetListener = null;
+  }
+});
+
+function setTaskbarWidgetEnabled(enabled: boolean) {
+  if (!platform.isDesktop || !platform.isWindows || !window.appEnv?.taskbarWidget) return;
+  const nextEnabled = Boolean(enabled);
+  if (!isTaskbarWidgetConfigReady || isApplyingTaskbarWidgetConfig) {
+    switchState.taskbarWidgetEnabled = nextEnabled;
+    return;
+  }
+  if (switchState.taskbarWidgetEnabled === nextEnabled) return;
+  switchState.taskbarWidgetEnabled = nextEnabled;
+  console.log('[settings] taskbarWidgetEnabled user changed to:', enabled);
+  window.appEnv.taskbarWidget.setEnabled(nextEnabled).catch((e: any) => {
+    console.warn('[settings] 任务栏播控配置失败:', e);
+  });
+}
 
 function showLogoutMessage(message: string) {
   logoutMessage.value = message;

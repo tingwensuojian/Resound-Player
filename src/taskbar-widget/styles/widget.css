@@ -1,0 +1,243 @@
+﻿/* Soda Music exact widget styles */
+:root {
+  font-family: MiSans, -apple-system, BlinkMacSystemFont, Helvetica, PingFang SC, Arial, Avenir, Inter, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: #ffffffd9;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  -webkit-user-select: none;
+  user-select: none;
+}
+* { box-sizing: border-box; }
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── wrapper ── */
+.wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  container-type: inline-size;
+  color-scheme: light;
+}
+.wrapper[data-theme=dark] { color-scheme: dark; }
+
+.container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding-inline: 22px 12px;
+  display: flex;
+  border-radius: 8px;
+  border: 0.5px solid transparent;
+  transition-property: border-color, background-color;
+  transition-duration: 0.1s;
+  transition-timing-function: ease-out;
+}
+/* Hover state */
+.wrapper[data-hover] .container {
+  border-color: light-dark(rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+  background-color: light-dark(rgba(255,255,255,0.3), rgba(255,255,255,0.04));
+}
+/* Free (dragged out) state */
+.wrapper[data-widget-state=free] .container {
+  border-color: light-dark(rgba(0,0,0,0.08), rgba(255,255,255,0.12));
+  background-color: light-dark(rgba(255,255,255,0.9), rgba(0,0,0,0.7));
+}
+
+/* ── Drag handler ── */
+.drag-handler-wrapper {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: drag;
+  opacity: 0;
+  transition: opacity 0.1s ease-out;
+}
+.wrapper[data-hover] .drag-handler-wrapper,
+.wrapper[data-widget-state=free] .drag-handler-wrapper {
+  opacity: 1;
+}
+.drag-handler-wrapper .drag-handler {
+  width: 2px;
+  height: 16px;
+  border-radius: 9999px;
+  background: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.12));
+  transition: background 0.1s ease-out;
+}
+.wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler,
+.wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler.highlighted {
+  background: light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.5));
+}
+
+/* ── Cover ── */
+.cover-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cover {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: light-dark(rgba(0,0,0,0.08), rgba(255,255,255,0.1));
+  color: light-dark(rgba(0,0,0,0.18), rgba(255,255,255,0.2));
+}
+.cover-placeholder svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Main info area ── */
+.main-wrapper {
+  position: relative;
+  display: flex;
+  margin-left: 10px;
+  align-items: center;
+}
+/* Lyric display area */
+.info-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-height: 32px;
+  transition: opacity 0.1s ease-out;
+  width: 128px;
+  overflow: hidden;
+}
+/* When docked variant: hide info on hover to reveal actions */
+.wrapper[data-hover] .info-wrapper {
+  opacity: 0;
+  pointer-events: none;
+}
+.title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.title-wrapper .title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+  color: light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.5));
+}
+
+/* ── Action buttons (prev/play/next) ── */
+.action-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: opacity 0.1s ease-out;
+}
+/* In docked mode, actions overlay on info area, hidden by default */
+.action-wrapper {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.wrapper[data-hover] .action-wrapper {
+  opacity: 1;
+  pointer-events: auto;
+}
+.action-btn {
+  height: 32px;
+  width: 32px;
+  border: none;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: light-dark(rgba(0,0,0,0.7), rgba(255,255,255,0.7));
+  cursor: pointer;
+}
+.action-btn:hover {
+  color: light-dark(#000, #fff);
+}
+.action-btn--playback {
+  width: 48px;
+  border-radius: 9999px;
+  background: light-dark(rgba(0,0,0,0.07), rgba(255,255,255,0.07));
+}
+.action-btn--playback:hover {
+  background: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.12));
+}
+
+/* ── Collect (heart) button ── */
+.side-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 12px;
+}
+.heart-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: light-dark(rgba(0,0,0,0.7), rgba(255,255,255,0.7));
+  font-size: 16px;
+  line-height: 1;
+}
+.heart-icon:hover {
+  color: light-dark(#000, #fff);
+}
+.heart-icon.heart--filled,
+.heart-icon.heart--filled:hover {
+  color: #e0214f;
+}
+
+/* ── Close button ── */
+.close-wrapper {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  color: light-dark(rgba(0,0,0,0.2), rgba(255,255,255,0.2));
+  opacity: 0;
+  transition: opacity 0.1s ease-out;
+}
+.wrapper[data-hover] .close-wrapper {
+  opacity: 1;
+}
+.close-wrapper:hover {
+  color: light-dark(rgba(0,0,0,0.5), rgb(255,255,255));
+}

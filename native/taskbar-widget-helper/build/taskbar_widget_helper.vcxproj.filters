@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:">
+      <UniqueIdentifier>{7B735499-E5DD-1C2B-6C26-70023832A1CF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users">
+      <UniqueIdentifier>{E9F714C1-DA89-54E2-60CF-39FEB20BF756}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402">
+      <UniqueIdentifier>{ECE4C32B-166D-F81F-90E3-DC82D7E3F671}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents">
+      <UniqueIdentifier>{87566BA0-CA33-1144-65F5-087C5F9D6C20}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents\Codex">
+      <UniqueIdentifier>{67EAF6FE-354E-F520-ED6C-A88323D7113A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents\Codex\2026-06-10">
+      <UniqueIdentifier>{EA061CC2-191A-7F98-0B04-D2C84D84C7FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents\Codex\2026-06-10\sangxuesheng-resound-player-https-github-com">
+      <UniqueIdentifier>{723BD4F9-C06B-142C-EE4C-7BDAC1688500}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents\Codex\2026-06-10\sangxuesheng-resound-player-https-github-com\work">
+      <UniqueIdentifier>{EFEBE0F3-2E6F-3637-C9D3-A35776D0BB46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents\Codex\2026-06-10\sangxuesheng-resound-player-https-github-com\work\node_modules">
+      <UniqueIdentifier>{56DF7A98-063D-FB9D-485C-089023B4C16A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents\Codex\2026-06-10\sangxuesheng-resound-player-https-github-com\work\node_modules\node-gyp">
+      <UniqueIdentifier>{77348C0E-2034-7791-74D5-63C077DF5A3B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C:\Users\93402\Documents\Codex\2026-06-10\sangxuesheng-resound-player-https-github-com\work\node_modules\node-gyp\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\addon.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\module.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\window_utils.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tracker.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\drag_helper.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\hover_helper.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\preview_helper.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\theme_monitor.cc">
+      <Filter>..\src</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\93402\Documents\Codex\2026-06-10\sangxuesheng-resound-player-https-github-com\work\node_modules\node-gyp\src\win_delay_load_hook.cc">
+      <Filter>C:\Users\93402\Documents\Codex\2026-06-10\sangxuesheng-resound-player-https-github-com\work\node_modules\node-gyp\src</Filter>
+    </ClCompile>
+    <None Include="..\binding.gyp">
+      <Filter>..</Filter>
+    </None>
+  </ItemGroup>
+</Project>

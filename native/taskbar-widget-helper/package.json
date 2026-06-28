@@ -1,0 +1,13 @@
+{
+  "name": "taskbar-widget-helper",
+  "version": "1.0.0",
+  "description": "Native Win32 taskbar widget helper for Resound-Player",
+  "main": "build/Release/taskbar_widget_helper.node",
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "build:electron": "node-gyp rebuild --target=42.1.0 --arch=x64 --dist-url=https://electronjs.org/headers"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.9.0"
+  }
+}

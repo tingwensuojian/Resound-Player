@@ -653,6 +653,15 @@ watch(miniLyricText, (text) => {
   playerStore.setMiniLyricText(text);
 }, { immediate: true });
 
+// Sync full lyrics to store for taskbar widget
+watch(lyricLines, (lines) => {
+  playerStore.setFullLyrics(lines.map(l => ({
+    time: l.time,
+    text: l.text || '',
+    words: (l.words || []).map(w => ({ text: w.text || '', startTime: w.startTime, duration: w.duration, space: w.space })),
+  })));
+}, { immediate: true });
+
 const artistText = computed(() => {
   const ar = playerStore.state.currentTrack?.ar || [];
   if (!ar.length) return 'Unknown Artist';

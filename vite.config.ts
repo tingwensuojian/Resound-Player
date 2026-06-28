@@ -82,7 +82,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       allowedHosts: ['192.168.2.2'],
       watch: {
-        ignored: ['**/播放页相关/**'],
+        ignored: ['**/native/taskbar-widget-helper/build/**'],
       },
       proxy: {
         '/api': {
@@ -99,7 +99,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     optimizeDeps: {
-      entries: ['index.html', 'mini.html'],
+      entries: ['index.html', 'mini.html', 'taskbar-widget.html', 'taskbar-widget-shadow.html'],
     },
     define: {
       __APP_VERSION__: JSON.stringify(JSON.parse(readFileSync('./package.json', 'utf-8')).version),
@@ -113,6 +113,8 @@ export default defineConfig(({ mode }) => {
         input: {
           main: path.resolve(process.cwd(), 'index.html'),
           mini: path.resolve(process.cwd(), 'mini.html'),
+          'taskbar-widget': path.resolve(process.cwd(), 'public', 'taskbar-widget.html'),
+          'taskbar-widget-shadow': path.resolve(process.cwd(), 'public', 'taskbar-widget-shadow.html'),
         },
         output: {
           manualChunks: {
@@ -125,3 +127,5 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+
+

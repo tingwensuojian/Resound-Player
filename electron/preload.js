@@ -70,6 +70,17 @@ contextBridge.exposeInMainWorld('appEnv', {
       return () => ipcRenderer.removeListener('desktop-lyric:config-changed', handler);
     },
   },
+    // ── 任务栏播控 API ──
+  taskbarWidget: {
+    getConfig: () => ipcRenderer.invoke('taskbar-widget:get-config'),
+    setConfig: (cfg) => ipcRenderer.invoke('taskbar-widget:set-config', cfg),
+    setEnabled: (enabled) => ipcRenderer.invoke('taskbar-widget:set-enabled', enabled),
+    onConfigChanged: (cb) => {
+      const handler = (_e, config) => cb(config);
+      ipcRenderer.on('taskbar-widget:config-changed', handler);
+      return () => ipcRenderer.removeListener('taskbar-widget:config-changed', handler);
+    },
+  },
   // ── 迷你模式 API ──
   miniMode: {
     enter: (alwaysOnTop) => ipcRenderer.send('mini-mode:enter', alwaysOnTop),
