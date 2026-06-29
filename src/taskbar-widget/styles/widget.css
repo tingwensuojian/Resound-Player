@@ -56,7 +56,7 @@ html, body, #app {
   background-color: light-dark(rgba(255,255,255,0.9), rgba(0,0,0,0.7));
 }
 
-/* Drag handler ¡ª always visible at low opacity */
+/* Drag handler */
 .drag-handler-wrapper {
   position: absolute;
   top: 0;
@@ -66,6 +66,7 @@ html, body, #app {
   display: flex;
   align-items: center;
   justify-content: center;
+  -webkit-app-region: drag;
   opacity: 0.4;
   transition: opacity 0.1s ease-out;
   cursor: grab;
@@ -73,9 +74,7 @@ html, body, #app {
 .wrapper[data-hover] .drag-handler-wrapper {
   opacity: 1;
 }
-.wrapper[data-in-drag-region] .drag-handler-wrapper {
-  cursor: grabbing;
-}
+
 .drag-handler-wrapper .drag-handler {
   width: 2px;
   height: 16px;
@@ -83,9 +82,8 @@ html, body, #app {
   background: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.12));
   transition: background 0.1s ease-out;
 }
-.wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler,
-.wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler.highlighted {
-  background: light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.5));
+.wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler {
+  background: light-dark(#000, #fff);
 }
 
 /* Cover */
@@ -122,7 +120,7 @@ html, body, #app {
   height: 12px;
 }
 
-/* Main info area ¡ª flex:1 to fill remaining space */
+/* Main info area ï¿½ï¿½ flex:1 to fill remaining space */
 .main-wrapper {
   flex: 1;
   display: flex;
@@ -155,7 +153,7 @@ html, body, #app {
   color: light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.5));
 }
 
-/* Action buttons ¡ª always visible */
+/* Action buttons ï¿½ï¿½ always visible */
 .action-wrapper {
   display: flex;
   align-items: center;
@@ -191,7 +189,7 @@ html, body, #app {
   background: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.12));
 }
 
-/* Collect (heart) button ¡ª always visible */
+/* Collect (heart) button ï¿½ï¿½ always visible */
 .side-wrapper {
   display: flex;
   align-items: center;

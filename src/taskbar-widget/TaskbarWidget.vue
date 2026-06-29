@@ -1,10 +1,13 @@
 <template>
   <div
+    ref="wrapperRef"
     class="wrapper"
     :data-theme="isDark ? 'dark' : 'light'"
     :data-widget-state="widgetState"
     :data-hover="isHovering ? '' : undefined"
     :data-in-drag-region="inDragRegion ? '' : undefined"
+    @mousemove="onMouseMove"
+    @mouseleave="onMouseLeave"
   >
     <div class="container">
       <!-- Drag handler (left bar, -webkit-app-region:drag is handled by C++) -->
@@ -77,6 +80,7 @@ const duration = ref(0);
 
 const widgetApi = (window as any).widgetEnv?.widget;
 const playbackApi = (window as any).widgetEnv?.playback;
+const wrapperRef = ref<HTMLElement | null>(null);
 const lyricRef = ref<InstanceType<typeof LyricDisplay> | null>(null);
 
 let cleanupFns: (() => void)[] = [];
@@ -211,6 +215,20 @@ function toggleCollect() {
     widgetApi?.sendCommand?.({ type: 'toggleLike' });
     setTimeout(() => { likePending.value = false; }, 5000);
   }
+// JS mouse-event fallback for hover detection.
+// -webkit-app-region:drag on drag-handler blocks CSS :hover on left 22px.
+let _hoverEnterTime = 0;
+function onMouseMove(event: MouseEvent) {
+  isHovering.value = true;
+  if (wrapperRef.value) {
+    const rect = wrapperRef.value.getBoundingClientRect();
+    inDragRegion.value = (event.clientX - rect.left) < 22;
+  }
+}
+function onMouseLeave() {
+  isHovering.value = false;
+  inDragRegion.value = false;
+}
 </script>
 
 

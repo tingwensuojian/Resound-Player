@@ -9,6 +9,7 @@
         "src/tracker.cc",
         "src/drag_helper.cc",
         "src/hover_helper.cc",
+        "src/hover_detector.cc",
         "src/preview_helper.cc",
         "src/theme_monitor.cc"
       ],

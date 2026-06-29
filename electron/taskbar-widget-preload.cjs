@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+﻿const { contextBridge, ipcRenderer } = require('electron');
 
 const portsArg = process.argv.find((s) => s.startsWith('--service-ports='));
 let ports = { api: 38761, unblockProxy: 38762, unblockMatch: 38763 };
@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('widgetEnv', {
       return () => ipcRenderer.removeListener('taskbar-widget:like-status', handler);
     },
 
+        diagnostic: () => ipcRenderer.invoke('taskbar-widget:diagnostic'),
     onDragRegionChanged: (cb) => {
       const handler = (_e, inDragRegion) => cb(inDragRegion);
       ipcRenderer.on('taskbar-widget:drag-region-changed', handler);

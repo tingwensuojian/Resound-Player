@@ -318,7 +318,7 @@ async function createWidgetWindow() {
       addon.setWidgetStyles(hwndBuf);
       addon.embedInTaskbar(hwndBuf);
       dragHelper = new addon.DragHelper(hwndBuf);
-      hoverHelper = new addon.HoverHelper(hwndBuf);
+      hoverHelper = new addon.HoverDetector(hwndBuf);
       themeMonitor = new addon.ThemeMonitor();
       addon.installPreventHide(hwndBuf);
 
@@ -405,6 +405,13 @@ async function createWidgetWindow() {
         }
       });
 
+            // HOVER DIAGNOSTIC: log if hoverHelper was created successfully
+      console.log('[taskbarWidget] HoverDetector created, checking methods...');
+      if (typeof hoverHelper.isHovering !== 'undefined') {
+        console.log('[taskbarWidget] HoverDetector.isHovering exists');
+      } else {
+        console.warn('[taskbarWidget] HoverDetector.isHovering MISSING - addon may be stale');
+      }
       hoverHelper.onHoverChange(function(isHovering) {
         if (widgetWin && !widgetWin.isDestroyed()) {
           try { widgetWin.webContents.send('taskbar-widget:hover-changed', isHovering); } catch (e) {}
@@ -416,6 +423,21 @@ async function createWidgetWindow() {
           try { widgetWin.webContents.send('taskbar-widget:drag-region-changed', inDragRegion); } catch (e) {}
         }
       });
+
+      // Start position sync for overlay fallback (HoverDetector may need it)
+      if (hoverHelper.syncPosition) {
+        var posSyncTimer = setInterval(function() {
+          if (widgetWin && !widgetWin.isDestroyed() && hoverHelper) {
+            try {
+              var b = widgetWin.getBounds();
+              hoverHelper.syncPosition(Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height));
+            } catch(e) {}
+          } else {
+            clearInterval(posSyncTimer);
+          }
+        }, 50);
+        widgetWin.on('closed', function() { try { clearInterval(posSyncTimer); } catch(e) {} });
+      }
 
       const initialTheme = themeMonitor.getTheme();
       sendThemeToWidget(initialTheme);
@@ -639,12 +661,38 @@ export function registerIpc() {
     updateLikeStatus(liked);
   });
 
+  
+  // DIAGNOSTIC: check hoverHelper state
+  ipcMain.handle('taskbar-widget:diagnostic', function() {
+    var result = {
+      addonLoaded: !!addon,
+      hoverHelperExists: !!hoverHelper,
+      widgetWinExists: !!widgetWin && !widgetWin.isDestroyed(),
+    };
+    if (hoverHelper) {
+      try {
+        result.isHovering = hoverHelper.isHovering;
+        result.isInDragRegion = hoverHelper.isInDragRegion;
+      } catch(e) {
+        result.error = e.message;
+      }
+    }
+    console.log('[taskbarWidget] DIAGNOSTIC:', JSON.stringify(result));
+    return result;
+  });
   ipcMain.handle('taskbar-widget:get-taskbar-info', function() {
     const tb = getTaskbarBounds();
     return { taskbar: tb, layout: null };
   });
 
 }
+
+
+
+
+
+
+// TEST_MARKER
 
 
 
