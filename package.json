@@ -124,6 +124,10 @@
       {
         "from": "build/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "native/taskbar-widget-helper/build/Release/taskbar_widget_helper.node",
+        "to": "native/taskbar-widget-helper/build/Release/taskbar_widget_helper.node"
       }
     ],
     "npmRebuild": true,

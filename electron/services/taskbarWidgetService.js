@@ -7,7 +7,11 @@ import { createRequire } from 'node:module';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
+// In dev:  ../../native/...  = work/native/...
+// In prod: ../../native/... = resources/app.asar/native/...  (asarUnpack -> app.asar.unpacked/native/...)
+// Fallback: ../../native/... = resources/native/...  (extraResources)
 const ADDON_PATH = path.join(__dirname, '..', '..', 'native', 'taskbar-widget-helper', 'build', 'Release', 'taskbar_widget_helper.node');
+const ADDON_PATH_FALLBACK = path.join(__dirname, '..', '..', '..', 'native', 'taskbar-widget-helper', 'build', 'Release', 'taskbar_widget_helper.node');
 const CONFIG_FILE = path.join(app.getPath('userData'), 'taskbar-widget-config.json');
 
 const DEFAULT_CONFIG = {
@@ -35,13 +39,22 @@ let latestSnapshot = null;
 
 function loadAddon() {
   if (addon) return addon;
+  // Try primary path (dev / asarUnpack)
   try {
     addon = require(ADDON_PATH);
-    console.log('[taskbarWidget] Native addon loaded successfully');
+    console.log('[taskbarWidget] Native addon loaded successfully from primary path');
     return addon;
-  } catch (e) {
-    console.error('[taskbarWidget] Failed to load native addon:', e.message);
-    return null;
+  } catch (e1) {
+    // Try fallback path (extraResources in packaged build)
+    try {
+      addon = require(ADDON_PATH_FALLBACK);
+      console.log('[taskbarWidget] Native addon loaded successfully from fallback path');
+      return addon;
+    } catch (e2) {
+      console.error('[taskbarWidget] Failed to load native addon (primary):', e1.message);
+      console.error('[taskbarWidget] Failed to load native addon (fallback):', e2.message);
+      return null;
+    }
   }
 }
 
@@ -288,7 +301,7 @@ async function createWidgetWindow() {
 
   const url = process.env.VITE_DEV_SERVER_URL
     ? process.env.VITE_DEV_SERVER_URL + '/taskbar-widget.html'
-    : path.join(__dirname, '..', 'public', 'taskbar-widget.html');
+    : path.join(__dirname, '..', '..', 'dist', 'public', 'taskbar-widget.html');
   try {
     await widgetWin.loadURL(url);
   } catch (e) {
@@ -304,7 +317,10 @@ async function createWidgetWindow() {
     positionWidget(pos.x, pos.y);
   }
 
-  widgetWin.webContents.openDevTools({ mode: 'detach' });
+  // Only open DevTools in dev mode
+  if (process.env.VITE_DEV_SERVER_URL) {
+    widgetWin.webContents.openDevTools({ mode: 'detach' });
+  }
   if (addon) {
     try {
       const hwndBuf = widgetWin.getNativeWindowHandle();
@@ -525,10 +541,11 @@ export function setEnabled(enabled) {
 
 export async function enable() {
   console.log('[taskbarWidget] enable() called, widgetWin exists:', !!widgetWin);
+  // Try to load native addon, but proceed even if it fails (widget works degraded)
   if (!addon) {
-    if (!loadAddon()) {
-      console.error('[taskbarWidget] Cannot enable: addon not loaded');
-      return;
+    loadAddon();
+    if (!addon) {
+      console.warn('[taskbarWidget] Native addon not available, widget will work in degraded mode');
     }
   }
   if (widgetWin && !widgetWin.isDestroyed()) {
