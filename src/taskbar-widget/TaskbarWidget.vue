@@ -8,8 +8,8 @@
   >
     <div class="container">
       <!-- Drag handler (left bar, -webkit-app-region:drag is handled by C++) -->
-      <div class="drag-handler-wrapper">
-        <div class="drag-handler" :class="{ highlighted: inDragRegion }" @mousedown.prevent="onDragHandlerMouseDown"></div>
+      <div class="drag-handler-wrapper" @mousedown.prevent="onDragHandlerMouseDown">
+        <div class="drag-handler" :class="{ highlighted: inDragRegion }"></div>
       </div>
 
       <!-- Cover -->
@@ -212,7 +212,6 @@ function toggleCollect() {
     setTimeout(() => { likePending.value = false; }, 5000);
   }
 </script>
-
 
 
 
