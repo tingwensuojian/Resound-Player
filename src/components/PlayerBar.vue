@@ -119,9 +119,9 @@
               <div class="lyric-popover" :style="lyricPopoverStyle">
                 <div class="lyric-popover__header">歌词显示</div>
                 <div class="lyric-popover__list">
-                  <button v-if="platform.isMacOS" type="button" class="lyric-popover__item" :class="{ active: trayLyricEnabled }" @click="toggleTrayLyric">
-                    <span class="lyric-popover__item-label">状态栏歌词</span>
-                    <span class="lyric-popover__item-check" :class="{ on: trayLyricEnabled }"><span class="dot"></span></span>
+                  <button v-if="platform.isDesktop" type="button" class="lyric-popover__item" :class="{ active: desktopControlEnabled }" @click="toggleDesktopControl">
+                    <span class="lyric-popover__item-label">桌面播控</span>
+                    <span class="lyric-popover__item-check" :class="{ on: desktopControlEnabled }"><span class="dot"></span></span>
                   </button>
                   <button type="button" class="lyric-popover__item" :class="{ active: desktopLyricEnabled }" @click="toggleDesktopLyric">
                     <span class="lyric-popover__item-label">桌面歌词</span>
@@ -504,12 +504,12 @@ watch(isCurrentLiked, (liked) => {
 const lyricWrapRef = ref<HTMLElement | null>(null);
 const showLyricPopover = ref(false);
 const lyricPopoverStyle = ref<Record<string, string>>({});
-const trayLyricEnabled = ref(false);
+const desktopControlEnabled = ref(false);
 const desktopLyricEnabled = ref(false);
 let _lyricCleanupFns: (() => void)[] = [];
 
 const isAnyLyricActive = computed(() =>
-  lyricsSettings.state.showBarLyric || trayLyricEnabled.value || desktopLyricEnabled.value
+  lyricsSettings.state.showBarLyric || desktopControlEnabled.value || desktopLyricEnabled.value
 );
 
 function updateLyricPopoverPosition() {
@@ -551,11 +551,21 @@ function handleLyricClick() {
 }
 
 async function initLyricStates() {
-  if (platform.isDesktop && window.appEnv?.trayLyric) {
-    try {
-      const cfg = await window.appEnv.trayLyric.getConfig();
-      trayLyricEnabled.value = cfg.enabled;
-    } catch { /* ignore */ }
+  if (platform.isDesktop) {
+    let merged = false;
+    if (window.appEnv?.trayLyric) {
+      try {
+        const cfg = await window.appEnv.trayLyric.getConfig();
+        merged = merged || cfg.enabled;
+      } catch { /* ignore */ }
+    }
+    if (platform.isWindows && window.appEnv?.taskbarWidget) {
+      try {
+        const cfg = await window.appEnv.taskbarWidget.getConfig();
+        merged = merged || cfg.enabled;
+      } catch { /* ignore */ }
+    }
+    desktopControlEnabled.value = merged;
   }
   if (platform.isDesktop && window.appEnv?.desktopLyric) {
     try {
@@ -565,11 +575,16 @@ async function initLyricStates() {
   }
 }
 
-function toggleTrayLyric() {
-  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
-  const next = !trayLyricEnabled.value;
-  trayLyricEnabled.value = next;
-  window.appEnv.trayLyric.setConfig({ enabled: next });
+function toggleDesktopControl() {
+  if (!platform.isDesktop) return;
+  const next = !desktopControlEnabled.value;
+  desktopControlEnabled.value = next;
+  if (window.appEnv?.trayLyric) {
+    window.appEnv.trayLyric.setConfig({ enabled: next });
+  }
+  if (platform.isWindows && window.appEnv?.taskbarWidget) {
+    window.appEnv.taskbarWidget.setEnabled(next);
+  }
   showLyricPopover.value = false;
 }
 
@@ -593,7 +608,14 @@ onMounted(() => {
     if (window.appEnv?.trayLyric) {
       _lyricCleanupFns.push(
         window.appEnv.trayLyric.onConfigChanged((cfg) => {
-          trayLyricEnabled.value = cfg.enabled;
+          desktopControlEnabled.value = cfg.enabled;
+        }),
+      );
+    }
+    if (platform.isWindows && window.appEnv?.taskbarWidget) {
+      _lyricCleanupFns.push(
+        window.appEnv.taskbarWidget.onConfigChanged((cfg) => {
+          desktopControlEnabled.value = cfg.enabled;
         }),
       );
     }
