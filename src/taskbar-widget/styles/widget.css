@@ -66,7 +66,6 @@ html, body, #app {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-app-region: drag;
   opacity: 0.4;
   transition: opacity 0.1s ease-out;
   cursor: grab;
