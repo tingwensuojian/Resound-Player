@@ -67,8 +67,6 @@ html, body, #app {
   align-items: center;
   justify-content: center;
   -webkit-app-region: drag;
-  opacity: 0.4;
-  transition: opacity 0.1s ease-out;
   cursor: grab;
 }
 .wrapper[data-hover] .drag-handler-wrapper {
@@ -76,14 +74,42 @@ html, body, #app {
 }
 
 .drag-handler-wrapper .drag-handler {
-  width: 2px;
-  height: 16px;
-  border-radius: 9999px;
-  background: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.12));
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  position: relative;
   transition: background 0.1s ease-out;
 }
+.drag-handler-wrapper .drag-handler::before,
+.drag-handler-wrapper .drag-handler::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  transition: background 0.1s ease-out;
+}
+.drag-handler-wrapper .drag-handler::before { top: -6px; }
+.drag-handler-wrapper .drag-handler::after { top: 6px; }
 .wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler {
-  background: light-dark(#000, #fff);
+  background: black;
+}
+.wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler::before,
+.wrapper[data-in-drag-region] .drag-handler-wrapper .drag-handler::after {
+  background: black;
+}
+.wrapper[data-theme=dark] .drag-handler-wrapper .drag-handler,
+.wrapper[data-theme=dark] .drag-handler-wrapper .drag-handler::before,
+.wrapper[data-theme=dark] .drag-handler-wrapper .drag-handler::after {
+  background: rgba(255,255,255,0.7);
+}
+.wrapper[data-theme=dark][data-in-drag-region] .drag-handler-wrapper .drag-handler,
+.wrapper[data-theme=dark][data-in-drag-region] .drag-handler-wrapper .drag-handler::before,
+.wrapper[data-theme=dark][data-in-drag-region] .drag-handler-wrapper .drag-handler::after {
+  background: white;
 }
 
 /* Cover */
@@ -238,4 +264,42 @@ html, body, #app {
 .close-wrapper:hover {
   color: light-dark(rgba(0,0,0,0.5), rgb(255,255,255));
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Cover fullscreen button */
+.cover-fullscreen-btn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+  color: white;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+  z-index: 2;
+  pointer-events: none;
+}
+.cover-wrapper:hover .cover-fullscreen-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cover-fullscreen-btn:hover {
+  background: rgba(0,0,0,0.5);
+}
+
+
 

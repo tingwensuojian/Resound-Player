@@ -19,6 +19,7 @@
       <div class="cover-wrapper">
         <div class="cover" v-if="coverUrl">
           <img :src="coverUrl" alt="" draggable="false" class="visible" />
+        <button class="cover-fullscreen-btn" @click.stop="openExpanded" title="Open player"><svg width="22" height="22" viewBox="0 0 1024 1024" fill="currentColor" transform="scale(-1,1)"><path d="M256 170.666667a128 128 0 0 0-128 128v213.333333a42.666667 42.666667 0 1 0 85.333333 0V298.666667a42.666667 42.666667 0 0 1 42.666667-42.666667h213.333333a42.666667 42.666667 0 1 0 0-85.333333H256z m512 682.666666a128 128 0 0 0 128-128v-170.666666a42.666667 42.666667 0 1 0-85.333333 0v170.666666a42.666667 42.666667 0 0 1-42.666667 42.666667h-192a42.666667 42.666667 0 1 0 0 85.333333H768z"/></svg></button>
         </div>
         <div class="cover cover-placeholder" v-else>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -35,14 +36,14 @@
         </div>
         <div class="action-wrapper">
           <button class="action-btn" @click.stop="sendCmd({ type: 'prev' })">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" ><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
           </button>
           <button class="action-btn action-btn--playback" @click.stop="sendCmd({ type: 'togglePlay' })">
-            <svg v-if="isPlaying" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
-            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg v-if="isPlaying" width="20" height="20" viewBox="0 0 24 24" ><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" ><path d="M8 5v14l11-7z"/></svg>
           </button>
           <button class="action-btn" @click.stop="sendCmd({ type: 'next' })">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18 14.5 12 6 6zM16 6h2v12h-2z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" ><path d="M6 18 14.5 12 6 6zM16 6h2v12h-2z"/></svg>
           </button>
         </div>
       </div>
@@ -208,6 +209,7 @@ onUnmounted(() => {
   cleanupFns = [];
 });
 function sendCmd(cmd: any) { widgetApi?.sendCommand?.(cmd); }
+function openExpanded() { widgetApi?.sendCommand?.({ type: "openExpanded" }); }
 function onDragHandlerMouseDown() { widgetApi?.startDrag?.(); }
 function toggleCollect() {
     if (likePending.value) return;
@@ -232,6 +234,10 @@ function onMouseLeave() {
   inDragRegion.value = false;
 }
 </script>
+
+
+
+
 
 
 
