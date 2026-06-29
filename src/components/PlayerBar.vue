@@ -120,7 +120,7 @@
                 <div class="lyric-popover__header">歌词显示</div>
                 <div class="lyric-popover__list">
                   <button v-if="platform.isDesktop" type="button" class="lyric-popover__item" :class="{ active: desktopControlEnabled }" @click="toggleDesktopControl">
-                    <span class="lyric-popover__item-label">桌面播控</span>
+                    <span class="lyric-popover__item-label">状态栏控件</span>
                     <span class="lyric-popover__item-check" :class="{ on: desktopControlEnabled }"><span class="dot"></span></span>
                   </button>
                   <button type="button" class="lyric-popover__item" :class="{ active: desktopLyricEnabled }" @click="toggleDesktopLyric">
