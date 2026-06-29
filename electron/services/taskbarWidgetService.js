@@ -116,17 +116,6 @@ function calcDockPosition() {
       console.error('[taskbarWidget] tracker.findBlanks error:', e.message);
     }
   }
-  if (tracker) {
-    try {
-      var tbi = tracker.getTaskbarInfo();
-      if (tbi && tbi.tray) {
-        gapRight = Math.min(gapRight, tbi.tray.left - 2);
-      }
-      if (tbi && tbi.taskList) {
-        gapLeft = Math.max(gapLeft, tbi.taskList.right + 2);
-      }
-    } catch (e) {}
-  }
   const gapWidth = gapRight - gapLeft;
   let dockedX = gapWidth >= w ? Math.round(gapRight - w - 2) : Math.round(gapLeft);
   dockedX = Math.max(gapLeft, Math.min(dockedX, gapRight - w));
@@ -247,16 +236,18 @@ function startTopmostTimer() {
     topmostTimer = setInterval(function() {
       if (widgetWin && !widgetWin.isDestroyed()) {
         try { addon.ensureAboveTaskbar(widgetWin.getNativeWindowHandle()); } catch (e) {}
+        if (config.widgetState === 'docked') {
+          var newPos = calcDockPosition();
+          if (newPos) {
+            var curPos = widgetWin.getPosition();
+            if (curPos[0] !== newPos.x || curPos[1] !== newPos.y) {
+              positionWidget(newPos.x, newPos.y);
+            }
+          }
+        }
       }
-      // Shadow visibility managed by showShadow/hideShadow —topmost timer must not re-show it
-    }, 1000);
+    }, 500);
   } catch (e) {}
-}
-
-function updateLikeStatus(liked) {
-  if (widgetWin && !widgetWin.isDestroyed()) {
-    try { widgetWin.webContents.send('taskbar-widget:like-status', Boolean(liked)); } catch (e) {}
-  }
 }
 
 function stopTopmostTimer() {
@@ -326,7 +317,6 @@ async function createWidgetWindow() {
       const hwndBuf = widgetWin.getNativeWindowHandle();
       addon.setWidgetStyles(hwndBuf);
       addon.embedInTaskbar(hwndBuf);
-      try { addon.setOwner(hwndBuf); } catch (e) {}
       dragHelper = new addon.DragHelper(hwndBuf);
       hoverHelper = new addon.HoverHelper(hwndBuf);
       themeMonitor = new addon.ThemeMonitor();
@@ -402,7 +392,7 @@ async function createWidgetWindow() {
               positionWidget(docked.x, docked.y);
               try {
                 var hwndBuf = widgetWin.getNativeWindowHandle();
-                if (addon) { addon.embedInTaskbar(hwndBuf); try { addon.setOwner(hwndBuf); } catch (e) {} addon.ensureAboveTaskbar(hwndBuf); }
+                if (addon) { addon.embedInTaskbar(hwndBuf); addon.ensureAboveTaskbar(hwndBuf); }
               } catch (e) {}
             }
           } else {
@@ -655,9 +645,6 @@ export function registerIpc() {
   });
 
 }
-
-
-
 
 
 
