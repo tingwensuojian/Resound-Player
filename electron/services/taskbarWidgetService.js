@@ -176,6 +176,7 @@ function convertSnapshot(raw) {
     fullLyrics: fullLyrics,
     miniWords: raw.miniWords || 0,
     miniLyric: raw.miniLyric || '',
+    isFm: Boolean(raw.isFm),
   };
 }
 
@@ -693,6 +694,7 @@ export function registerIpc() {
 
 
 // TEST_MARKER
+
 
 
 

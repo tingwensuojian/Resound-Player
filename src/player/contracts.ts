@@ -1,4 +1,4 @@
-﻿export type WindowRole = 'main' | 'mini';
+export type WindowRole = 'main' | 'mini';
 
 export type PlaybackCommand =
   | { type: 'togglePlay' }
@@ -10,8 +10,9 @@ export type PlaybackCommand =
   | { type: 'playByIndex'; index: number }
   | { type: 'removeFromPlaylist'; index: number }
   | { type: 'openExpanded' }
-  | { type: 'closeExpanded' };
-  | { type: 'toggleLike' };
+  | { type: 'closeExpanded' }
+  | { type: 'toggleLike' }
+  | { type: 'dislike' };
 
 export type QualityDowngradeInfo = {
   from: string;
@@ -76,4 +77,5 @@ export type PlaybackSnapshot = {
   qualityDowngradeInfo: QualityDowngradeInfo | null;
   lastError: string | null;
   fullLyrics: { time: number; text: string; words: { text: string; startTime: number; duration: number; space?: boolean }[] }[];
+  isFm: boolean;
 };

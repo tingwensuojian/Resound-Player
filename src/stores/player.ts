@@ -721,6 +721,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
 
 
+      runtime.state.isFm = isPersonalFmTrack(state.currentTrack) && Boolean(state.personalFmFetcher);
     runtime.notify();
   }
 
@@ -1002,6 +1003,15 @@ export const usePlayerStore = defineStore('player', () => {
 
 
       }
+      case 'dislike':
+        console.log('[player] executeHostCommand dislike');
+        try {
+          await dislikeCurrentPersonalFm(userStore.state.loginCookie || undefined);
+        } catch (e) {
+          console.error('[player] dislike failed:', e);
+        }
+        return;
+
 
 
       default:

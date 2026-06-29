@@ -303,3 +303,10 @@ html, body, #app {
 
 
 
+
+/* Dislike button - always full color */
+.action-wrapper .action-btn[title=@@] {
+  color: light-dark(#000, #fff);
+}
+
+.action-btn--dislike { color: light-dark(#000, #fff); }

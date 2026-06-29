@@ -19,7 +19,7 @@
       <div class="cover-wrapper">
         <div class="cover" v-if="coverUrl">
           <img :src="coverUrl" alt="" draggable="false" class="visible" />
-        <button class="cover-fullscreen-btn" @click.stop="openExpanded" title="Open player"><svg width="22" height="22" viewBox="0 0 1024 1024" fill="currentColor" transform="scale(-1,1)"><path d="M256 170.666667a128 128 0 0 0-128 128v213.333333a42.666667 42.666667 0 1 0 85.333333 0V298.666667a42.666667 42.666667 0 0 1 42.666667-42.666667h213.333333a42.666667 42.666667 0 1 0 0-85.333333H256z m512 682.666666a128 128 0 0 0 128-128v-170.666666a42.666667 42.666667 0 1 0-85.333333 0v170.666666a42.666667 42.666667 0 0 1-42.666667 42.666667h-192a42.666667 42.666667 0 1 0 0 85.333333H768z"/></svg></button>
+        <button class="cover-fullscreen-btn" @click.stop="openExpanded" title="\u4E0D\u559C\u6B22\u5E76\u5207\u6362\u4E0B\u4E00\u9996"><svg width="22" height="22" viewBox="0 0 1024 1024" fill="currentColor" transform="scale(-1,1)"><path d="M256 170.666667a128 128 0 0 0-128 128v213.333333a42.666667 42.666667 0 1 0 85.333333 0V298.666667a42.666667 42.666667 0 0 1 42.666667-42.666667h213.333333a42.666667 42.666667 0 1 0 0-85.333333H256z m512 682.666666a128 128 0 0 0 128-128v-170.666666a42.666667 42.666667 0 1 0-85.333333 0v170.666666a42.666667 42.666667 0 0 1-42.666667 42.666667h-192a42.666667 42.666667 0 1 0 0 85.333333H768z"/></svg></button>
         </div>
         <div class="cover cover-placeholder" v-else>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -35,8 +35,11 @@
           <LyricDisplay ref="lyricRef" :playable="currentTrack" :mediaDetail="mediaDetail" />
         </div>
         <div class="action-wrapper">
-          <button class="action-btn" @click.stop="sendCmd({ type: 'prev' })">
+          <button v-if="!isFm" class="action-btn" @click.stop="sendCmd({ type: 'prev' })">
             <svg width="18" height="18" viewBox="0 0 24 24" ><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+          </button>
+          <button v-else class="action-btn action-btn--dislike" @click.stop="sendCmd({ type: 'dislike' })" title="\u4E0D\u559C\u6B22\u5E76\u5207\u6362\u4E0B\u4E00\u9996">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8 5.5H6.9c-.93 0-1.74.64-1.95 1.54l-1.14 4.9a2 2 0 0 0 1.95 2.46h3.38l-.53 3.92a1.85 1.85 0 0 0 3.4 1.18l4.3-6.14c.2-.28.3-.62.3-.97V7.4a1.9 1.9 0 0 0-1.9-1.9h-3.9Zm7.15 0h1.65A1.4 1.4 0 0 1 21 6.9v6.95a1.4 1.4 0 0 1-1.4 1.4h-1.65V5.5Z"/></svg>
           </button>
           <button class="action-btn action-btn--playback" @click.stop="sendCmd({ type: 'togglePlay' })">
             <svg v-if="isPlaying" width="20" height="20" viewBox="0 0 24 24" ><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
@@ -71,6 +74,7 @@ const widgetState = ref<'docked' | 'free'>('docked');
 const isDark = ref(false);
 const isPlaying = ref(false);
 const isLiked = ref(false);
+const isFm = ref(false);
 const likePending = ref(false);
 let lastUserToggleTime = 0;
 const currentTrack = ref<any>(null);
@@ -117,7 +121,8 @@ function applySnapshot(snap: any) {
   mediaDetail.value = snap.mediaDetail || null;
   isPlaying.value = snap.playing || false;
   // Track changed or initial load: set isLiked from snapshot
-  if (lastUserToggleTime === 0 || (oldTrackId && oldTrackId !== snap.track?.id)) { isLiked.value = snap.liked || false; lastUserToggleTime = 0; }
+  if (lastUserToggleTime === 0 || (oldTrackId && oldTrackId !== snap.track?.id)) { isLiked.value = snap.liked || false;
+isFm.value = snap.isFm || false; lastUserToggleTime = 0; }
 console.log('[widget] applySnapshot isLiked:', { liked: snap.liked, isLiked: snap.isLiked, track_liked: snap.track?.liked });
   coverUrl.value = snap.track?.cover_url || '';
   trackTitle.value = snap.track?.name || '';
@@ -234,6 +239,9 @@ function onMouseLeave() {
   inDragRegion.value = false;
 }
 </script>
+
+
+
 
 
 
