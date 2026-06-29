@@ -65,6 +65,7 @@ import LyricDisplay from './LyricDisplay.vue';
 
 const isHovering = ref(false);
 const inDragRegion = ref(false);
+const inDragRegionIPC = ref<boolean | null>(null);
 const widgetState = ref<'docked' | 'free'>('docked');
 const isDark = ref(false);
 const isPlaying = ref(false);
@@ -137,7 +138,7 @@ console.log('[widget] applySnapshot isLiked:', { liked: snap.liked, isLiked: sna
 onMounted(async () => {
   widgetApi?.rendererReady?.();
 
-  // Subscribe to hover state from IPC (native HoverHelper)
+  // Subscribe to hover state from IPC (native HoverDetector)
   if (widgetApi?.onHoverChanged) {
     cleanupFns.push(widgetApi.onHoverChanged((hovering: boolean) => {
       isHovering.value = hovering;
@@ -147,6 +148,7 @@ onMounted(async () => {
   // Subscribe to drag region state
   if (widgetApi?.onDragRegionChanged) {
     cleanupFns.push(widgetApi.onDragRegionChanged((inDrag: boolean) => {
+      inDragRegionIPC.value = inDrag;
       inDragRegion.value = inDrag;
     }));
   }
@@ -215,17 +217,17 @@ function toggleCollect() {
     widgetApi?.sendCommand?.({ type: 'toggleLike' });
     setTimeout(() => { likePending.value = false; }, 5000);
   }
-// JS mouse-event fallback for hover detection.
-// -webkit-app-region:drag on drag-handler blocks CSS :hover on left 22px.
+// JS mouse-event fallback (only when C++ IPC is inactive).
+// -webkit-app-region:drag blocks CSS :hover on left 30px.
+// C++ IPC via ThreadSafeFunction polls at 60fps.
+// JS fallback only sets isHovering; inDragRegion is C++-driven.
 let _hoverEnterTime = 0;
 function onMouseMove(event: MouseEvent) {
+  if (inDragRegionIPC.value !== null) return; // C++ is authoritative
   isHovering.value = true;
-  if (wrapperRef.value) {
-    const rect = wrapperRef.value.getBoundingClientRect();
-    inDragRegion.value = (event.clientX - rect.left) < 22;
-  }
 }
 function onMouseLeave() {
+  if (inDragRegionIPC.value !== null) return; // C++ is authoritative
   isHovering.value = false;
   inDragRegion.value = false;
 }
