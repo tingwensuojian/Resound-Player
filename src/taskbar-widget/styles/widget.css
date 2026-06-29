@@ -1,4 +1,4 @@
-ï»¿/* Soda Music exact widget styles */
+/* Soda Music exact widget styles */
 :root {
   font-family: MiSans, -apple-system, BlinkMacSystemFont, Helvetica, PingFang SC, Arial, Avenir, Inter, sans-serif;
   font-size: 16px;
@@ -56,7 +56,7 @@ html, body, #app {
   background-color: light-dark(rgba(255,255,255,0.9), rgba(0,0,0,0.7));
 }
 
-/* Drag handler â€” always visible at low opacity */
+/* Drag handler ¡ª always visible at low opacity */
 .drag-handler-wrapper {
   position: absolute;
   top: 0;
@@ -69,9 +69,13 @@ html, body, #app {
   -webkit-app-region: drag;
   opacity: 0.4;
   transition: opacity 0.1s ease-out;
+  cursor: grab;
 }
 .wrapper[data-hover] .drag-handler-wrapper {
   opacity: 1;
+}
+.wrapper[data-in-drag-region] .drag-handler-wrapper {
+  cursor: grabbing;
 }
 .drag-handler-wrapper .drag-handler {
   width: 2px;
@@ -119,7 +123,7 @@ html, body, #app {
   height: 12px;
 }
 
-/* Main info area â€” flex:1 to fill remaining space */
+/* Main info area ¡ª flex:1 to fill remaining space */
 .main-wrapper {
   flex: 1;
   display: flex;
@@ -152,7 +156,7 @@ html, body, #app {
   color: light-dark(rgba(0,0,0,0.5), rgba(255,255,255,0.5));
 }
 
-/* Action buttons â€” always visible */
+/* Action buttons ¡ª always visible */
 .action-wrapper {
   display: flex;
   align-items: center;
@@ -188,7 +192,7 @@ html, body, #app {
   background: light-dark(rgba(0,0,0,0.12), rgba(255,255,255,0.12));
 }
 
-/* Collect (heart) button â€” always visible */
+/* Collect (heart) button ¡ª always visible */
 .side-wrapper {
   display: flex;
   align-items: center;
