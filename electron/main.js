@@ -515,7 +515,6 @@ function createMiniWindow(ports) {
   const isMac = process.platform === 'darwin';
 
   miniWin = new BrowserWindow({
-    ...bounds,
     minWidth: 340,
     minHeight: 70,
     maxWidth: 340,
@@ -534,6 +533,13 @@ function createMiniWindow(ports) {
       additionalArguments: portArgs,
     },
   });
+
+  // Set content area before loading — must toggle resizable for the size to stick on Windows
+  miniWin.setResizable(true);
+  miniWin.setContentSize(bounds.width, bounds.height);
+  miniWin.setPosition(bounds.x, bounds.y);
+  miniWin.setResizable(false);
+  writeMainLog('[mini] createMiniWindow after setContentSize', miniWin.getSize());
 
   miniWin.on('closed', () => {
     miniWin = null;
@@ -799,7 +805,13 @@ ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
 ipcMain.on('mini-mode:resize', (_event, height) => {
   if (!miniWin || miniWin.isDestroyed()) return;
   const clampedHeight = Math.max(70, Math.min(height, 500));
-  miniWin.setSize(340, clampedHeight);
+
+  // Must be resizable for setContentSize to shrink on Windows
+  miniWin.setResizable(true);
+  miniWin.setContentSize(340, clampedHeight);
+  miniWin.setResizable(false);
+
+  writeMainLog('[mini] resize', { after: miniWin.getSize(), requested: clampedHeight });
 });
 
 ipcMain.on('playback:publish-state', (_event, snapshot) => {
