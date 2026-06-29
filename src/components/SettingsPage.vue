@@ -44,12 +44,7 @@
 
           <div class="right">
             <div v-if="item.type === 'switch'" class="control-slot switch-slot">
-              <FancySwitch
-                v-if="item.key === 'taskbarWidgetEnabled'"
-                :model-value="switchState.taskbarWidgetEnabled"
-                @update:model-value="setTaskbarWidgetEnabled"
-              />
-              <FancySwitch v-else v-model="switchState[item.key]" />
+              <FancySwitch v-model="switchState[item.key]" />
             </div>
 
             <div v-else-if="item.type === 'source-order'" class="source-order-wrap">
@@ -568,14 +563,13 @@ const groupsMap: Record<string, SettingGroup[]> = {
       title: '歌词显示',
       items: [
         { key: 'barLyric', label: '底部栏歌词', desc: '播放时底部栏显示歌词', type: 'switch' },
-        { key: 'trayLyricEnabled', label: '启用状态栏歌词', desc: '在 macOS 菜单栏显示当前播放的歌词信息', type: 'switch' },
+        { key: 'desktopControlEnabled', label: '启用桌面播控', desc: 'macOS 菜单栏歌词 / Windows 任务栏播控', type: 'switch' },
         { key: 'desktopLyricEnabled', label: '启用桌面歌词', desc: '在桌面上显示一个可拖拽的歌词浮窗', type: 'switch' },
         { key: 'desktopLyricMode', label: '显示模式', desc: '选择歌词展示方式', type: 'select', options: ['滚动列表', '单行', '双行'] },
         { key: 'desktopLyricFontSize', label: '字体大小', desc: '歌词文字大小', type: 'select', options: ['小', '中', '大', '特大'] },
         { key: 'desktopLyricHighlightColor', label: '高亮颜色', desc: '当前播放歌词的颜色', type: 'action' },
         { key: 'desktopLyricTextColor', label: '未播放颜色', desc: '未播放歌词的文字颜色', type: 'action' },
         { key: 'desktopLyricAlwaysShowBg', label: '始终显示背景', desc: '开启后桌面歌词始终显示毛玻璃背景（锁定状态除外）', type: 'switch' },
-        { key: 'taskbarWidgetEnabled', label: '启用任务栏播控', desc: '在 Windows 任务栏上方显示迷你播控组件', type: 'switch' },
       ],
     },
   ],
@@ -779,7 +773,7 @@ const currentGroups = computed(() => {
           return false;
         }
         // 系统托盘功能仅桌面端可用
-        if (['trayLyricEnabled', 'miniAlwaysOnTop'].includes(item.key) && !platform.isDesktop) {
+        if (['desktopControlEnabled', 'miniAlwaysOnTop'].includes(item.key) && !platform.isDesktop) {
           return false;
         }
         // 桌面歌词：仅桌面端可见
@@ -787,7 +781,7 @@ const currentGroups = computed(() => {
           return false;
         }
         // 任务栏播控：仅 Windows 桌面端可见
-        if (['taskbarWidgetEnabled'].includes(item.key) && !(platform.isDesktop && platform.isWindows)) {
+        if (['desktopControlEnabled'].includes(item.key) && !(platform.isDesktop && platform.isWindows)) {
           return false;
         }
         // 桌面歌词子选项仅在启用时可见
@@ -809,10 +803,9 @@ const switchState = reactive<Record<string, boolean>>({
   autoHidePlayerUI: uiStore.state.autoHidePlayerUI,
   paidContentSkip: playerStore.state.paidContentSkip,
   miniAlwaysOnTop: uiStore.state.miniAlwaysOnTop,
-  trayLyricEnabled: false, // 实际值从主进程加载
+  desktopControlEnabled: false, // 实际值从主进程加载
   desktopLyricEnabled: false, // 实际值从主进程加载
   desktopLyricAlwaysShowBg: false, // 实际值从主进程加载
-  taskbarWidgetEnabled: false, // 实际值从主进程加载
 });
 
 const selectState = reactive<Record<string, string>>({
@@ -1078,48 +1071,64 @@ watch(
 // 用于卸载 IPC 监听
 let cleanupTrayConfigListener: (() => void) | null = null;
 
+// 桌面播控：加载配置并监听变更（macOS 菜单栏歌词 + Windows 任务栏播控）
 onMounted(async () => {
-  if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
-
-  // 加载主进程持久化的配置
-  try {
-    const config = await window.appEnv.trayLyric.getConfig();
-    console.log('[settings] 托盘配置已加载:', config);
-    switchState.trayLyricEnabled = config.enabled;
-  } catch (e) {
-    console.warn('[settings] 加载托盘配置失败:', e);
+  if (!platform.isDesktop) return;
+  let mergedEnabled = false;
+  if (window.appEnv?.trayLyric) {
+    try {
+      const config = await window.appEnv.trayLyric.getConfig();
+      mergedEnabled = mergedEnabled || config.enabled;
+    } catch (e) {
+      console.warn('[settings] failed to load tray config:', e);
+    }
   }
-
-  // 监听主进程配置变更（其他实例可能修改）
-  cleanupTrayConfigListener = window.appEnv.trayLyric.onConfigChanged((config) => {
-    switchState.trayLyricEnabled = config.enabled;
-  });
+  if (platform.isWindows && window.appEnv?.taskbarWidget) {
+    try {
+      const config = await window.appEnv.taskbarWidget.getConfig();
+      mergedEnabled = mergedEnabled || config.enabled;
+    } catch (e) {
+      console.warn('[settings] failed to load taskbar widget config:', e);
+    }
+  }
+  switchState.desktopControlEnabled = mergedEnabled;
+  if (window.appEnv?.trayLyric) {
+    cleanupTrayConfigListener = window.appEnv.trayLyric.onConfigChanged((config) => {
+      switchState.desktopControlEnabled = config.enabled;
+    });
+  }
+  if (platform.isWindows && window.appEnv?.taskbarWidget) {
+    window.appEnv.taskbarWidget.onConfigChanged((config) => {
+      switchState.desktopControlEnabled = config.enabled;
+    });
+  }
 });
-
 onUnmounted(() => {
   if (cleanupTrayConfigListener) {
     cleanupTrayConfigListener();
     cleanupTrayConfigListener = null;
   }
 });
-
-// 同步 switch → 主进程
 watch(
-  () => switchState.trayLyricEnabled,
+  () => switchState.desktopControlEnabled,
   (enabled) => {
-    if (!platform.isDesktop || !window.appEnv?.trayLyric) return;
-    console.log('[settings] 发送托盘配置:', { enabled: Boolean(enabled) });
-    window.appEnv.trayLyric.setConfig({ enabled: Boolean(enabled) }).catch((e) => {
-      console.warn('[settings] 发送托盘配置失败:', e);
-    });
+    if (!platform.isDesktop) return;
+    const next = Boolean(enabled);
+    if (window.appEnv?.trayLyric) {
+      window.appEnv.trayLyric.setConfig({ enabled: next }).catch((e) => {
+        console.warn('[settings] failed to send tray config:', e);
+      });
+    }
+    if (platform.isWindows && window.appEnv?.taskbarWidget) {
+      window.appEnv.taskbarWidget.setEnabled(next).catch((e) => {
+        console.warn('[settings] failed to send taskbar widget config:', e);
+      });
+    }
   },
+  { immediate: true }
 );
 
-// ═══════════════════════════════════════════════════════════════════
-// 桌面歌词设置（仅桌面端）
-// ═══════════════════════════════════════════════════════════════════
-
-let cleanupDesktopLyricListener: (() => void) | null = null;
+// 桌面歌词区段let cleanupDesktopLyricListener: (() => void) | null = null;
 
 onMounted(async () => {
   if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
@@ -1230,57 +1239,6 @@ onUnmounted(() => {
   cleanupDesktopLyricListener?.();
 });
 
-
-// ──────── 任务栏播控设置（仅 Windows 桌面端） ────────
-let cleanupTaskbarWidgetListener: (() => void) | null = null;
-let isApplyingTaskbarWidgetConfig = false;
-let isTaskbarWidgetConfigReady = false;
-
-function applyTaskbarWidgetEnabledFromConfig(enabled: boolean) {
-  isApplyingTaskbarWidgetConfig = true;
-  switchState.taskbarWidgetEnabled = Boolean(enabled);
-  queueMicrotask(() => {
-    isApplyingTaskbarWidgetConfig = false;
-    isTaskbarWidgetConfigReady = true;
-  });
-}
-
-onMounted(async () => {
-  if (!platform.isDesktop || !platform.isWindows || !window.appEnv?.taskbarWidget) return;
-  try {
-    const config = await window.appEnv.taskbarWidget.getConfig();
-    // 仅在用户未操作过开关时才设置初始值，避免 getConfig() 异步返回覆盖用户操作
-    applyTaskbarWidgetEnabledFromConfig(config.enabled);
-  } catch (e) {
-    isTaskbarWidgetConfigReady = true;
-    console.warn('[settings] 加载任务栏播控配置失败:', e);
-  }
-  cleanupTaskbarWidgetListener = window.appEnv.taskbarWidget.onConfigChanged((config: any) => {
-    console.log('[settings] taskbar onConfigChanged fired:', JSON.stringify(config));
-    applyTaskbarWidgetEnabledFromConfig(config.enabled);
-  });
-});
-onUnmounted(() => {
-  if (cleanupTaskbarWidgetListener) {
-    cleanupTaskbarWidgetListener();
-    cleanupTaskbarWidgetListener = null;
-  }
-});
-
-function setTaskbarWidgetEnabled(enabled: boolean) {
-  if (!platform.isDesktop || !platform.isWindows || !window.appEnv?.taskbarWidget) return;
-  const nextEnabled = Boolean(enabled);
-  if (!isTaskbarWidgetConfigReady || isApplyingTaskbarWidgetConfig) {
-    switchState.taskbarWidgetEnabled = nextEnabled;
-    return;
-  }
-  if (switchState.taskbarWidgetEnabled === nextEnabled) return;
-  switchState.taskbarWidgetEnabled = nextEnabled;
-  console.log('[settings] taskbarWidgetEnabled user changed to:', enabled);
-  window.appEnv.taskbarWidget.setEnabled(nextEnabled).catch((e: any) => {
-    console.warn('[settings] 任务栏播控配置失败:', e);
-  });
-}
 
 function showLogoutMessage(message: string) {
   logoutMessage.value = message;
