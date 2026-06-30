@@ -26,8 +26,10 @@ async function main() {
   }
 
   // Step 3: Build the actual target from prepackaged
+  // In CI, explicitly disable auto-publish to avoid GH_TOKEN errors
+  const publishArgs = process.env.CI ? ['--publish', 'never'] : [];
   console.log(`\n=== Building target: ${target} from prepackaged ===`);
-  runElectronBuilder(['--win', target, '--prepackaged', path.join(distDir, 'win-unpacked')]);
+  runElectronBuilder(['--win', target, '--prepackaged', path.join(distDir, 'win-unpacked'), ...publishArgs]);
   console.log(`\n✓ Build complete: ${target}`);
 }
 
