@@ -45,6 +45,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path .\dist-save | Out-Null
           Copy-Item dist-build\*Setup*.* .\dist-save\
           Copy-Item dist-build\*.blockmap .\dist-save\
+          Copy-Item dist-build\latest.yml .\dist-save\
 
       - name: Build portable package
         shell: pwsh
