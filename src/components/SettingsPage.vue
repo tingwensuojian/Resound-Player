@@ -234,7 +234,7 @@
             <div v-for="(release, i) in changelogList" :key="i" class="changelog-entry">
               <span class="changelog-version">{{ release.tag }}</span>
               <span class="changelog-date">{{ release.date }}</span>
-              <p class="changelog-desc">{{ release.desc }}</p>
+              <div class="changelog-desc" v-html="renderMarkdown(release.desc)"></div>
             </div>
           </template>
           <div v-else class="changelog-entry">
@@ -679,6 +679,38 @@ function refreshDonationList() {
 const changelogLoading = ref(false);
 const changelogList = ref<Array<{tag: string; date: string; desc: string}>>([]);
 
+
+function renderMarkdown(text: string): string {
+  if (!text) return "";
+  // Escape HTML entities first
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  // Inline conversions
+  html = html
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")  // **bold**
+    .replace(/\[(.+?)\]\((.+?)\)/g, "<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>");  // [text](url)
+  // Split into blocks by double newline and process each
+  const blocks = html.split("\n\n");
+  return blocks.map(function(block: string) {
+    block = block.trim();
+    if (!block) return "";
+    if (/^### .+/m.test(block)) {
+      return block.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+    }
+    if (/^---+\s*$/.test(block)) {
+      return "<hr>";
+    }
+    if (/^- /.test(block)) {
+      const items = block.split("\n").filter(function(l: string) { return l.trim(); }).map(function(l: string) {
+        return "<li>" + l.replace(/^- /, "") + "</li>";
+      }).join("\n");
+      return "<ul>\n" + items + "\n</ul>";
+    }
+    return "<p>" + block + "</p>";
+  }).join("\n");
+}
 async function fetchChangelog() {
   if (changelogList.value.length || changelogLoading.value) return;
   changelogLoading.value = true;
@@ -690,7 +722,7 @@ async function fetchChangelog() {
     changelogList.value = releases.map((r: any) => ({
       tag: r.tag_name || '',
       date: r.published_at ? r.published_at.slice(0, 10) : '',
-      desc: (r.body || '').replace(/^###?\s*/gm, '').replace(/^[-*]\s+/gm, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/\[(.+?)\]\(.+?\)/g, '$1').replace(/^---+\s*$/gm, '').replace(/\n{3,}/g, '\n\n').trim() || '暂无描述',
+      desc: (r.body || '').trim() || '暂无描述',
     }));
   } catch {
     changelogList.value = [];
@@ -1865,12 +1897,43 @@ async function handleAction(key: string) {
 }
 
 .changelog-desc {
-      white-space: pre-wrap;
   margin: 0;
   width: 100%;
   font-size: 13px;
   color: var(--text-sub);
   line-height: 1.5;
+}
+.changelog-desc h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 12px 0 6px;
+}
+.changelog-desc h3:first-child {
+  margin-top: 0;
+}
+.changelog-desc ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+.changelog-desc li {
+  margin: 2px 0;
+}
+.changelog-desc hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+.changelog-desc a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.changelog-desc strong {
+  font-weight: 700;
+  color: var(--text-main);
+}
+.changelog-desc p {
+  margin: 6px 0;
 }
 
 .about-credits {
