@@ -106,9 +106,16 @@ jobs:
           - 音量控件改为悬浮上拉面板
           - 稳定性：EPIPE 防护、Vite 自动重启、did-fail-load 重试
 
-          ## 安装说明
-          - `Resound-Player Setup $Version.exe` — 安装包（推荐）
-          - `Resound-Player-$Version.exe` — 便携版（免安装，首次启动稍慢）
+          ---
+
+          ## 下载说明
+
+          本发布包含两个版本，请根据使用场景选择：
+
+          | 文件 | 适用场景 | 说明 |
+          |------|---------|------|
+          | `Resound-Player Setup $Version.exe` | **日常使用（推荐）** | NSIS 安装包，安装后启动即时，任务栏图标正确显示 |
+          | `Resound-Player-$Version.exe` | **U 盘携带、临时使用** | 便携版，免安装直接运行，首次启动需 3-5 秒解压 |
           "@ | Set-Content -Path $NotesFile -Encoding utf8
 
           gh release view $Tag *> $null
