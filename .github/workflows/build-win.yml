@@ -1,4 +1,4 @@
-name: Build Windows App
+﻿name: Build Windows App
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -37,9 +37,25 @@ jobs:
         shell: pwsh
         run: npm ci
 
-      - name: Build Windows package
+      - name: Build NSIS installer
         shell: pwsh
         run: npm run dist:win
+
+      - name: Save NSIS installer before portable build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .\dist-save | Out-Null
+          Copy-Item dist-build\*Setup*.* .\dist-save\
+          Copy-Item dist-build\*.blockmap .\dist-save\
+
+      - name: Build portable package
+        shell: pwsh
+        run: npm run dist:win:portable
+
+      - name: Restore NSIS installer
+        shell: pwsh
+        run: |
+          Copy-Item .\dist-save\* dist-build\
 
       - name: Inspect build output
         if: always()
@@ -75,16 +91,24 @@ jobs:
           $Version = $Tag -replace '^v', ''
           $NotesFile = New-TemporaryFile
           @"
-          ## 更新内容
+          ## v$Version 更新内容
 
-          - 修复桌面端后端服务在打包环境中的模块解析问题。
-          - 修复 Windows 任务栏图标与应用身份绑定问题。
-          - 优化 Windows 小尺寸图标生成清晰度与安装器图标资源。
+          ### 新功能
+          - 启动加载画面：应用启动时展示带声波动画的 splash 窗口，主窗口 ready-to-show 后自动关闭
+          - Windows 任务栏小组件增强：C++ HoverDetector、封面全屏按钮、FM 模式不感兴趣按钮、Lucide Heart 图标、长歌词滚动
+          - 桌面播控统一开关：合并任务栏小组件和系统托盘的歌词控制开关
+          - 迷你模式收藏按钮同步修复
+
+          ### 修复
+          - 迷你模式窗口：修复 Windows 下黑屏闪烁、宽度不一致、resize 闪动
+          - Windows 图标：修复便携版和安装版的任务栏图标，重构 prepare-win-icon.mjs
+          - 构建流程：重写 build-win.mjs（三步：dir → rcedit → --prepackaged），修复 CI 构建
+          - 音量控件改为悬浮上拉面板
+          - 稳定性：EPIPE 防护、Vite 自动重启、did-fail-load 重试
 
           ## 安装说明
-
-          - 下载 Windows 安装包后直接运行安装。
-          - 如果任务栏或桌面仍显示旧图标，请卸载旧版本后重新安装。
+          - `Resound-Player Setup $Version.exe` — 安装包（推荐）
+          - `Resound-Player-$Version.exe` — 便携版（免安装，首次启动稍慢）
           "@ | Set-Content -Path $NotesFile -Encoding utf8
 
           gh release view $Tag *> $null
