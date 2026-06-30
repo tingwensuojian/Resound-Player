@@ -131,6 +131,19 @@ contextBridge.exposeInMainWorld('appEnv', {
   window: {
     setBackgroundColor: (color) => ipcRenderer.send('window:set-background-color', color),
   },
+
+  // 自动更新 API (electron-updater)
+  autoUpdater: {
+    check: () => ipcRenderer.invoke("auto-updater:check"),
+    download: () => ipcRenderer.invoke("auto-updater:download"),
+    install: () => ipcRenderer.invoke("auto-updater:install"),
+    getStatus: () => ipcRenderer.invoke("auto-updater:get-status"),
+    onStatus: (cb) => {
+      const handler = (_e, status) => cb(status);
+      ipcRenderer.on("auto-updater:status", handler);
+      return () => ipcRenderer.removeListener("auto-updater:status", handler);
+    },
+  },
 });
 
 // ── 本地音乐 IPC ──

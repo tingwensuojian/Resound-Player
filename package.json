@@ -1,6 +1,6 @@
 {
   "name": "resound-player",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "main": "electron/main.js",
@@ -177,6 +177,16 @@
     },
     "portable": {
       "artifactName": "Resound-Player-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "tingwensuojian",
+      "repo": "Resound-Player",
+      "releaseType": "release"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tingwensuojian/Resound-Player.git"
   }
 }

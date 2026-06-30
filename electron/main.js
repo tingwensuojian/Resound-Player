@@ -13,6 +13,7 @@ import { loadTrayLyricConfig, getTrayLyricConfig, setTrayLyricConfig } from './t
 import { runWavMetadataE2E } from './wav-metadata-e2e.js';
 import zlib from 'node:zlib';
 import { initNativeUnblockMatch, isNativeUnblockMatchReady, nativeUnblockMatchSong } from './unblock-native-match.js';
+import { initUpdater, registerUpdaterIpc } from './updater.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -758,6 +759,10 @@ async function bootstrap() {
   loadTrayLyricConfig(); // 加载持久化的托盘歌词配置
   await createMainWindow(ports);
   writeMainLog('[bootstrap] main window created');
+
+  // 初始化自动更新模块
+  initUpdater(win);
+  registerUpdaterIpc();
   if (desktopLyricConfig.enabled) createDesktopLyricWin();
 
   // ── 初始化系统托盘 ──

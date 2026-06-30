@@ -208,10 +208,21 @@
           </div>
         </div>
         <div class="about-actions">
-          <button class="about-update-btn" type="button" @click="checkUpdate" :disabled="checkingUpdate">
-            {{ checkingUpdate ? '检查中...' : UPDATE_CHECKED ? (UPDATE_AVAILABLE ? '发现新版本 ' + UPDATE_LATEST : '已是最新版') : '检查更新' }}
+          <button class="about-update-btn" type="button" @click="checkUpdate" :disabled="updateStatus === '检查中' || updateStatus === '下载中'">
+            {{ updateStatus === 'idle' ? '检查更新' :
+               updateStatus === '检查中' ? '检查中...' :
+               updateStatus === 'available' ? '发现新版本 ' + updateVersion :
+               updateStatus === '下载中' ? '下载中 ' + updateProgress + '%' :
+               updateStatus === 'downloaded' ? '更新已下载' :
+               updateStatus === 'not-available' ? '已是最新版' :
+               updateStatus === 'error' ? '检查失败，重试' : '检查更新' }}
           </button>
-          <a v-if="UPDATE_CHECKED && UPDATE_AVAILABLE" :href="'https://github.com/tingwensuojian/Resound-Player/releases/tag/' + UPDATE_LATEST" target="_blank" rel="noopener" class="about-download-link">前往下载 ›</a>
+          <button v-if="updateStatus === 'available'" class="about-download-link" @click="startDownload">
+            下载更新
+          </button>
+          <button v-if="updateStatus === 'downloaded'" class="about-download-link" @click="installUpdate">
+            立即安装
+          </button>
           <button class="about-changelog-btn" type="button" @click="changelogExpanded = !changelogExpanded; if (changelogExpanded) fetchChangelog()">
             <svg class="about-chevron" :class="{ rotated: changelogExpanded }" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M4 6l4 4 4-4"/></svg>
             更新日志
@@ -653,7 +664,6 @@ const otherPkgs: AboutPkg[] = [
 
 // --- About / Update check ---
 
-const checkingUpdate = ref(false);
 const changelogExpanded = ref(false);
 const donations = ref<Array<{ name: string; amount: string }>>([]);
 const showQrCode = ref<string | null>(null);
@@ -691,48 +701,61 @@ async function fetchChangelog() {
 
 // 当前版本号
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : 'v0.0.0';
-const CURRENT_VERSION = appVersion;
-const UPDATE_CHECKED = ref(false);
-const UPDATE_AVAILABLE = ref(false);
-const UPDATE_LATEST = ref('');
 
-function semverGt(a: string, b: string): boolean {
-  // 比较两个版本号（如 "v1.2.3" 或 "1.2.3"）
-  const pa = a.replace(/^v/, '').split('.').map(Number);
-  const pb = b.replace(/^v/, '').split('.').map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const na = pa[i] || 0;
-    const nb = pb[i] || 0;
-    if (na !== nb) return na > nb;
+// ── 自动更新状态 (electron-updater) ──
+const updateStatus = ref('idle'); // idle | 检查中 | available | 下载中 | downloaded | not-available | error
+const updateVersion = ref('');
+const updateProgress = ref(0);
+
+let unsubUpdater: (() => void) | null = null;
+
+onMounted(() => {
+  if ((window as any).appEnv?.autoUpdater?.onStatus) {
+    unsubUpdater = (window as any).appEnv.autoUpdater.onStatus((status: any) => {
+      updateStatus.value = status.status;
+      if (status.info?.version) {
+        updateVersion.value = status.info.version;
+      }
+      if (status.progress?.percent !== null && status.progress?.percent !== undefined) {
+        updateProgress.value = status.progress.percent;
+      }
+    });
+    // 获取当前状态
+    (window as any).appEnv.autoUpdater.getStatus().then((s: any) => {
+      updateStatus.value = s.status;
+      if (s.info?.version) updateVersion.value = s.info.version;
+      if (s.progress?.percent !== null && s.progress?.percent !== undefined) updateProgress.value = s.progress.percent;
+    }).catch(() => {});
   }
-  return false;
-}
+});
+
+onUnmounted(() => {
+  if (unsubUpdater) { unsubUpdater(); unsubUpdater = null; }
+});
 
 async function checkUpdate() {
-  if (checkingUpdate.value) return;
-  checkingUpdate.value = true;
-  UPDATE_CHECKED.value = true;
+  if (updateStatus.value === '检查中' || updateStatus.value === '下载中') return;
+  updateStatus.value = '检查中';
   try {
-    // 先试 /releases/latest，如果 404 则回退到 /releases?per_page=1
-    let res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases/latest');
-    if (res.status === 404) {
-      // 没有正式 Release，从发布列表取第一个
-      res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases?per_page=1');
-    }
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    const latestTag = Array.isArray(data) ? (data[0]?.tag_name || '') : (data.tag_name || '');
-    UPDATE_LATEST.value = latestTag;
-    UPDATE_AVAILABLE.value = semverGt(latestTag, CURRENT_VERSION);
-    console.log('[UpdateCheck] current:', CURRENT_VERSION, 'latest:', latestTag, 'available:', UPDATE_AVAILABLE.value);
+    await (window as any).appEnv?.autoUpdater?.check();
   } catch (e) {
     console.warn('[UpdateCheck] 检查更新失败:', e);
-    UPDATE_AVAILABLE.value = false;
-    UPDATE_LATEST.value = '';
-    UPDATE_CHECKED.value = false; // 失败时重置，让按钮恢复可点击
-  } finally {
-    checkingUpdate.value = false;
+    updateStatus.value = 'error';
   }
+}
+
+async function startDownload() {
+  if (updateStatus.value !== 'available') return;
+  try {
+    await (window as any).appEnv?.autoUpdater?.download();
+  } catch (e) {
+    console.warn('[UpdateCheck] 下载失败:', e);
+  }
+}
+
+function installUpdate() {
+  if (updateStatus.value !== 'downloaded') return;
+  (window as any).appEnv?.autoUpdater?.install();
 }
 
 const showEmptyAccountState = computed(() => activeTab.value === 'account' && !currentGroups.value.length);
