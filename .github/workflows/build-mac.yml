@@ -1,4 +1,4 @@
-name: Build macOS App
+﻿name: Build macOS App
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -66,29 +66,52 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG="${{ inputs.release_tag }}"
           fi
-          VERSION="${TAG#v}"
-          NOTES_FILE="$(mktemp)"
-          cat > "${NOTES_FILE}" <<EOF
-          ## 更新内容
 
-          - 修复桌面端音源替换的内置匹配桥参数与返回值问题。
-          - 避免音源匹配参数或结果因进程通信数据不可克隆而回退失败。
-          - 保持 macOS 应用图标整体缩放效果。
+          # Only upload macOS artifacts — release notes are set by the Windows workflow
+          # to avoid overwriting the unified cross-platform notes.
+          # If the release doesn't exist yet (e.g., only macOS workflow ran), create it with notes.
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            VERSION="${TAG#v}"
+            NOTES_FILE="$(mktemp)"
+            cat > "${NOTES_FILE}" <<EOF
+          ## v${VERSION} 更新内容
 
-          ## 安装说明
+          ### 新功能
+          - 启动加载画面：应用启动时展示带声波动画的 splash 窗口，主窗口 ready-to-show 后自动关闭
+          - Windows 任务栏小组件增强：C++ HoverDetector、封面全屏按钮、FM 模式不感兴趣按钮、Lucide Heart 图标、长歌词滚动
+          - 桌面播控统一开关：合并任务栏小组件和系统托盘的歌词控制开关
+          - 迷你模式收藏按钮同步修复
 
-          - 下载适用于苹果芯片的 macOS 安装包。
-          - 如果安装后仍看到旧图标，请先移除旧应用，再重新安装。
+          ### 修复
+          - 迷你模式窗口：修复 Windows 下黑屏闪烁、宽度不一致、resize 闪动
+          - Windows 图标：修复便携版和安装版的任务栏图标
+          - 构建流程：修复 CI 构建
+          - 音量控件改为悬浮上拉面板
+          - 稳定性：EPIPE 防护、Vite 自动重启、did-fail-load 重试
+
+          ---
+
+          ## 下载说明
+
+          ### Windows
+
+          | 文件 | 适用场景 | 说明 |
+          |------|---------|------|
+          | \`Resound-Player Setup ${VERSION}.exe\` | **日常使用（推荐）** | NSIS 安装包 |
+          | \`Resound-Player-${VERSION}.exe\` | **U 盘携带、临时使用** | 便携版，免安装 |
+
+          ### macOS
+
+          | 文件 | 适用场景 | 说明 |
+          |------|---------|------|
+          | \`Resound-Player-Mac-x64-${VERSION}.dmg\` | **Intel 芯片** | DMG 安装包 |
+          | \`Resound-Player-Mac-arm64-${VERSION}.dmg\` | **Apple 芯片** | DMG 安装包 |
           EOF
-          if gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release edit "${TAG}" \
-              --title "Resound-Player 版本 ${VERSION}" \
-              --notes-file "${NOTES_FILE}"
-          else
             gh release create "${TAG}" \
               --target "${GITHUB_SHA}" \
               --title "Resound-Player 版本 ${VERSION}" \
               --notes-file "${NOTES_FILE}"
           fi
+
           echo "Uploading DMG to release ${TAG}..."
           gh release upload "${TAG}" dist-build/*.dmg dist-build/*.dmg.blockmap --clobber

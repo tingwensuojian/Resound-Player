@@ -89,6 +89,8 @@ jobs:
             $Tag = "${{ inputs.release_tag }}"
           }
           $Version = $Tag -replace '^v', ''
+
+          # Build release notes with all platform info
           $NotesFile = New-TemporaryFile
           @"
           ## v$Version 更新内容
@@ -110,12 +112,19 @@ jobs:
 
           ## 下载说明
 
-          本发布包含两个版本，请根据使用场景选择：
+          ### Windows
 
           | 文件 | 适用场景 | 说明 |
           |------|---------|------|
           | `Resound-Player Setup $Version.exe` | **日常使用（推荐）** | NSIS 安装包，安装后启动即时，任务栏图标正确显示 |
           | `Resound-Player-$Version.exe` | **U 盘携带、临时使用** | 便携版，免安装直接运行，首次启动需 3-5 秒解压 |
+
+          ### macOS
+
+          | 文件 | 适用场景 | 说明 |
+          |------|---------|------|
+          | `Resound-Player-Mac-x64-$Version.dmg` | **Intel 芯片** | DMG 安装包，拖入 Applications 即可 |
+          | `Resound-Player-Mac-arm64-$Version.dmg` | **Apple 芯片** | DMG 安装包，拖入 Applications 即可 |
           "@ | Set-Content -Path $NotesFile -Encoding utf8
 
           gh release view $Tag *> $null
@@ -125,5 +134,5 @@ jobs:
             gh release create $Tag --target $env:GITHUB_SHA --title "Resound-Player 版本 $Version" --notes-file $NotesFile
           }
 
-          Write-Host "Uploading EXE to release $Tag..."
+          Write-Host "Uploading Windows EXE to release $Tag..."
           gh release upload $Tag dist-build/*.exe dist-build/*.blockmap --clobber
