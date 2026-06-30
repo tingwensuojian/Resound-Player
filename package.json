@@ -31,7 +31,8 @@
     "fix:animated-rhythm": "node scripts/check-animated-rhythm.mjs --fix",
     "start": "electron .",
     "dev:unblock": "ENABLE_FLAC=true node node_modules/@unblockneteasemusic/server/app.js -p 38762 -o bodian kugou migu qq bilibili -s",
-    "dev:unblock-match": "node server/unblock-match-server.mjs"
+    "dev:unblock-match": "node server/unblock-match-server.mjs",
+    "dist:win:portable": "node scripts/prepare-win-icon.mjs && npx electron-builder --win portable --config.directories.output=dist-build && node scripts/fix-portable-icon.mjs"
   },
   "dependencies": {
     "@applemusic-like-lyrics/core": "file:_amll_dist/core/applemusic-like-lyrics-core-0.4.2.tgz",
@@ -77,6 +78,7 @@
     "electron-builder": "^25.1.8",
     "node-addon-api": "^8.8.0",
     "pngjs": "^5.0.0",
+    "rcedit": "^5.0.2",
     "typescript": "^5.8.2",
     "vite": "^6.2.0",
     "wait-on": "^8.0.3"
@@ -140,11 +142,12 @@
       "category": "AudioVideo;Audio;Player"
     },
     "win": {
-      "icon": "build/icon.ico",
       "signAndEditExecutable": false,
       "target": [
-        "nsis"
-      ]
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -166,6 +169,9 @@
         "LSUIElement": false
       },
       "artifactName": "${productName}-Mac-${arch}-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Resound-Player-${version}.${ext}"
     }
   }
 }
