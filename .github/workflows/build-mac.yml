@@ -50,7 +50,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: Resound-Player-macOS-${{ matrix.arch }}-dmg
-          path: dist-build/*.dmg
+          path: |
+          dist-build/*.dmg
+          dist-build/latest-mac.yml
           if-no-files-found: error
           retention-days: 14
 
@@ -76,4 +78,4 @@ jobs:
               >/dev/null 2>&1 || true
 
           echo "Uploading DMG (${{ matrix.arch }}) to release ${TAG}..."
-          gh release upload "${TAG}" dist-build/*.dmg dist-build/*.dmg.blockmap --clobber
+          gh release upload "${TAG}" dist-build/*.dmg dist-build/*.dmg.blockmap dist-build/latest-mac.yml --clobber

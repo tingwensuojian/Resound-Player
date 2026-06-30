@@ -71,6 +71,7 @@ jobs:
           path: |
             dist-build/*.exe
             dist-build/*.blockmap
+            dist-build/latest.yml
           if-no-files-found: error
           retention-days: 14
 
@@ -133,4 +134,4 @@ jobs:
           }
 
           Write-Host "Uploading Windows EXE to release $Tag..."
-          gh release upload $Tag dist-build/*.exe dist-build/*.blockmap --clobber
+          gh release upload $Tag dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
