@@ -32,7 +32,7 @@
     "start": "electron .",
     "dev:unblock": "ENABLE_FLAC=true node node_modules/@unblockneteasemusic/server/app.js -p 38762 -o bodian kugou migu qq bilibili -s",
     "dev:unblock-match": "node server/unblock-match-server.mjs",
-    "dist:win:portable": "node scripts/prepare-win-icon.mjs && npx electron-builder --win portable --config.directories.output=dist-build && node scripts/fix-portable-icon.mjs"
+    "dist:win:portable": "node scripts/build-win.mjs portable"
   },
   "dependencies": {
     "@applemusic-like-lyrics/core": "file:_amll_dist/core/applemusic-like-lyrics-core-0.4.2.tgz",
@@ -81,7 +81,8 @@
     "rcedit": "^5.0.2",
     "typescript": "^5.8.2",
     "vite": "^6.2.0",
-    "wait-on": "^8.0.3"
+    "wait-on": "^8.0.3",
+    "sharp": "^0.35.2"
   },
   "build": {
     "appId": "com.resound.player",
@@ -90,6 +91,7 @@
       "output": "dist-build"
     },
     "files": [
+      "build/**/*",
       "dist/**/*",
       "electron/**/*",
       "server/**/*",

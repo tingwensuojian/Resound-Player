@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resound-Player | Initializing Harmony</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background-color: #F5F5F7;
+    overflow: hidden; height: 100vh; width: 100vw;
+    display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+.ambient-glow {
+    position: absolute; width: 800px; height: 800px;
+    background: radial-gradient(circle, rgba(34,197,94,0.08) 0%, rgba(245,245,247,0) 70%);
+    z-index: 1; pointer-events: none;
+    animation: breathe 8s ease-in-out infinite;
+}
+@keyframes breathe {
+    0%,100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+}
+.logo-container {
+    z-index: 10; position: relative;
+    animation: logo-entrance 1.2s cubic-bezier(0.23,1,0.32,1) forwards;
+}
+@keyframes logo-entrance {
+    0% { transform: scale(0.8); opacity: 0; filter: blur(8px); }
+    100% { transform: scale(1); opacity: 1; filter: blur(0); }
+}
+.ripple {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    border: 1px solid rgba(34,197,94,0.15); border-radius: 50%;
+    pointer-events: none; opacity: 0; z-index: 5;
+}
+.ripple-1 { animation: ripple-pulse 3s infinite; animation-delay: 0.2s; }
+.ripple-2 { animation: ripple-pulse 3s infinite; animation-delay: 1.0s; }
+.ripple-3 { animation: ripple-pulse 3s infinite; animation-delay: 1.8s; }
+@keyframes ripple-pulse {
+    0% { width: 120px; height: 120px; opacity: 0.3; }
+    100% { width: 600px; height: 600px; opacity: 0; }
+}
+.shimmer-text {
+    background: linear-gradient(90deg, #1d1d1f, #86868b, #1d1d1f);
+    background-size: 200% auto;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 2.5s linear infinite;
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+@keyframes shimmer {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+}
+.exit-transition { animation: fade-out 0.8s ease-in forwards; }
+@keyframes fade-out {
+    0% { opacity: 1; filter: blur(0); }
+    100% { opacity: 0; filter: blur(20px); }
+}
+.progress-track {
+    width: 96px; height: 1.5px;
+    background: rgba(29,29,31,0.05); border-radius: 999px;
+    overflow: hidden; position: relative;
+}
+.progress-bar {
+    position: absolute; height: 100%; width: 0%;
+    background: #22c55e; border-radius: 999px;
+    transition: width 2500ms ease-out;
+    box-shadow: 0 0 8px rgba(34,197,94,0.4);
+}
+.logo-svg {
+    width: 256px; height: 96px;
+    display: block;
+}
+@media (min-width: 768px) { .logo-svg { width: 320px; height: 128px; } }
+</style>
+</head>
+<body>
+<div class="ambient-glow"></div>
+<div class="ripple ripple-1"></div>
+<div class="ripple ripple-2"></div>
+<div class="ripple ripple-3"></div>
+
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:48px;z-index:10;position:relative;">
+<div class="logo-container" style="width:256px;height:96px;display:flex;align-items:center;justify-content:center;">
+<svg class="logo-svg" viewBox="0 0 320 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Sound wave bars -->
+<rect x="20" y="52" width="8" height="28" rx="4" fill="#22c55e"/>
+<rect x="38" y="42" width="8" height="48" rx="4" fill="#22c55e" opacity="0.85"/>
+<rect x="56" y="28" width="8" height="76" rx="4" fill="#22c55e" opacity="0.6"/>
+<rect x="74" y="48" width="8" height="36" rx="4" fill="#22c55e" opacity="0.8"/>
+<rect x="92" y="34" width="8" height="64" rx="4" fill="#22c55e" opacity="0.7"/>
+<rect x="110" y="56" width="8" height="20" rx="4" fill="#22c55e" opacity="0.5"/>
+<!-- Text -->
+<text x="140" y="60" fill="#1d1d1f" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="34" font-weight="700" letter-spacing="-0.5">Resound</text>
+<text x="140" y="88" fill="#86868b" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="16" font-weight="400" letter-spacing="4">PLAYER</text>
+<!-- Animated dot -->
+<circle cx="295" cy="40" r="6" fill="#22c55e" opacity="0.8">
+<animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite"/>
+</circle>
+</svg>
+</div>
+</div>
+
+<div style="position:absolute;bottom:64px;width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:10;">
+<span class="shimmer-text">Initializing Harmony...</span>
+<div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+var pb=document.getElementById('progress-bar');
+setTimeout(function(){if(pb)pb.style.width='100%';},100);
+document.addEventListener('mousemove',function(e){
+var g=document.querySelector('.ambient-glow');
+if(g){
+g.style.transform='translate('+(e.clientX-400)+'px,'+(e.clientY-400)+'px)';
+g.style.left='0';
+g.style.top='0';
+}
+});
+});
+function finishSplash(){document.body.classList.add('exit-transition');}
+</script>
+</body>
+</html>

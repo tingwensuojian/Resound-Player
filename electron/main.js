@@ -142,6 +142,7 @@ function buildAppMenu() {
 let serviceChildren = {};
 let win = null;
 let miniWin = null;
+let splashWin = null;
 let currentServicePorts = {};
 let latestPlaybackSnapshot = null;
 
@@ -405,6 +406,7 @@ async function createMainWindow(ports) {
 
   // 内容准备就绪后再显示窗口，避免 resize 时因 GPU 效果滞后导致卡顿
   win.once('ready-to-show', () => {
+    closeSplashWindow();
     win.show();
     if (process.platform === 'darwin') win.setAlwaysOnTop(false);
   });
@@ -524,6 +526,7 @@ function createMiniWindow(ports) {
     titleBarStyle: isMac ? 'hidden' : undefined,
     trafficLightPosition: isMac ? { x: -100, y: -100 } : undefined,
     backgroundColor: '#1a1a2e',
+    icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -586,7 +589,55 @@ p{color:rgba(255,255,255,0.65);line-height:1.6;font-size:14px}
 
   await errorWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
   errorWin.show();
+  closeSplashWindow();
   errorWin.on('closed', () => app.quit());
+}
+
+var SPLASH_MIN_MS = 2800; // Minimum display time to let progress bar animation finish
+var splashShownAt = 0;
+
+function showSplashWindow() {
+  console.log('[splash] Creating splash window...');
+  writeMainLog('[splash] Creating splash window');
+  splashWin = new BrowserWindow({
+    width: 600,
+    height: 500,
+    resizable: false,
+    frame: false,
+    show: false,
+    backgroundColor: '#121317',
+    webPreferences: { contextIsolation: true, nodeIntegration: false, webSecurity: false },
+  });
+  splashWin.loadFile(path.join(__dirname, 'splash.html')).catch(function(e) {
+    writeMainLog('[splash] loadFile error:', e.message);
+  });
+  splashWin.webContents.on('did-fail-load', function(e, code, desc) {
+    writeMainLog('[splash] did-fail-load:', code, desc);
+  });
+  splashWin.once('ready-to-show', () => {
+    writeMainLog('[splash] ready-to-show');
+    splashShownAt = Date.now();
+    splashWin.show();
+  });
+  splashWin.on('closed', () => { splashWin = null; });
+}
+
+function closeSplashWindow() {
+  if (!splashWin || splashWin.isDestroyed()) return;
+  var elapsed = Date.now() - splashShownAt;
+  var remaining = SPLASH_MIN_MS - elapsed;
+  if (remaining > 0) {
+    // Let the progress bar animation finish before closing
+    setTimeout(function() {
+      if (splashWin && !splashWin.isDestroyed()) {
+        splashWin.close();
+        splashWin = null;
+      }
+    }, remaining);
+  } else {
+    splashWin.close();
+    splashWin = null;
+  }
 }
 
 async function bootstrap() {
@@ -719,7 +770,11 @@ async function bootstrap() {
   writeMainLog('[bootstrap] done', ports);
 }
 
-app.whenReady().then(bootstrap);
+app.whenReady().then(() => {
+  showSplashWindow();
+  // Give splash a moment to render before starting heavy service initialization
+  setTimeout(function() { bootstrap(); }, 500);
+});
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) bootstrap();

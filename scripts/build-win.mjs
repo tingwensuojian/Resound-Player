@@ -1,25 +1,37 @@
-﻿import { runDesktopBuild } from './desktop-build-utils.mjs';
-import { spawnSync } from 'node:child_process';
+﻿import { runDesktopBuild, buildRenderer, runElectronBuilder, runNodeScript, cleanDesktopDist } from './desktop-build-utils.mjs';
+import { rcedit } from 'rcedit';
+import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const target = process.argv[2] || 'nsis';
+const root = process.cwd();
+const distDir = path.join(root, 'dist-build');
+const iconPath = path.join(root, 'build', 'icon.ico');
+const exePath = path.join(distDir, 'win-unpacked', 'Resound-Player.exe');
 
-runDesktopBuild({
-  prepareScripts: ['scripts/prepare-win-icon.mjs'],
-  builderArgs: ['--win', target],
-});
-
-// After building portable, run the icon fix to apply custom icon to inner exe
-if (target === 'portable') {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const fixScript = path.join(__dirname, 'fix-portable-icon.mjs');
-  const result = spawnSync('node', [fixScript], {
-    cwd: process.cwd(),
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
+async function main() {
+  // Step 1: Prepare icons, build renderer, build unpacked
+  runDesktopBuild({
+    prepareScripts: ['scripts/prepare-win-icon.mjs'],
+    builderArgs: ['--win', 'dir'],
   });
-  if (result.error || result.status !== 0) {
-    console.warn('Portable icon fix completed with warnings (non-critical).');
+
+  // Step 2: Apply icon to inner exe
+  if (fs.existsSync(iconPath) && fs.existsSync(exePath)) {
+    await rcedit(exePath, { icon: iconPath });
+    console.log('  ✓ Icon applied to win-unpacked/Resound-Player.exe');
+  } else {
+    console.error('Icon or exe not found');
+    process.exit(1);
   }
+
+  // Step 3: Build the actual target from prepackaged
+  console.log(`\n=== Building target: ${target} from prepackaged ===`);
+  runElectronBuilder(['--win', target, '--prepackaged', path.join(distDir, 'win-unpacked')]);
+  console.log(`\n✓ Build complete: ${target}`);
 }
+
+main().catch((err) => {
+  console.error('Build failed:', err.message);
+  process.exit(1);
+});
