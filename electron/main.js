@@ -224,9 +224,8 @@ function enterMiniMode(alwaysOnTop = false) {
     const targetMiniWin = createMiniWindow(currentServicePorts);
     applyMiniAlwaysOnTopToWindow(targetMiniWin, !!alwaysOnTop);
     targetMiniWin.once('ready-to-show', () => {
-      targetMiniWin.show();
-      targetMiniWin.focus();
-      targetMiniWin.webContents.send('mini-mode:state-change', true);
+      // Open DevTools early but defer show/focus until renderer confirms auth
+      targetMiniWin.webContents.openDevTools({ mode: 'detach' });
     });
     if (targetMiniWin.isVisible()) targetMiniWin.focus();
     win.hide();
@@ -800,6 +799,14 @@ ipcMain.on('mini-mode:exit', () => {
 ipcMain.on('mini-mode:set-always-on-top', (_event, enabled) => {
   if (!preMiniState || !miniWin || miniWin.isDestroyed()) return;
   applyMiniAlwaysOnTopToWindow(miniWin, !!enabled);
+});
+
+ipcMain.on('mini-mode:renderer-ready', () => {
+  if (miniWin && !miniWin.isDestroyed()) {
+    miniWin.show();
+    miniWin.focus();
+    miniWin.webContents.send('mini-mode:state-change', true);
+  }
 });
 
 ipcMain.on('mini-mode:resize', (_event, height) => {

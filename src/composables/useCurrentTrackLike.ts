@@ -22,14 +22,14 @@ export function useCurrentTrackLike() {
     isCurrentPodcast.value ? currentPodcastRid.value > 0 : currentTrackId.value > 0,
   );
 
-  const likedSongSignature = computed(() => userStore.state.likedSongIds.join(','));
-  const subscribedDjSignature = computed(() => userStore.state.subscribedDjIds.join(','));
-
   const isCurrentLiked = computed(() => {
-    void likedSongSignature.value;
-    void subscribedDjSignature.value;
     if (isCurrentPodcast.value) return userStore.state.subscribedDjIds.includes(currentPodcastRid.value);
-    return currentTrackId.value > 0 ? userStore.state.likedSongIds.includes(currentTrackId.value) : false;
+    // Use likedSongIds when populated (mini window now calls refreshLoginStatus).
+    // Fall back to currentTrack.liked from main window snapshot.
+    if (currentTrackId.value > 0 && userStore.state.likedSongIds.length > 0) {
+      return userStore.state.likedSongIds.includes(currentTrackId.value);
+    }
+    return playerStore.state.currentTrack?.liked ?? playerStore.state.currentTrack?.isLiked ?? false;
   });
 
   const likeLoading = ref(false);
@@ -69,14 +69,26 @@ export function useCurrentTrackLike() {
         const exists = userStore.state.subscribedDjIds.includes(rid);
         if (next && !exists) userStore.state.subscribedDjIds = [...userStore.state.subscribedDjIds, rid];
         if (!next && exists) userStore.state.subscribedDjIds = userStore.state.subscribedDjIds.filter((id) => id !== rid);
-        return;
-      }
-      const id = currentTrackId.value;
-      if (next) {
-        if (!userStore.state.likedSongIds.includes(id)) userStore.state.likedSongIds = [...userStore.state.likedSongIds, id];
       } else {
-        userStore.state.likedSongIds = userStore.state.likedSongIds.filter((songId) => songId !== id);
+        const id = currentTrackId.value;
+        if (next) {
+          if (!userStore.state.likedSongIds.includes(id)) userStore.state.likedSongIds = [...userStore.state.likedSongIds, id];
+        } else {
+          userStore.state.likedSongIds = userStore.state.likedSongIds.filter((songId) => songId !== id);
+        }
       }
+      // Sync to currentTrack so the mini window immediately reflects the change
+      // without waiting for the next snapshot.
+      if (playerStore.state.currentTrack) {
+        playerStore.state.currentTrack.liked = next;
+        playerStore.state.currentTrack.isLiked = next;
+      }
+      // Sync back to main window so its syncRuntimeState produces a correct snapshot.
+      // This prevents the next snapshot from overwriting the mini window's local toggle.
+      // The double API call on the main window side is harmless (endpoint is idempotent).
+      try {
+        window.appEnv?.playback?.sendCommand?.({ type: 'toggleLike' });
+      } catch {}
     } catch (error) {
       console.error('[like] toggle like failed', error);
     } finally {

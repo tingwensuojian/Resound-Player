@@ -19,17 +19,23 @@ const userStore = useUserStore(pinia);
 
 uiStore.init();
 playerStore.init();
-// Mini window is display/control-only. Avoid a second auth refresh competing
-// with the main window during startup; like action still validates on click.
-void userStore.hydrate().catch(() => {});
 
+// Mount app immediately, then verify auth before signaling the main process
+// to show the window. This ensures isLogin is true by the time the user
+// can interact with the like/favorite button.
+// refreshLoginStatus is the project's standard auth verification pattern.
 app.mount('#app');
-
-async function notifyMiniRendererReady() {
+void (async () => {
+  try {
+    await userStore.hydrate();
+    await userStore.refreshLoginStatus();
+    console.log('[mini] auth ok — isLogin:', userStore.state.isLogin, 'loginMode:', userStore.state.loginMode);
+  } catch (err) {
+    console.warn('[mini] auth failed — like/fav will show login modal:', err);
+  }
+  // Wait for stable first paint frames, then signal ready
   await nextTick();
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   window.appEnv?.miniMode?.rendererReady?.();
-}
-
-void notifyMiniRendererReady();
+})();
