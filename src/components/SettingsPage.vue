@@ -690,7 +690,7 @@ async function fetchChangelog() {
     changelogList.value = releases.map((r: any) => ({
       tag: r.tag_name || '',
       date: r.published_at ? r.published_at.slice(0, 10) : '',
-      desc: (r.body || '').replace(/^[#\s]+/gm, '').trim() || '暂无描述',
+      desc: (r.body || '').replace(/^###?\s*/gm, '').replace(/^[-*]\s+/gm, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1').replace(/\[(.+?)\]\(.+?\)/g, '$1').replace(/^---+\s*$/gm, '').replace(/\n{3,}/g, '\n\n').trim() || '暂无描述',
     }));
   } catch {
     changelogList.value = [];
