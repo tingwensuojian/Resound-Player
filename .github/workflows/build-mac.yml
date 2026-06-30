@@ -51,8 +51,8 @@ jobs:
         with:
           name: Resound-Player-macOS-${{ matrix.arch }}-dmg
           path: |
-          dist-build/*.dmg
-          dist-build/latest-mac.yml
+            dist-build/*.dmg
+            dist-build/latest-mac.yml
           if-no-files-found: error
           retention-days: 14
 
