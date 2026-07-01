@@ -993,7 +993,11 @@ export const usePlayerStore = defineStore('player', () => {
         } catch (error) {
 
 
+
           console.error('[player] toggleLike failed', error);
+          // Notify taskbar widget to revert optimistic state
+          try { window.appEnv?.taskbarWidget?.notifyLikeStatus?.(!_next); } catch (e) {}
+          syncRuntimeState();
 
 
         }
@@ -3521,17 +3525,17 @@ export const usePlayerStore = defineStore('player', () => {
 
 
       if (typeof seekTo === 'number' && seekTo > 0 && wasPlaying) {
-
-
         state.audio.currentTime = seekTo;
-
-
       }
 
 
       return commitPlaybackTransaction({ track, index: targetIndex, requestSeq, reason, sourceInfo });
 
 
+    } catch (error) {
+      console.error("[playback] playTrack failed:", error);
+      rollbackPlaybackTransaction(previous, requestSeq, reason);
+      useLoginModalStore().showGlobalToast("播放失败，请检查网络或稍后重试", "error", 3000);
     } finally {
 
 
@@ -4768,7 +4772,7 @@ export const usePlayerStore = defineStore('player', () => {
     openExpanded, closeExpanded, toggleExpanded,
 
 
-    seek, pausePlayback, syncThemeState, recordCurrentTrackToHistory, setFullLyrics, setMiniLyricText,
+    seek, pausePlayback, syncThemeState, recordCurrentTrackToHistory, setFullLyrics, setMiniLyricText, syncRuntimeState,
 
 
   };

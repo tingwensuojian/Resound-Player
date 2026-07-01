@@ -659,7 +659,22 @@ export function registerIpc() {
 
   });
   ipcMain.on('taskbar-widget:like-status', function(_event, liked) {
-    updateLikeStatus(liked);
+    // Forward to taskbar widget window (main window -> widget)
+    console.log('[taskbarWidget] like-status received:', { liked: liked, widgetWinExists: Boolean(widgetWin && !widgetWin.isDestroyed()) });
+    if (widgetWin && !widgetWin.isDestroyed()) {
+      try { widgetWin.webContents.send('taskbar-widget:like-status', liked); } catch(e) {}
+    }
+    // Update latestConvertedSnapshot so subsequent snapshot syncs are consistent
+    if (latestConvertedSnapshot) {
+      latestConvertedSnapshot.liked = Boolean(liked);
+    }
+    // Forward to main renderer (for tray menu)
+    const wins = BrowserWindow.getAllWindows();
+    for (const w of wins) {
+      if (!w.isDestroyed() && w.title !== 'Resound-Player Widget' && w.title !== 'Resound-Player Snap') {
+        try { w.webContents.send('like-status-change', liked); } catch(e) {}
+      }
+    }
   });
 
   

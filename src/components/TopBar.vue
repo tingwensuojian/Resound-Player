@@ -119,18 +119,18 @@
           </div>
         </transition>
       </div>
-      <button v-if="platform.isDesktop" class="topbar-btn" title="迷你模式" @click="uiStore.enterMiniMode()">
+      <button v-if="platform.isDesktop" class="topbar-btn" data-tooltip="迷你模式" data-tooltip-dir="down" @click="uiStore.enterMiniMode()">
         <PictureInPicture2 :size="16" />
       </button>
       <div v-if="platform.isDesktop" class="win-controls">
-        <button class="win-btn" type="button" title="最小化" @click="minimizeWindow">
+        <button class="win-btn" type="button" data-tooltip="最小化" data-tooltip-dir="down" @click="minimizeWindow">
           <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="5.5" width="10" height="1" fill="currentColor"/></svg>
         </button>
-        <button class="win-btn" type="button" :title="isMaximized ? '还原' : '最大化'" @click="maximizeWindow">
+        <button class="win-btn" type="button" :data-tooltip="isMaximized ? '还原' : '最大化'" data-tooltip-dir="down" @click="maximizeWindow">
           <svg v-if="isMaximized" width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="0.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/><rect x="0.5" y="2" width="9" height="9" rx="1" fill="var(--bg-surface)" stroke="currentColor" stroke-width="1"/></svg>
           <svg v-else width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1"/></svg>
         </button>
-        <button class="win-btn win-btn--close" type="button" title="关闭" @click="closeWindow">
+        <button class="win-btn win-btn--close" type="button" data-tooltip="关闭" data-tooltip-dir="down" @click="closeWindow">
           <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
         </button>
       </div>

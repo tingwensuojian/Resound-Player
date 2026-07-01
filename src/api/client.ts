@@ -21,6 +21,33 @@ export const apiClient = axios.create({
   timeout: 15000,
 });
 
+// Axios response interceptor: log API errors consistently
+// and prevent unhandled rejections from propagating silently.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.config) {
+      const { method, url, params, baseURL } = error.config;
+      const status = error.response?.status ?? 0;
+      const statusText = error.response?.statusText ?? "";
+      const errMsg = error.message ?? String(error);
+      if (error.code === "ERR_NETWORK" || error.code === "ECONNABORTED") {
+        console.warn("[api] " + (method?.toUpperCase() ?? "?") + " " + url + " failed: " + errMsg + " (code=" + (error.code ?? "?") + ")");
+      } else if (status >= 500) {
+        console.warn("[api] " + (method?.toUpperCase() ?? "?") + " " + url + " server error: " + status + " " + statusText);
+      } else if (status >= 400) {
+        console.debug("[api] " + (method?.toUpperCase() ?? "?") + " " + url + " client error: " + status + " " + statusText);
+      } else if (error.code === "ERR_CANCELED") {
+        // Aborted requests are expected (e.g. navigation), skip logging
+      } else {
+        console.debug("[api] " + (method?.toUpperCase() ?? "?") + " " + url + " unexpected error: " + errMsg);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+
 export async function waitForApiReady(options?: {
   maxAttempts?: number;
   intervalMs?: number;

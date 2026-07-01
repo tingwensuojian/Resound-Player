@@ -15,6 +15,14 @@ export function useCurrentTrackLike() {
   const userStore = useUserStore();
   const loginModalStore = useLoginModalStore();
   const currentTrackId = computed(() => Number(playerStore.state.currentTrack?.id || 0));
+  const likedSongIdsLoaded = ref(false);
+
+  // Detect when likedSongIds has been fetched (even if empty)
+  watch(
+    () => userStore.state.likedSongIds,
+    () => { likedSongIdsLoaded.value = true; },
+    { once: true },
+  );
   const currentPodcastRid = computed(() => Number(playerStore.state.currentTrack?.podcast?.rid || 0));
   const isCurrentPodcast = computed(() => playerStore.state.currentTrack?.source === 'podcast' && currentPodcastRid.value > 0);
 
@@ -26,7 +34,7 @@ export function useCurrentTrackLike() {
     if (isCurrentPodcast.value) return userStore.state.subscribedDjIds.includes(currentPodcastRid.value);
     // Use likedSongIds when populated (mini window now calls refreshLoginStatus).
     // Fall back to currentTrack.liked from main window snapshot.
-    if (currentTrackId.value > 0 && userStore.state.likedSongIds.length > 0) {
+    if (currentTrackId.value > 0 && likedSongIdsLoaded.value) {
       return userStore.state.likedSongIds.includes(currentTrackId.value);
     }
     return playerStore.state.currentTrack?.liked ?? playerStore.state.currentTrack?.isLiked ?? false;
@@ -83,12 +91,14 @@ export function useCurrentTrackLike() {
         playerStore.state.currentTrack.liked = next;
         playerStore.state.currentTrack.isLiked = next;
       }
-      // Sync back to main window so its syncRuntimeState produces a correct snapshot.
-      // This prevents the next snapshot from overwriting the mini window's local toggle.
-      // The double API call on the main window side is harmless (endpoint is idempotent).
-      try {
-        window.appEnv?.playback?.sendCommand?.({ type: 'toggleLike' });
-      } catch {}
+      // Only send to main window from mini window to avoid loop
+      if (window.appEnv?.windowRole === 'mini') {
+        try { window.appEnv?.playback?.sendCommand?.({ type: 'toggleLike' }); } catch {}
+      }
+      console.log('[like] calling syncRuntimeState after like toggle, next:', next);
+      playerStore.syncRuntimeState();
+      console.log('[like] syncRuntimeState done, now calling notifyLikeStatus, next:', next);
+      try { window.appEnv?.taskbarWidget?.notifyLikeStatus?.(next); } catch (e) { console.error('[like] notifyLikeStatus error:', e); }
     } catch (error) {
       console.error('[like] toggle like failed', error);
     } finally {
