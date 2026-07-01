@@ -215,6 +215,7 @@
                updateStatus === '下载中' ? '下载中 ' + updateProgress + '%' :
                updateStatus === 'downloaded' ? '更新已下载' :
                updateStatus === 'not-available' ? '已是最新版' :
+               updateStatus === 'error' && updatePhase === 'download' ? '下载失败，重试' :
                updateStatus === 'error' ? '检查失败，重试' : '检查更新' }}
           </button>
           <button v-if="updateStatus === 'available'" class="about-download-link" @click="startDownload">
@@ -744,6 +745,7 @@ const appVersion = typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}
 const updateStatus = ref('idle'); // idle | 检查中 | available | 下载中 | downloaded | not-available | error
 const updateVersion = ref('');
 const updateProgress = ref(0);
+const updatePhase = ref<'check' | 'download' | null>(null);
 
 let unsubUpdater: (() => void) | null = null;
 
@@ -751,6 +753,7 @@ onMounted(() => {
   if ((window as any).appEnv?.autoUpdater?.onStatus) {
     unsubUpdater = (window as any).appEnv.autoUpdater.onStatus((status: any) => {
       updateStatus.value = status.status;
+      if (status.phase) updatePhase.value = status.phase;
       if (status.info?.version) {
         updateVersion.value = status.info.version;
       }

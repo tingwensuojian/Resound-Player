@@ -100,9 +100,9 @@ jobs:
           ARM64_SHA=$(grep "sha512:" "$ARM64_YML" | head -1 | awk "{print \$2}")
           X64_SIZE=$(stat -c%s "$X64_DMG")
           ARM64_SIZE=$(stat -c%s "$ARM64_DMG")
-          RDATE=$(grep "releaseDate:" "$X64_YML" | sed "s/releaseDate://" | tr -d " ")
+          RDATE=$(grep "releaseDate:" "$X64_YML" | sed 's/releaseDate: *//; s/^"//; s/"$//')
 
-          cat > merged-latest-mac.yml <<- DATA
+          cat > latest-mac.yml <<- DATA
           version: $VERSION
           files:
             - url: $X64_NAME
@@ -116,8 +116,8 @@ jobs:
           releaseDate: "$RDATE"
           DATA
 
-          echo "=== merged latest-mac.yml ==="
-          cat merged-latest-mac.yml
+          echo "=== merged latest-mac.yml (saved as latest-mac.yml) ==="
+          cat latest-mac.yml
 
       - name: Upload merged latest-mac.yml to Release
         if: |
@@ -137,5 +137,5 @@ jobs:
           gh release view "${TAG}" --json assets -q ".assets[] | select(.name==\"latest-mac.yml\") | .id" 2>/dev/null | while read id; do
             gh api -X DELETE "repos/tingwensuojian/Resound-Player/releases/assets/$id" 2>/dev/null || true
           done
-          echo "Uploading merged latest-mac.yml..."
-          gh release upload "${TAG}" merged-latest-mac.yml --clobber
+          echo "Uploading merged latest-mac.yml as latest-mac.yml..."
+          gh release upload "${TAG}" latest-mac.yml --clobber
