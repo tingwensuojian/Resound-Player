@@ -1,12 +1,12 @@
-# Resound-Player
+﻿# Resound-Player
 
 Resound-Player 是一个基于 `Vue 3 + TypeScript + Vite + Electron` 构建的音乐播放器项目，围绕网易云音乐生态、桌面端沉浸式播放体验和本地音乐管理能力持续演进。
 
-当前仓库已经完成 `v1.0.2` 发布，既可以作为桌面应用继续迭代，也保留了 Web 调试与独立部署能力。
+当前仓库已经完成 `v1.1.3` 发布，既可以作为桌面应用继续迭代，也保留了 Web 调试与独立部署能力。
 
 ## 项目现状
 
-- 当前版本：`1.0.2`
+- 当前版本：`1.1.3`
 - 主要形态：`Electron` 桌面应用
 - 调试形态：支持 `Web` 前端单独运行或前后端联调
 - 桌面端状态：开发模式会自动拉起 `Vite + Netease API + Unblock Proxy + Unblock Match`
@@ -182,8 +182,10 @@ npm run dev:desktop:headless
 | `npm run dist:linux` | 生成 Linux AppImage |
 | `npm run dist:linux:deb` | 生成 Linux deb 包 |
 | `npm run dist:win` | 生成 Windows 安装包 |
+| `npm run dist:win:portable` | 生成 Windows 便携版 |
 | `npm run pack:win` | 生成 Windows dir 包 |
-| `npm run dist:mac` | 生成 macOS dmg |
+| `npm run dist:mac:x64` | 生成 macOS dmg（Intel） |
+| `npm run dist:mac:arm64` | 生成 macOS dmg（Apple Silicon） |
 | `npm run pack:mac` | 生成 macOS dir 包 |
 | `npm run clean:desktop` | 清理桌面构建产物 |
 | `npm run check:animated-rhythm` | 检查统一动画节奏配置 |
@@ -214,15 +216,18 @@ npm run dist:linux:deb
 # Windows
 npm run dist:win
 
-# macOS
-npm run dist:mac
+# macOS（Intel）
+npm run dist:mac:x64
+
+# macOS（Apple Silicon）
+npm run dist:mac:arm64
 ```
 
 Electron 打包配置位于 `package.json` 的 `build` 字段，当前已配置：
 
 - Linux：`AppImage`、`deb`
 - Windows：`nsis`
-- macOS：`dmg`
+- macOS：`dmg`（x64 + arm64 双架构）
 
 ## Web 与桌面端差异
 
@@ -294,6 +299,36 @@ sudo xattr -d com.apple.quarantine /Applications/Resound-Player.app
 └── vite.config.ts
 ```
 
+## Docker
+
+### CI 自动构建 Docker 镜像
+
+每当推送 `v*` 标签时，GitHub Actions 自动执行 [build-docker.yml](/.github/workflows/build-docker.yml)：
+
+- 构建 **Unblock Match Server** 的 Docker 镜像
+- 推送到 Docker Hub：[tingwensuojian/resound-player-server](https://hub.docker.com/r/tingwensuojian/resound-player-server)
+- 标签：`vX.X.X`（版本号）和 `latest`
+
+### 直接使用 Docker 镜像
+
+```bash
+docker pull tingwensuojian/resound-player-server:latest
+
+docker run -d \
+  --name resound-unblock-match \
+  -p 38763:38763 \
+  --restart unless-stopped \
+  tingwensuojian/resound-player-server:latest
+```
+
+### 本地前台部署
+
+如需完整的前端 + API + Unblock 部署，参见 [deploy 部署指南](./deploy/README.md)，支持：
+
+- pm2 + Nginx（推荐）
+- Docker Compose
+- 独立 Docker 部署（仅前端）
+
 ## 核心架构摘要
 
 ### 播放链路
@@ -341,6 +376,8 @@ sudo xattr -d com.apple.quarantine /Applications/Resound-Player.app
 - [下载流程说明](./docs/下载流程说明.md)
 - [音质体系说明](./docs/音质体系说明.md)
 - [跨平台开发规范](./docs/跨平台开发规范.md)
+- [发布流程](./docs/发布流程.md)
+- [迷你模式实现说明](./docs/迷你模式实现说明.md)
 
 ## 相关仓库信息
 

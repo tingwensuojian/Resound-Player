@@ -100,6 +100,56 @@ docker build -f deploy/Dockerfile -t resound-player-frontend .
 docker run -p 8080:80 resound-player-frontend
 ```
 
+## Unblock Match Server（Docker Hub）
+
+### CI 自动构建
+
+每当推送 `v*` 标签时，GitHub Actions 自动执行 [build-docker.yml](/.github/workflows/build-docker.yml)：
+
+- 构建 Unblock Match Server 的 Docker 镜像
+- 推送到 Docker Hub：`tingwensuojian/resound-player-server`
+- 标签：`vX.X.X`（版本号）和 `latest`
+
+### 直接使用
+
+无需本地构建，直接拉取运行：
+
+```bash
+docker pull tingwensuojian/resound-player-server:latest
+
+docker run -d \
+  --name resound-unblock-match \
+  -p 38763:38763 \
+  --restart unless-stopped \
+  tingwensuojian/resound-player-server:latest
+```
+
+### 配合本地开发使用
+
+将本地 Unblock Match 服务替换为 Docker 版本：
+
+```bash
+docker run -d \
+  --name resound-unblock-match \
+  -p 38763:38763 \
+  --restart unless-stopped \
+  tingwensuojian/resound-player-server:latest
+```
+
+然后在 `.env.local` 中设置：
+
+```
+VITE_UNBLOCK_MATCH_TARGET=http://127.0.0.1:38763
+```
+
+### 健康检查
+
+镜像内置健康检查，每 30 秒检测 `/` 端点：
+
+```bash
+docker inspect resound-unblock-match --format='{{.State.Health.Status}}'
+```
+
 ## HTTPS 配置
 
 **使用 Let's Encrypt：**
