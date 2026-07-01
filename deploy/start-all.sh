@@ -8,7 +8,7 @@ echo "[start-all] Starting Nginx..."
 nginx -c /etc/nginx/nginx-allinone.conf
 
 echo "[start-all] Starting Netease API (port 38761)..."
-node /app/scripts/start-api.cjs &
+PORT=38761 node /app/scripts/start-api.cjs &
 API_PID=$!
 
 sleep 2
