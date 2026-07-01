@@ -1,4 +1,4 @@
-﻿# Resound-Player
+# Resound-Player
 
 Resound-Player 是一个基于 `Vue 3 + TypeScript + Vite + Electron` 构建的音乐播放器项目，围绕网易云音乐生态、桌面端沉浸式播放体验和本地音乐管理能力持续演进。
 
@@ -301,34 +301,40 @@ sudo xattr -d com.apple.quarantine /Applications/Resound-Player.app
 
 ## Docker
 
-### CI 自动构建 Docker 镜像
+### 一键部署（推荐）
 
-每当推送 `v*` 标签时，GitHub Actions 自动执行 [build-docker.yml](/.github/workflows/build-docker.yml)：
-
-- 构建 **Unblock Match Server** 的 Docker 镜像
-- 推送到 Docker Hub：[tingwensuojian/resound-player-server](https://hub.docker.com/r/tingwensuojian/resound-player-server)
-- 标签：`vX.X.X`（版本号）和 `latest`
-
-### 直接使用 Docker 镜像
+Resound-Player 提供全服务一体 Docker 镜像，包含前端 SPA、Netease API 和 Unblock 音源替换服务，一个容器即可运行完整应用：
 
 ```bash
 docker pull tingwensuojian/resound-player-server:latest
 
 docker run -d \
-  --name resound-unblock-match \
-  -p 38763:38763 \
+  --name resound-player \
+  -p 38760:80 \
   --restart unless-stopped \
   tingwensuojian/resound-player-server:latest
 ```
 
-### 本地前台部署
+启动后访问 `http://localhost:38760` 即可使用。
 
-如需完整的前端 + API + Unblock 部署，参见 [deploy 部署指南](./deploy/README.md)，支持：
+### CI 自动构建
 
-- pm2 + Nginx（推荐）
-- Docker Compose
-- 独立 Docker 部署（仅前端）
+每当推送 `v*` 标签时，GitHub Actions 自动执行 [build-docker.yml](/.github/workflows/build-docker.yml)：
 
+- 构建全服务一体 Docker 镜像（Nginx + Netease API + Unblock Proxy + Unblock Match）
+- 推送到 Docker Hub：[tingwensuojian/resound-player-server](https://hub.docker.com/r/tingwensuojian/resound-player-server)
+- 标签：`vX.X.X`（版本号）和 `latest`
+
+### 容器内服务架构
+
+| 服务 | 内部端口 | 说明 |
+|------|---------|------|
+| Nginx（前端 SPA + 反向代理） | 80 | 唯一对外暴露端口，映射为 38760 |
+| Netease API | 38761 | 网易云音乐数据接口 |
+| Unblock Proxy | 38762 | 音源替换代理 |
+| Unblock Match | 38763 | 音源匹配服务 |
+
+所有 API 请求通过 Nginx 反向代理分发到内部服务，浏览器只需访问 Nginx 端口即可使用全部功能。
 ## 核心架构摘要
 
 ### 播放链路
