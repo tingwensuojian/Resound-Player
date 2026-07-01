@@ -32,6 +32,7 @@ let _state = {
   info: null,
   progress: null,
   error: null,
+  phase: null, // 'check' | 'download' | null
 };
 
 function broadcast() {
@@ -69,6 +70,7 @@ function getAutoUpdater() {
       log("checking-for-update");
       _state = { ..._state, status: Status.CHECKING, info: null, progress: null, error: null };
       broadcast();
+  _state.phase = 'check';
     });
 
     autoUpdater.on("update-available", (info) => {
@@ -173,9 +175,11 @@ export function checkForUpdates() {
 export function downloadUpdate() {
   log("downloadUpdate triggered by user");
   const updater = getAutoUpdater();
+  _state = { ..._state, status: Status.DOWNLOADING, phase: 'download' };
+  broadcast();
   updater.downloadUpdate().catch((err) => {
     log("downloadUpdate failed", err);
-    _state = { ..._state, status: Status.ERROR, error: err.message };
+    _state = { ..._state, status: Status.ERROR, error: err.message, phase: 'download' };
     broadcast();
   });
 }
