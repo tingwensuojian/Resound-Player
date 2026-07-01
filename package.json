@@ -25,7 +25,7 @@
     "dist:win": "node scripts/build-win.mjs nsis",
     "pack:win": "node scripts/build-win.mjs dir",
     "prepare:mac-icon": "node scripts/prepare-mac-icon.mjs",
-    "dist:mac": "node scripts/build-mac.mjs dmg",
+    "dist:mac": "node scripts/build-mac.mjs dmg,zip",
     "pack:mac": "node scripts/build-mac.mjs dir",
     "check:animated-rhythm": "node scripts/check-animated-rhythm.mjs",
     "fix:animated-rhythm": "node scripts/check-animated-rhythm.mjs --fix",
@@ -33,8 +33,8 @@
     "dev:unblock": "ENABLE_FLAC=true node node_modules/@unblockneteasemusic/server/app.js -p 38762 -o bodian kugou migu qq bilibili -s",
     "dev:unblock-match": "node server/unblock-match-server.mjs",
     "dist:win:portable": "node scripts/build-win.mjs portable",
-    "dist:mac:x64": "node scripts/build-mac.mjs dmg x64",
-    "dist:mac:arm64": "node scripts/build-mac.mjs dmg arm64"
+    "dist:mac:x64": "node scripts/build-mac.mjs dmg,zip x64",
+    "dist:mac:arm64": "node scripts/build-mac.mjs dmg,zip arm64"
   },
   "dependencies": {
     "@applemusic-like-lyrics/core": "file:_amll_dist/core/applemusic-like-lyrics-core-0.4.2.tgz",
@@ -165,7 +165,8 @@
     "mac": {
       "icon": "build/icon.icns",
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "identity": "-",
       "category": "public.app-category.music",
