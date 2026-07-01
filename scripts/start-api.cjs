@@ -35,7 +35,7 @@ async function start() {
   )
 
   // 不 await —— 让 serveNcmApi 在后台运行，Express 的 app.listen() 会创建 TCP 句柄保持进程存活
-  serveNcmApi({ checkVersion: true }).catch((err) => {
+  serveNcmApi({ checkVersion: true, port: Number(process.env.PORT) || 38761 }).catch((err) => {
     console.error('[api-wrapper] serveNcmApi error:', err)
     process.exit(1)
   })
