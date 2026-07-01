@@ -1,1 +1,7 @@
 ﻿dev-output.log
+
+# Build artifacts
+node_modules/
+native/node_modules/
+native/taskbar-widget-helper/build/Release/
+

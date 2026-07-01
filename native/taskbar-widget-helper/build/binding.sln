@@ -1,15 +1,25 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2015
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nothing", "node_modules\node-addon-api\nothing.vcxproj", "{8FB01C09-F15D-1120-9E00-76E74A0A510A}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(..)", "..\..", "{4D5635DD-F765-2416-1825-649C5AA6477E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "taskbar_widget_helper", "taskbar_widget_helper.vcxproj", "{64ABB18D-242A-17FF-CD92-56FD8485A6CF}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(..)", "..\..\..", "{1ED8F92F-E1C2-801C-C030-847030F148AA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node_modules)", "..\..\..\node_modules", "{FA7649AF-6EBF-A752-C27D-B0AB851E5B84}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(.pnpm)", "..\..\..\node_modules\.pnpm", "{C2C2F206-F463-3396-133E-389D77C4961A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node-addon-api@8.9.0)", "..\..\..\node_modules\.pnpm\node-addon-api@8.9.0", "{A25D26D5-6069-4B96-1EE3-03FC0BC26584}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node_modules)", "..\..\..\node_modules\.pnpm\node-addon-api@8.9.0\node_modules", "{B7A0618E-51B7-9376-B42A-97C03E7D3706}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node-addon-api)", "..\..\..\node_modules\.pnpm\node-addon-api@8.9.0\node_modules\node-addon-api", "{BAE14663-630E-E000-F03E-A8D0C283CE2F}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nothing", "..\..\node_modules\.pnpm\node-addon-api@8.9.0\node_modules\node-addon-api\nothing.vcxproj", "{4A997B3C-F218-5F41-96F8-DD04E36BFDC6}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "taskbar_widget_helper", "taskbar_widget_helper.vcxproj", "{83913BF9-1D29-78EC-F372-BB3723C51930}"
 	ProjectSection(ProjectDependencies) = postProject
-		{8FB01C09-F15D-1120-9E00-76E74A0A510A} = {8FB01C09-F15D-1120-9E00-76E74A0A510A}
+		{4A997B3C-F218-5F41-96F8-DD04E36BFDC6} = {4A997B3C-F218-5F41-96F8-DD04E36BFDC6}
 	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node_modules)", "..\node_modules", "{9D350B9E-06FB-960D-859F-B43C9597383A}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node-addon-api)", "..\node_modules\node-addon-api", "{AF891C37-E709-9CCC-0D50-0CCCC8CCC563}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,20 +27,25 @@ Global
 		Debug|x64 = Debug|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{64ABB18D-242A-17FF-CD92-56FD8485A6CF}.Release|x64.ActiveCfg = Release|x64
-		{64ABB18D-242A-17FF-CD92-56FD8485A6CF}.Release|x64.Build.0 = Release|x64
-		{64ABB18D-242A-17FF-CD92-56FD8485A6CF}.Debug|x64.ActiveCfg = Debug|x64
-		{64ABB18D-242A-17FF-CD92-56FD8485A6CF}.Debug|x64.Build.0 = Debug|x64
-		{8FB01C09-F15D-1120-9E00-76E74A0A510A}.Release|x64.ActiveCfg = Release|x64
-		{8FB01C09-F15D-1120-9E00-76E74A0A510A}.Release|x64.Build.0 = Release|x64
-		{8FB01C09-F15D-1120-9E00-76E74A0A510A}.Debug|x64.ActiveCfg = Debug|x64
-		{8FB01C09-F15D-1120-9E00-76E74A0A510A}.Debug|x64.Build.0 = Debug|x64
+		{4A997B3C-F218-5F41-96F8-DD04E36BFDC6}.Release|x64.ActiveCfg = Release|x64
+		{4A997B3C-F218-5F41-96F8-DD04E36BFDC6}.Release|x64.Build.0 = Release|x64
+		{4A997B3C-F218-5F41-96F8-DD04E36BFDC6}.Debug|x64.ActiveCfg = Debug|x64
+		{4A997B3C-F218-5F41-96F8-DD04E36BFDC6}.Debug|x64.Build.0 = Debug|x64
+		{83913BF9-1D29-78EC-F372-BB3723C51930}.Release|x64.ActiveCfg = Release|x64
+		{83913BF9-1D29-78EC-F372-BB3723C51930}.Release|x64.Build.0 = Release|x64
+		{83913BF9-1D29-78EC-F372-BB3723C51930}.Debug|x64.ActiveCfg = Debug|x64
+		{83913BF9-1D29-78EC-F372-BB3723C51930}.Debug|x64.Build.0 = Debug|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{AF891C37-E709-9CCC-0D50-0CCCC8CCC563} = {9D350B9E-06FB-960D-859F-B43C9597383A}
-		{8FB01C09-F15D-1120-9E00-76E74A0A510A} = {AF891C37-E709-9CCC-0D50-0CCCC8CCC563}
+		{1ED8F92F-E1C2-801C-C030-847030F148AA} = {4D5635DD-F765-2416-1825-649C5AA6477E}
+		{FA7649AF-6EBF-A752-C27D-B0AB851E5B84} = {1ED8F92F-E1C2-801C-C030-847030F148AA}
+		{C2C2F206-F463-3396-133E-389D77C4961A} = {FA7649AF-6EBF-A752-C27D-B0AB851E5B84}
+		{A25D26D5-6069-4B96-1EE3-03FC0BC26584} = {C2C2F206-F463-3396-133E-389D77C4961A}
+		{B7A0618E-51B7-9376-B42A-97C03E7D3706} = {A25D26D5-6069-4B96-1EE3-03FC0BC26584}
+		{BAE14663-630E-E000-F03E-A8D0C283CE2F} = {B7A0618E-51B7-9376-B42A-97C03E7D3706}
+		{4A997B3C-F218-5F41-96F8-DD04E36BFDC6} = {BAE14663-630E-E000-F03E-A8D0C283CE2F}
 	EndGlobalSection
 EndGlobal
