@@ -1,4 +1,4 @@
-﻿import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
 import { init as initTaskbarWidget, registerIpc as registerTaskbarWidgetIpc, enable as enableTaskbarWidget, disable as disableTaskbarWidget, getConfig as getTaskbarWidgetConfig, updatePlaybackSnapshot as updateTaskbarWidgetSnapshot } from './services/taskbarWidgetService.js';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -226,8 +226,8 @@ function enterMiniMode(alwaysOnTop = false) {
     const targetMiniWin = createMiniWindow(currentServicePorts);
     applyMiniAlwaysOnTopToWindow(targetMiniWin, !!alwaysOnTop);
     targetMiniWin.once('ready-to-show', () => {
-      // Open DevTools early but defer show/focus until renderer confirms auth
-      targetMiniWin.webContents.openDevTools({ mode: 'detach' });
+      // Open DevTools early (dev mode only) but defer show/focus until renderer confirms auth
+      if (process.env.VITE_DEV_SERVER_URL) targetMiniWin.webContents.openDevTools({ mode: 'detach' });
     });
     if (targetMiniWin.isVisible()) targetMiniWin.focus();
     win.hide();
@@ -408,7 +408,7 @@ async function createMainWindow(ports) {
   // 内容准备就绪后再显示窗口，避免 resize 时因 GPU 效果滞后导致卡顿
   win.once('ready-to-show', () => {
     closeSplashWindow();
-    win.webContents.openDevTools({ mode: 'detach' });
+    if (process.env.VITE_DEV_SERVER_URL) win.webContents.openDevTools({ mode: 'detach' });
     win.show();
     if (process.platform === 'darwin') win.setAlwaysOnTop(false);
   });

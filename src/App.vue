@@ -1185,8 +1185,8 @@ onMounted(async () => {
   // FPS监控快捷键: Ctrl/Cmd + Shift + F
   window.addEventListener('keydown', handleFpsToggle);
 
-  await userStore.hydrate();
   playerStore.init();
+  await userStore.hydrate();
   uiStore.init();
   apiCache.init();
   // 桌面端退出前强制写入缓存（防抖窗口内可能丢失的写入）
