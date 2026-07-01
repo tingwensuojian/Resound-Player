@@ -1,4 +1,4 @@
-﻿name: Build Docker Image
+name: Build Docker Image
 
 on:
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          dockerfile: deploy/Dockerfile.unblock
+          file: deploy/Dockerfile.unblock
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
