@@ -17,7 +17,7 @@ COPY package*.json package-lock.json ./
 RUN rm -f package-lock.json && \
     sed -i 's|"@applemusic-like-lyrics/core": "file:_amll_dist/core/applemusic-like-lyrics-core-0.4.2.tgz"|"@applemusic-like-lyrics/core": "^0.4.2"|g' package.json && \
     sed -i 's|"@applemusic-like-lyrics/vue": "file:_amll_dist/vue/applemusic-like-lyrics-vue-0.4.2.tgz"|"@applemusic-like-lyrics/vue": "^0.4.2"|g' package.json && \
-    npm install
+    npm install --ignore-scripts
 
 COPY . .
 
