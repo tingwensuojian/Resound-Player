@@ -107,16 +107,9 @@ jobs:
           X64_ZIP=$(ls x64/*.zip 2>/dev/null | head -1 || true)
           ARM64_ZIP=$(ls arm64/*.zip 2>/dev/null | head -1 || true)
 
-          cat > latest-mac.yml <<- DATA
-          version: $VERSION
-          files:
-            - url: $X64_NAME
-              sha512: $X64_SHA
-              size: $X64_SIZE
-            - url: $ARM64_NAME
-              sha512: $ARM64_SHA
-              size: $ARM64_SIZE
-DATA
+          # Build latest-mac.yml using printf to avoid YAML heredoc indentation issues
+          printf 'version: %s\nfiles:\n  - url: %s\n    sha512: %s\n    size: %s\n  - url: %s\n    sha512: %s\n    size: %s\n' \
+            "$VERSION" "$X64_NAME" "$X64_SHA" "$X64_SIZE" "$ARM64_NAME" "$ARM64_SHA" "$ARM64_SIZE" > latest-mac.yml
 
           if [ -n "$X64_ZIP" ] && [ -n "$ARM64_ZIP" ]; then
             X64_ZIP_NAME=$(basename "$X64_ZIP")
@@ -125,26 +118,14 @@ DATA
             ARM64_ZIP_SIZE=$(stat -c%s "$ARM64_ZIP")
             X64_ZIP_SHA=$(openssl dgst -sha512 -binary "$X64_ZIP" | base64)
             ARM64_ZIP_SHA=$(openssl dgst -sha512 -binary "$ARM64_ZIP" | base64)
-
-            cat >> latest-mac.yml <<- DATA
-            - url: $X64_ZIP_NAME
-              sha512: $X64_ZIP_SHA
-              size: $X64_ZIP_SIZE
-            - url: $ARM64_ZIP_NAME
-              sha512: $ARM64_ZIP_SHA
-              size: $ARM64_ZIP_SIZE
-DATA
+            printf '  - url: %s\n    sha512: %s\n    size: %s\n  - url: %s\n    sha512: %s\n    size: %s\n' \
+              "$X64_ZIP_NAME" "$X64_ZIP_SHA" "$X64_ZIP_SIZE" "$ARM64_ZIP_NAME" "$ARM64_ZIP_SHA" "$ARM64_ZIP_SIZE" >> latest-mac.yml
           fi
 
-          cat >> latest-mac.yml <<- DATA
-          path: $X64_NAME
-          sha512: $X64_SHA
-          releaseDate: "$RDATE"
-          DATA
+          printf 'path: %s\nsha512: %s\nreleaseDate: "%s"\n' "$X64_NAME" "$X64_SHA" "$RDATE" >> latest-mac.yml
 
           echo "=== merged latest-mac.yml (saved as latest-mac.yml) ==="
           cat latest-mac.yml
-
       - name: Upload merged latest-mac.yml to Release
         if: |
           startsWith(github.ref, 'refs/tags/') ||
