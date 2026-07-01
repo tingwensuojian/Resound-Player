@@ -389,3 +389,4 @@ docker run -d \
 
 - GitHub 仓库：<https://github.com/tingwensuojian/Resound-Player>
 - Release 页面：<https://github.com/tingwensuojian/Resound-Player/releases>
+- Docker Hub：<https://hub.docker.com/r/tingwensuojian/resound-player-server>
