@@ -1,6 +1,6 @@
 {
   "name": "resound-player",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "type": "module",
   "main": "electron/main.js",
@@ -64,6 +64,7 @@
     "jss": "^10.10.0",
     "jss-preset-default": "^10.10.0",
     "lucide-vue-next": "^0.507.0",
+    "marked": "^18.0.5",
     "music-metadata": "^11.12.3",
     "node-id3": "^0.2.9",
     "ogl": "^1.0.11",

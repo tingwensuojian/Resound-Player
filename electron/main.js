@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
+﻿import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
 import { init as initTaskbarWidget, registerIpc as registerTaskbarWidgetIpc, enable as enableTaskbarWidget, disable as disableTaskbarWidget, getConfig as getTaskbarWidgetConfig, updatePlaybackSnapshot as updateTaskbarWidgetSnapshot } from './services/taskbarWidgetService.js';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -408,6 +408,7 @@ async function createMainWindow(ports) {
   // 内容准备就绪后再显示窗口，避免 resize 时因 GPU 效果滞后导致卡顿
   win.once('ready-to-show', () => {
     closeSplashWindow();
+    win.webContents.openDevTools({ mode: 'detach' });
     win.show();
     if (process.platform === 'darwin') win.setAlwaysOnTop(false);
   });

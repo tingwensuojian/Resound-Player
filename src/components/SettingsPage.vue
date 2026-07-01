@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AnimatedAppear tag="section" variant="content" rhythm="shell" class-name="settings-page">
     <AnimatedAppear tag="header" variant="content" rhythm="head" class-name="top-tabs-wrap">
       <nav class="top-tabs" aria-label="设置分组">
@@ -232,8 +232,10 @@
           <div v-if="changelogLoading" class="changelog-loading">加载中…</div>
           <template v-else-if="changelogList.length">
             <div v-for="(release, i) in changelogList" :key="i" class="changelog-entry">
-              <span class="changelog-version">{{ release.tag }}</span>
-              <span class="changelog-date">{{ release.date }}</span>
+              <div class="changelog-header">
+                <span class="changelog-version">{{ release.tag }}</span>
+                <span class="changelog-date">{{ release.date }}</span>
+              </div>
               <div class="changelog-desc" v-html="renderMarkdown(release.desc)"></div>
             </div>
           </template>
@@ -470,6 +472,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { marked } from 'marked';
 
 type SettingsTabKey = 'playback' | 'appearance' | 'local' | 'account' | 'about';
 
@@ -682,55 +685,58 @@ const changelogList = ref<Array<{tag: string; date: string; desc: string}>>([]);
 
 function renderMarkdown(text: string): string {
   if (!text) return "";
-  // Escape HTML entities first
-  let html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  // Inline conversions
-  html = html
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")  // **bold**
-    .replace(/\[(.+?)\]\((.+?)\)/g, "<a href=\"$2\" target=\"_blank\" rel=\"noopener\">$1</a>");  // [text](url)
-  // Split into blocks by double newline and process each
-  const blocks = html.split("\n\n");
-  return blocks.map(function(block: string) {
-    block = block.trim();
-    if (!block) return "";
-    if (/^### .+/m.test(block)) {
-      return block.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-    }
-    if (/^---+\s*$/.test(block)) {
-      return "<hr>";
-    }
-    if (/^- /.test(block)) {
-      const items = block.split("\n").filter(function(l: string) { return l.trim(); }).map(function(l: string) {
-        return "<li>" + l.replace(/^- /, "") + "</li>";
-      }).join("\n");
-      return "<ul>\n" + items + "\n</ul>";
-    }
-    return "<p>" + block + "</p>";
-  }).join("\n");
+  return marked.parse(text);
 }
 async function fetchChangelog() {
-  if (changelogList.value.length || changelogLoading.value) return;
+  if (changelogLoading.value) return;
+  // Try loading from cache first
+  const cached = (() => {
+    try {
+      const raw = localStorage.getItem('changelog_cache');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Cache valid for 2 hours
+      if (Date.now() - parsed.ts > 2 * 60 * 60 * 1000) return null;
+      return parsed.data;
+    } catch { return null; }
+  })();
+  if (cached && cached.length > 0) {
+    changelogList.value = cached;
+    return;
+  }
+
   changelogLoading.value = true;
   try {
     const res = await fetch('https://api.github.com/repos/tingwensuojian/Resound-Player/releases?per_page=10');
-    if (!res.ok) throw new Error('获取失败');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const releases = Array.isArray(data) ? data : [];
-    changelogList.value = releases.map((r: any) => ({
+    const mapped = releases.map((r: any) => ({
       tag: r.tag_name || '',
       date: r.published_at ? r.published_at.slice(0, 10) : '',
       desc: (r.body || '').trim() || '暂无描述',
     }));
-  } catch {
-    changelogList.value = [];
+    // Save to cache
+    try {
+      localStorage.setItem('changelog_cache', JSON.stringify({ ts: Date.now(), data: mapped }));
+    } catch { /* storage full, ignore */ }
+    changelogList.value = mapped;
+  } catch (e) {
+    // Fall back to cache even if expired, rather than showing nothing
+    if (!cached) {
+      const stale = (() => {
+        try {
+          const raw = localStorage.getItem('changelog_cache');
+          if (!raw) return null;
+          return JSON.parse(raw).data;
+        } catch { return null; }
+      })();
+      changelogList.value = stale || [];
+    }
   } finally {
     changelogLoading.value = false;
   }
 }
-
 // 当前版本号
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : 'v0.0.0';
 
@@ -1183,7 +1189,8 @@ watch(
   { immediate: true }
 );
 
-// 桌面歌词区段let cleanupDesktopLyricListener: (() => void) | null = null;
+// 桌面歌词区段
+let cleanupDesktopLyricListener: (() => void) | null = null;
 
 onMounted(async () => {
   if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
@@ -1877,23 +1884,30 @@ async function handleAction(key: string) {
 }
 
 .changelog-entry {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: baseline;
-  padding: var(--space-1) 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.changelog-entry:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.changelog-header {
+  margin-bottom: 8px;
 }
 
 .changelog-version {
-  font-size: var(--text-label-md);
+  font-size: 14px;
   font-weight: 700;
   color: var(--accent);
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
 }
 
 .changelog-date {
-  font-size: var(--text-label-xs);
+  font-size: 11px;
   color: var(--text-soft);
+  margin-left: 8px;
+  font-weight: 400;
 }
 
 .changelog-desc {
@@ -1903,14 +1917,15 @@ async function handleAction(key: string) {
   color: var(--text-sub);
   line-height: 1.5;
 }
+
+.changelog-desc h3:first-child {
+  margin-top: 0;
+}
 .changelog-desc h3 {
   font-size: 14px;
   font-weight: 700;
   color: var(--accent);
   margin: 12px 0 6px;
-}
-.changelog-desc h3:first-child {
-  margin-top: 0;
 }
 .changelog-desc ul {
   margin: 4px 0;
@@ -1932,8 +1947,43 @@ async function handleAction(key: string) {
   font-weight: 700;
   color: var(--text-main);
 }
+.changelog-desc h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 14px 0 6px;
+}
+.changelog-desc h2:first-child {
+  margin-top: 0;
+}
 .changelog-desc p {
   margin: 6px 0;
+}
+.changelog-desc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.changelog-desc td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  vertical-align: top;
+  color: var(--text-sub);
+}
+.changelog-desc td:first-child {
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+}
+.changelog-desc th {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-weight: 700;
+  color: var(--text-main);
+  background: var(--bg-secondary);
+  text-align: left;
+  white-space: nowrap;
 }
 
 .about-credits {
@@ -1955,7 +2005,7 @@ async function handleAction(key: string) {
   font-weight: 600;
   color: var(--text-sub);
   padding-bottom: var(--space-1);
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border);
 }
 
 .about-pkg {

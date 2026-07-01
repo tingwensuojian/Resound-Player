@@ -1,6 +1,4 @@
 ﻿import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const { autoUpdater } = require("electron-updater");
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "node:path";
 import fs from "node:fs";
@@ -15,6 +13,7 @@ function log(...parts) {
 
 let _mainWindowRef = null;
 let _statusCallbacks = new Set();
+let _autoUpdater = null;
 
 // ── Status helpers ──
 
@@ -30,8 +29,8 @@ const Status = {
 
 let _state = {
   status: Status.IDLE,
-  info: null,        // { version, releaseDate, releaseNotes }
-  progress: null,    // { percent, bytesPerSecond, total, transferred }
+  info: null,
+  progress: null,
   error: null,
 };
 
@@ -39,7 +38,6 @@ function broadcast() {
   for (const cb of _statusCallbacks) {
     try { cb({ ..._state }); } catch { /* ignore */ }
   }
-  // Also forward to all BrowserWindows
   for (const win of BrowserWindow.getAllWindows()) {
     try {
       win.webContents.send("auto-updater:status", { ..._state });
@@ -47,103 +45,91 @@ function broadcast() {
   }
 }
 
-// ── Configure autoUpdater ──
+// ── Lazy autoUpdater initializer ──
+// Delays electron-updater import until initUpdater() is called,
+// so the semver validation in its constructor sees the correct
+// app.getVersion() after the app module is fully ready.
 
-autoUpdater.autoDownload = false;          // 只检查，不自动下载
-autoUpdater.autoInstallOnAppQuit = false;  // 不自动安装，让用户手动触发
-autoUpdater.allowPrerelease = false;       // 只检测正式版
+function getAutoUpdater() {
+  if (!_autoUpdater) {
+    const require = createRequire(import.meta.url);
+    const { autoUpdater } = require("electron-updater");
 
-// GitHub releases provider — uses GH_TOKEN or GH_ENTERPRISE_TOKEN from env
-autoUpdater.setFeedURL({
-  provider: "github",
-  owner: "tingwensuojian",
-  repo: "Resound-Player",
-});
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
+    autoUpdater.allowPrerelease = false;
 
-// ── Event handlers ──
+    autoUpdater.setFeedURL({
+      provider: "github",
+      owner: "tingwensuojian",
+      repo: "Resound-Player",
+    });
 
-autoUpdater.on("checking-for-update", () => {
-  log("checking-for-update");
-  _state = { ..._state, status: Status.CHECKING, info: null, progress: null, error: null };
-  broadcast();
-});
+    autoUpdater.on("checking-for-update", () => {
+      log("checking-for-update");
+      _state = { ..._state, status: Status.CHECKING, info: null, progress: null, error: null };
+      broadcast();
+    });
 
-autoUpdater.on("update-available", (info) => {
-  log("update-available", info);
-  _state = {
-    ..._state,
-    status: Status.AVAILABLE,
-    info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes },
-    progress: null,
-    error: null,
-  };
-  broadcast();
-});
+    autoUpdater.on("update-available", (info) => {
+      log("update-available", info);
+      _state = { ..._state, status: Status.AVAILABLE, info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes }, progress: null, error: null };
+      broadcast();
+    });
 
-autoUpdater.on("update-not-available", (info) => {
-  log("update-not-available", info);
-  _state = {
-    ..._state,
-    status: Status.NOT_AVAILABLE,
-    info: { version: info.version, releaseDate: info.releaseDate },
-    progress: null,
-    error: null,
-  };
-  broadcast();
-});
+    autoUpdater.on("update-not-available", (info) => {
+      log("update-not-available", info);
+      _state = { ..._state, status: Status.NOT_AVAILABLE, info: { version: info.version, releaseDate: info.releaseDate }, progress: null, error: null };
+      broadcast();
+    });
 
-autoUpdater.on("download-progress", (progressObj) => {
-  const p = {
-    percent: Math.round(progressObj.percent * 10) / 10,
-    bytesPerSecond: progressObj.bytesPerSecond,
-    total: progressObj.total,
-    transferred: progressObj.transferred,
-  };
-  _state = { ..._state, status: Status.DOWNLOADING, progress: p, error: null };
-  broadcast();
-});
+    autoUpdater.on("download-progress", (progressObj) => {
+      const p = { percent: Math.round(progressObj.percent * 10) / 10, bytesPerSecond: progressObj.bytesPerSecond, total: progressObj.total, transferred: progressObj.transferred };
+      _state = { ..._state, status: Status.DOWNLOADING, progress: p, error: null };
+      broadcast();
+    });
 
-autoUpdater.on("update-downloaded", (info) => {
-  log("update-downloaded", info);
-  _state = {
-    ..._state,
-    status: Status.DOWNLOADED,
-    info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes },
-    progress: { percent: 100, bytesPerSecond: 0, total: info.totalSize || 0, transferred: info.totalSize || 0 },
-  };
-  broadcast();
-});
+    autoUpdater.on("update-downloaded", (info) => {
+      log("update-downloaded", info);
+      _state = { ..._state, status: Status.DOWNLOADED, info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes }, progress: { percent: 100, bytesPerSecond: 0, total: info.totalSize || 0, transferred: info.totalSize || 0 } };
+      broadcast();
+    });
 
-autoUpdater.on("error", (err) => {
-  log("error", err.message);
-  _state = { ..._state, status: Status.ERROR, error: err.message };
-  broadcast();
-});
+    autoUpdater.on("error", (err) => {
+      log("error", err.message);
+      _state = { ..._state, status: Status.ERROR, error: err.message };
+      broadcast();
+    });
+
+    _autoUpdater = autoUpdater;
+  }
+  return _autoUpdater;
+}
 
 // ── Public API ──
 
 export function initUpdater(mainWindow) {
   _mainWindowRef = mainWindow;
-  log("initUpdater", { version: autoUpdater.currentVersion?.format() });
+  const updater = getAutoUpdater();
+  log("initUpdater", { version: updater.currentVersion?.format() });
 }
 
 export function checkForUpdates() {
   log("checkForUpdates triggered by user");
-  // Dev mode (unpackaged): skip actual check to avoid hanging
   if (!app.isPackaged) {
     log("dev mode, skipping update check");
     _state = { ..._state, status: Status.NOT_AVAILABLE, info: null, progress: null, error: null };
     broadcast();
     return;
   }
-  // Add timeout so the UI doesn't hang forever (e.g. dev mode without GH_TOKEN)
+  const updater = getAutoUpdater();
   const TIMEOUT_MS = 15000;
   const timer = setTimeout(() => {
     log("checkForUpdates timed out after " + TIMEOUT_MS + "ms");
     _state = { ..._state, status: Status.ERROR, error: "\u68c0\u67e5\u8d85\u65f6\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u8fde\u63a5" };
     broadcast();
   }, TIMEOUT_MS);
-  autoUpdater.checkForUpdates().then(() => {
+  updater.checkForUpdates().then(() => {
     clearTimeout(timer);
   }).catch((err) => {
     clearTimeout(timer);
@@ -155,7 +141,8 @@ export function checkForUpdates() {
 
 export function downloadUpdate() {
   log("downloadUpdate triggered by user");
-  autoUpdater.downloadUpdate().catch((err) => {
+  const updater = getAutoUpdater();
+  updater.downloadUpdate().catch((err) => {
     log("downloadUpdate failed", err);
     _state = { ..._state, status: Status.ERROR, error: err.message };
     broadcast();
@@ -163,8 +150,9 @@ export function downloadUpdate() {
 }
 
 export function installUpdate() {
-  log("installUpdate — calling quitAndInstall");
-  autoUpdater.quitAndInstall(true, true);
+  log("installUpdate - calling quitAndInstall");
+  const updater = getAutoUpdater();
+  updater.quitAndInstall(true, true);
 }
 
 export function getUpdateStatus() {
@@ -198,4 +186,3 @@ export function registerUpdaterIpc() {
     return getUpdateStatus();
   });
 }
-
