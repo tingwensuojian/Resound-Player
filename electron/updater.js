@@ -187,6 +187,41 @@ export function downloadUpdate() {
 export function installUpdate() {
   log("installUpdate - calling quitAndInstall");
   const updater = getAutoUpdater();
+
+  // Manual install: bypass Squirrel code signature validation
+  const downloadedFile = _state.downloadedFilePath;
+  if (downloadedFile && fs.existsSync(downloadedFile)) {
+    log("Manual install from", downloadedFile);
+    const appPath = app.getAppPath();
+    const resolvedAppBundle = path.resolve(path.join(appPath, "..", "..", ".."));
+
+    const installScript = path.join(os.tmpdir(), "resound-install.sh");
+    const scriptContent = [
+      '#!/bin/bash',
+      'sleep 2',
+      'TMP_DIR=$(mktemp -d)',
+      'unzip -oq "' + downloadedFile.replace(/"/g, '\\"') + '" -d "$TMP_DIR" 2>/dev/null || true',
+      'if [ -d "$TMP_DIR/Resound-Player.app" ]; then',
+      '  rm -rf "' + resolvedAppBundle.replace(/"/g, '\\"') + '"',
+      '  cp -Rf "$TMP_DIR/Resound-Player.app" "' + resolvedAppBundle.replace(/"/g, '\\"') + '" 2>/dev/null || true',
+      'fi',
+      'rm -rf "$TMP_DIR"',
+      'open "' + resolvedAppBundle.replace(/"/g, '\\"') + '" || true',
+      'rm -f "' + installScript.replace(/"/g, '\\"') + '"',
+    ].join('\n');
+    fs.writeFileSync(installScript, scriptContent, "utf8");
+    fs.chmodSync(installScript, 0o755);
+    log("Written install script at", installScript);
+
+    const { spawn } = require("child_process");
+    spawn("/bin/bash", [installScript], { detached: true, stdio: "ignore" }).unref();
+
+    log("Quitting app for manual install...");
+    app.quit();
+    return;
+  }
+
+  // Fallback to Squirrel
   updater.quitAndInstall(true, true);
 }
 
