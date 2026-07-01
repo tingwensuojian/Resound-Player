@@ -1,4 +1,4 @@
-name: Build macOS App
+﻿name: Build macOS App
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -92,7 +92,7 @@ jobs:
           ARM64_SHA=$(grep "sha512:" "$ARM64_YML" | head -1 | awk "{print \$2}")
           X64_SIZE=$(stat -c%s "$X64_DMG")
           ARM64_SIZE=$(stat -c%s "$ARM64_DMG")
-          RDATE=$(grep "releaseDate:" "$X64_YML" | sed "s/releaseDate://" | tr -d " "'''")
+          RDATE=$(grep "releaseDate:" "$X64_YML" | sed "s/releaseDate://" | tr -d " ")
 
           cat > merged-latest-mac.yml <<- DATA
           version: $VERSION
@@ -121,7 +121,7 @@ jobs:
           [ "${{ github.event_name }}" = "workflow_dispatch" ] && TAG="${{ inputs.release_tag }}"
 
           # Delete old
-          gh release view "${TAG}" --json assets -q ".assets[] | select(.name=="latest-mac.yml") | .id" 2>/dev/null | while read id; do
+          gh release view "${TAG}" --json assets -q ".assets[] | select(.name==\"latest-mac.yml\") | .id" 2>/dev/null | while read id; do
             gh api -X DELETE "repos/tingwensuojian/Resound-Player/releases/assets/$id" 2>/dev/null || true
           done
 
