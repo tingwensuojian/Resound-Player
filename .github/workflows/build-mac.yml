@@ -1,4 +1,4 @@
-﻿name: Build macOS App
+name: Build macOS App
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: '上传到指定 Release tag（留空则只保存为 artifact）'
+        description: "Upload to specific Release tag (leave empty for artifact only)"
         required: false
         type: string
   push:
@@ -25,57 +25,105 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
       - name: Build macOS package (${{ matrix.arch }})
         run: npm run dist:mac:${{ matrix.arch }}
 
-      - name: Inspect build output
+      - name: Inspect dist-build
         if: always()
-        run: |
-          echo "dist-build contents:"
-          ls -la dist-build || true
+        run: ls -la dist-build || true
 
-      - name: Upload DMG artifact (workflow)
+      - name: Upload artifact (workflow)
         uses: actions/upload-artifact@v7
         with:
-          name: Resound-Player-macOS-${{ matrix.arch }}-dmg
+          name: macos-${{ matrix.arch }}
           path: |
             dist-build/*.dmg
             dist-build/latest-mac.yml
-          if-no-files-found: error
-          retention-days: 14
+          retention-days: 1
 
-      - name: Upload to Release
-        if: |
-          startsWith(github.ref, 'refs/tags/') ||
-          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+      - name: Upload DMG to Release (skip latest-mac.yml)
+        if: startsWith(github.ref, "refs/tags/") || (github.event_name == "workflow_dispatch" && inputs.release_tag != "")
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.release_tag }}"
-          fi
+          [ "${{ github.event_name }}" = "workflow_dispatch" ] && TAG="${{ inputs.release_tag }}"
+          gh release view "${TAG}" >/dev/null 2>&1 || gh release create "${TAG}" --target "${GITHUB_SHA}" --title "Resound-Player ${TAG}" --notes "Building..." >/dev/null 2>&1 || true
+          echo "Uploading DMG (${{ matrix.arch }})..."
+          gh release upload "${TAG}" dist-build/*.dmg dist-build/*.dmg.blockmap --clobber
 
-          # Don't create or edit release notes — that's done by the Windows workflow.
-          # If release doesn't exist yet, create it silently so upload can proceed.
-          gh release view "${TAG}" >/dev/null 2>&1 || \
-            gh release create "${TAG}" \
-              --target "${GITHUB_SHA}" \
-              --title "Resound-Player ${TAG}" \
-              --notes "构建中，请稍后查看完整发布说明..." \
-              >/dev/null 2>&1 || true
+  merge-latest:
+    name: Merge latest-mac.yml for both arches
+    needs: build-mac
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-          echo "Uploading DMG (${{ matrix.arch }}) to release ${TAG}..."
-          gh release upload "${TAG}" dist-build/*.dmg dist-build/*.dmg.blockmap dist-build/latest-mac.yml --clobber
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-x64
+          path: x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64
+          path: arm64
+
+      - name: Build merged latest-mac.yml
+        shell: bash
+        run: |
+          set -e
+          X64_YML=$(ls x64/latest-mac.yml)
+          ARM64_YML=$(ls arm64/latest-mac.yml)
+          X64_DMG=$(ls x64/*.dmg | head -1)
+          ARM64_DMG=$(ls arm64/*.dmg | head -1)
+
+          VERSION=$(grep "^version:" "$X64_YML" | awk "{print \$2}")
+          X64_NAME=$(basename "$X64_DMG")
+          ARM64_NAME=$(basename "$ARM64_DMG")
+          X64_SHA=$(grep "sha512:" "$X64_YML" | head -1 | awk "{print \$2}")
+          ARM64_SHA=$(grep "sha512:" "$ARM64_YML" | head -1 | awk "{print \$2}")
+          X64_SIZE=$(stat -c%s "$X64_DMG")
+          ARM64_SIZE=$(stat -c%s "$ARM64_DMG")
+          RDATE=$(grep "releaseDate:" "$X64_YML" | sed "s/releaseDate://" | tr -d " "'''")
+
+          cat > merged-latest-mac.yml <<- DATA
+          version: $VERSION
+          files:
+            - url: $X64_NAME
+              sha512: $X64_SHA
+              size: $X64_SIZE
+            - url: $ARM64_NAME
+              sha512: $ARM64_SHA
+              size: $ARM64_SIZE
+          path: $X64_NAME
+          sha512: $X64_SHA
+          releaseDate: "$RDATE"
+          DATA
+
+          echo "=== merged latest-mac.yml ==="
+          cat merged-latest-mac.yml
+
+      - name: Upload merged latest-mac.yml to Release
+        if: startsWith(github.ref, "refs/tags/") || (github.event_name == "workflow_dispatch" && inputs.release_tag != "")
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          [ "${{ github.event_name }}" = "workflow_dispatch" ] && TAG="${{ inputs.release_tag }}"
+
+          # Delete old
+          gh release view "${TAG}" --json assets -q ".assets[] | select(.name=="latest-mac.yml") | .id" 2>/dev/null | while read id; do
+            gh api -X DELETE "repos/tingwensuojian/Resound-Player/releases/assets/$id" 2>/dev/null || true
+          done
+
+          echo "Uploading merged latest-mac.yml..."
+          gh release upload "${TAG}" merged-latest-mac.yml --clobber

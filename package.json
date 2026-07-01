@@ -159,7 +159,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "unicode": true
+      "unicode": true,
+      "artifactName": "Resound-Player-Setup-${version}.${ext}"
     },
     "mac": {
       "icon": "build/icon.icns",
