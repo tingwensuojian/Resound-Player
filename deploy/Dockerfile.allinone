@@ -14,7 +14,7 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY _amll_dist/ ./_amll_dist/
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 COPY . .
 
