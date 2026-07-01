@@ -412,6 +412,15 @@ async function createMainWindow(ports) {
     win.show();
     if (process.platform === 'darwin') win.setAlwaysOnTop(false);
   });
+ // 拦截关闭按钮（仅 Windows）：最小化到任务栏而非销毁
+ if (process.platform !== 'darwin') {
+   win.on('close', (event) => {
+     if (!app.isQuitting()) {
+       event.preventDefault();
+       win.minimize();
+     }
+   });
+ }
   if (process.platform === 'darwin') {
     win.on('focus', () => win.setAlwaysOnTop(false));
   }
@@ -776,15 +785,87 @@ async function bootstrap() {
   writeMainLog('[bootstrap] done', ports);
 }
 
+// ── 单实例锁：阻止多开 + 任务栏点击正确聚焦 ──
+function handleActivateWindow() {
+  console.log('[main] activate triggered');
+  // 处于迷你模式：先恢复正常窗口再聚焦
+  if (preMiniState) {
+    restoreMainWindowFromMiniMode();
+    setTrayMenu(win);
+    return;
+  }
+  // 用 getAllWindows 代替全局 win 变量，避免引用失效
+  const existing = BrowserWindow.getAllWindows().filter(function(w) { return !w.isDestroyed(); });
+  if (existing.length > 0) {
+    const w = existing[0];
+    if (w.isMinimized()) w.restore();
+    w.show();
+    w.focus();
+    if (process.platform === 'darwin') {
+      // macOS: 额外确保窗口置前
+      w.setAlwaysOnTop(true, 'floating');
+      setTimeout(function() {
+        if (!w.isDestroyed()) w.setAlwaysOnTop(false);
+      }, 200);
+    }
+    return;
+  }
+  // 没有窗口存在，走完整启动流程
+  bootstrap();
+}
+
+// ── 系统托盘点击：唤出主窗口 ──
+function showMainWindowFromTray() {
+  console.log('[tray] clicked');
+  if (preMiniState) {
+    restoreMainWindowFromMiniMode();
+    setTrayMenu(win);
+    return;
+  }
+  const existing = BrowserWindow.getAllWindows().filter(function(w) { return !w.isDestroyed(); });
+  if (existing.length > 0) {
+    const w = existing[0];
+    if (w.isMinimized()) w.restore();
+    w.show();
+    w.focus();
+    return;
+  }
+  // 没有窗口存在，走完整启动流程（前台 API 已启动）
+  // 注意：bootstrap 包含服务重启逻辑，此处避免重复启动
+  // 仅重建主窗口（服务已存在）
+  createMainWindow(currentServicePorts);
+}
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    handleActivateWindow();
+  });
+}
+
 app.whenReady().then(() => {
+  // 开发模式下显式设置 Dock/任务栏图标
+  if (!app.isPackaged) {
+    const dockIconPath = path.join(__dirname, '..', 'build', 'icon.png');
+    if (fs.existsSync(dockIconPath)) {
+      try {
+        const dockIcon = nativeImage.createFromPath(dockIconPath);
+        if (process.platform === 'darwin' && !dockIcon.isEmpty()) {
+          app.dock.setIcon(dockIcon);
+        }
+      } catch (e) {
+        writeMainLog('[dock-icon] set failed', e);
+      }
+    }
+  }
   showSplashWindow();
   // Give splash a moment to render before starting heavy service initialization
   setTimeout(function() { bootstrap(); }, 500);
 });
 
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) bootstrap();
-});
+app.on('activate', handleActivateWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
@@ -816,7 +897,12 @@ ipcMain.handle('window-is-maximized', (event) => {
 
 ipcMain.handle('window-close', (event) => {
   const bw = BrowserWindow.fromWebContents(event.sender);
-  bw?.close();
+  if (!bw || bw.isDestroyed()) return;
+  if (process.platform === 'darwin') {
+    bw.close();
+  } else {
+    bw.minimize();
+  }
 });
 
 ipcMain.on('window:set-background-color', (_event, color) => {
@@ -1091,7 +1177,7 @@ function createTrayIcon(template = false) {
   if (img.isEmpty()) {
     writeMainLog('[tray] empty tray icon image', { source, candidates: TRAY_ICON_CANDIDATES });
   }
-  const resized = img.resize({ width: 18, height: 18 });
+  const resized = img.resize({ width: 20, height: 20 });
   if (template) resized.setTemplateImage(true);
   return resized;
 }
@@ -1145,6 +1231,11 @@ function initializeMainTray(win) {
       mainTray = new Tray(icon);
     }
     mainTray.setToolTip('Resound-Player');
+    // 左键点击唤出主窗口（右键保持菜单）
+    mainTray.on('click', showMainWindowFromTray);
+    if (lyricTray) {
+      lyricTray.on('click', showMainWindowFromTray);
+    }
     setTrayMenu(win);
     return mainTray;
   } catch (err) {
