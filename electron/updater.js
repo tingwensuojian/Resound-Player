@@ -106,12 +106,43 @@ function getAutoUpdater() {
   return _autoUpdater;
 }
 
+
+// ── Ensure app-update.yml exists ──
+// electron-builder generates app-update.yml during build only when not using --publish never.
+// When it is missing, electron-updater fails during downloadUpdate() because it needs
+// updaterCacheDirName to create the download cache dir.
+// This fallback creates a minimal config at runtime if the file is absent.
+function ensureUpdateConfigFile() {
+  const configPath = path.join(process.resourcesPath, "app-update.yml");
+  if (fs.existsSync(configPath)) {
+    return;
+  }
+  try {
+    // updaterCacheDirName formula from app-builder-lib:
+    // sanitizedName.toLowerCase() + "-updater"
+    const updaterCacheDirName = "resound-player-updater";
+    const config = {
+      provider: "github",
+      owner: "tingwensuojian",
+      repo: "Resound-Player",
+      updaterCacheDirName,
+      releaseType: "release",
+    };
+    const yaml = Object.entries(config).map(([k, v]) => k + ": " + v).join("\n");
+    fs.writeFileSync(configPath, yaml + "\n", "utf8");
+    log("Created missing app-update.yml", { version: app.getVersion(), configPath });
+  } catch (err) {
+    log("Failed to create app-update.yml", err);
+  }
+}
+
 // ── Public API ──
 
 export function initUpdater(mainWindow) {
   _mainWindowRef = mainWindow;
   const updater = getAutoUpdater();
   log("initUpdater", { version: updater.currentVersion?.format() });
+  ensureUpdateConfigFile();
 }
 
 export function checkForUpdates() {
