@@ -1,0 +1,64 @@
+# Resound-Player All-in-One Docker Image
+# Contains: Nginx (frontend SPA) + Netease API + Unblock Proxy + Unblock Match
+#
+# Build:
+#   docker build -f deploy/Dockerfile.allinone -t resound-player-allinone .
+#
+# Run:
+#   docker run -p 38760:80 resound-player-allinone
+
+# ── Build stage: Vue SPA ──
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+ARG VITE_BASE_URL=/
+ENV VITE_BASE_URL=$VITE_BASE_URL
+RUN npm run build:web
+
+# ── Final stage: all services ──
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install Nginx + build tools
+RUN apk add --no-cache nginx python3 make g++
+
+# Copy dependency manifests + scripts (needed for postinstall)
+COPY package*.json ./
+COPY scripts/ ./scripts/
+
+# Replace local tgz deps with npm registry versions
+RUN rm -f package-lock.json && \
+    sed -i 's|"@applemusic-like-lyrics/core": "file:_amll_dist/core/applemusic-like-lyrics-core-0.4.2.tgz"|"@applemusic-like-lyrics/core": "^0.4.2"|g' package.json && \
+    sed -i 's|"@applemusic-like-lyrics/vue": "file:_amll_dist/vue/applemusic-like-lyrics-vue-0.4.2.tgz"|"@applemusic-like-lyrics/vue": "^0.4.2"|g' package.json && \
+    npm install
+
+# Copy full source (node_modules preserved from npm install above)
+COPY . .
+
+# Copy built frontend from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy Nginx config for all-in-one setup
+COPY deploy/nginx-allinone.conf /etc/nginx/nginx-allinone.conf
+
+# Copy startup script
+COPY deploy/start-all.sh /app/start-all.sh
+RUN chmod +x /app/start-all.sh
+
+# Remove default nginx config to avoid conflict
+RUN rm -f /etc/nginx/http.d/default.conf
+
+EXPOSE 80
+
+CMD ["/app/start-all.sh"]
+
+LABEL org.opencontainers.image.title="Resound-Player All-in-One"
+LABEL org.opencontainers.image.description="Resound-Player 全服务一体镜像 - 前端SPA + Netease API + Unblock Proxy + Unblock Match"
+LABEL org.opencontainers.image.version="1.1.4"
