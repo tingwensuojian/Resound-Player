@@ -24,6 +24,32 @@
 - 替换已有 Release 时，必须同步检查 Release 标题、正文和资产说明，确保没有遗留英文说明
 - 通过 GitHub Actions 构建并上传 Release 资产时，Release 描述仍必须按上述中文规范维护
 
+
+### 1.2 文件编码规则
+
+本项目所有源文件（`.ts`、`.vue`、`.js`、`.css` 等）统一使用 **UTF-8 without BOM** 编码存储。
+
+在 Windows 环境下开发时，PowerShell 的 heredoc 语法（`@"..."@`、`@'...'@`）和管道重定向（`|`、`>`）**会按系统活动代码页（GBK/CP936）解释中文字符**，导致 UTF-8 编码的中文被损坏。典型表现：
+- 中文字符变成 `�` 或 `?`
+- 编辑器提示 `Unexpected end of file` 或 `Expected "finally" but found "return"`
+
+强制约束：
+
+1. **禁止通过 PowerShell heredoc 将含中文的代码片段直接传给 Python 或其他解释器。** 如需用脚本处理含中文的文件，将脚本保存为独立的 `.py` / `.js` 文件到磁盘，再用 `python script.py` 执行。
+
+2. **禁止用 PowerShell 的 `>` 或 `Out-File`（不含 `-Encoding utf8`）写入含中文的文件。** 默认输出编码是 UTF-16 LE with BOM，会破坏项目的一致编码。
+
+3. **从 git 恢复编码损坏的文件**：`git checkout -- <file>` 可恢复干净版本。恢复后检查改动是否丢失并重新应用。
+
+4. **用 Python 读写含中文文件的推荐方式：**
+   ```python
+   with open(path, 'r', encoding="utf-8") as f:  # 正确
+       text = f.read()
+   with open(path, 'w', encoding="utf-8") as f:  # 正确
+       f.write(text)
+   ```
+
+5. **AI Agent 注意事项**：在 `apply_patch` 不可用或工具调用受限时，如需通过 shell 命令编辑含中文的文件，优先写独立脚本到磁盘再执行，避免在命令行中直接内联中文代码字符串。
 ## 2. 样式统一规范
 
 ### 2.1 spacing 统一

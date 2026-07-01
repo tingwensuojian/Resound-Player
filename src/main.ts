@@ -45,12 +45,33 @@ document.addEventListener('selectstart', blockGlobalCopyActions);
 document.addEventListener('contextmenu', blockGlobalCopyActions);
 document.addEventListener('keydown', blockShortcutCopyActions);
 
-// 全局捕获 Unhandled Promise Rejection，辅助排查 URL 错误
+// 全局捕获 Unhandled Promise Rejection，避免未处理错误导致项目瘱痪
 window.addEventListener('unhandledrejection', (event) => {
   const err = event.reason;
-  if (err && err.message && err.message.includes("Failed to construct 'URL'")) {
-    console.warn('[global] Unhandled URL rejection:', err.message, err.stack);
+  if (!err) return;
+
+  // API 网络错误：已由 axios interceptor 记录，这里只防止播放断链
+  if (err.__CANCEL__ || err?.code === "ERR_CANCELED") {
+    event.preventDefault();
+    return;
   }
+
+  // URL 构造错误（现有逻辑）
+  if (err.message && err.message.includes("Failed to construct 'URL'")) {
+    console.warn('[global] Unhandled URL rejection:', err.message, err.stack);
+    event.preventDefault();
+    return;
+  }
+
+  // 其他未处理的 rejection，输出警告
+  const errMsg = err?.message ?? String(err);
+  if (errMsg.includes("Network") || errMsg.includes("timeout") || errMsg.includes("status")) {
+    console.warn('[global] Unhandled rejection (network/api):', errMsg);
+  } else {
+    console.debug('[global] Unhandled rejection:', errMsg);
+  }
+  // 保留 event.preventDefault() 避免 Node.js 终止进程
+  event.preventDefault();
 });
 import { registerCoverCacheSW } from './utils/swRegister';
 

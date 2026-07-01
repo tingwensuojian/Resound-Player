@@ -53,6 +53,8 @@ const userStore = useUserStore();
 import { useLoginModalStore } from '../../stores/loginModal';
 const loginModalStore = useLoginModalStore();
 import { toggleSongLike } from '../../api/music';
+import { usePlayerStore } from '../../stores/player';
+const playerStore = usePlayerStore();
 import AnimatedAppear from '../AnimatedAppear.vue';
 
 const props = defineProps<{
@@ -146,6 +148,16 @@ async function toggleSaved() {
       if (!nextState && exists) userStore.state.likedSongIds = userStore.state.likedSongIds.filter((id) => id !== props.songId);
     }
     burstSeed.value += 1;
+
+    // If this song is the current track, sync state to taskbar widget immediately
+    if (playerStore.state.currentTrack?.id === props.songId) {
+      if (playerStore.state.currentTrack) {
+        playerStore.state.currentTrack.liked = nextState;
+        playerStore.state.currentTrack.isLiked = nextState;
+      }
+      playerStore.syncRuntimeState();
+      try { window.appEnv?.taskbarWidget?.notifyLikeStatus?.(nextState); } catch (e) {}
+    }
   } catch (error) {
     console.error('[bookmark-icon-button] toggle failed', error);
   } finally {

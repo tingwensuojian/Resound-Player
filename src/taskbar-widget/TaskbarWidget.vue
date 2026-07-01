@@ -76,6 +76,7 @@ const isPlaying = ref(false);
 const isLiked = ref(false);
 const isFm = ref(false);
 const likePending = ref(false);
+const prevLiked = ref(false);
 let lastUserToggleTime = 0;
 const currentTrack = ref<any>(null);
 const mediaDetail = ref<any>(null);
@@ -163,7 +164,7 @@ onMounted(async () => {
   if (widgetApi?.onLikeStatusChanged) {
     cleanupFns.push(widgetApi.onLikeStatusChanged((liked: boolean) => {
       isLiked.value = liked; console.log('[widget] liked from IPC:', { liked, track: currentTrack.value?.name });
-      lastUserToggleTime = Date.now();
+      lastUserToggleTime = 0;
       likePending.value = false;
     }));
   }
@@ -218,11 +219,19 @@ function openExpanded() { widgetApi?.sendCommand?.({ type: "openExpanded" }); }
 function onDragHandlerMouseDown() { widgetApi?.startDrag?.(); }
 function toggleCollect() {
     if (likePending.value) return;
+    prevLiked.value = isLiked.value;
     likePending.value = true;
     isLiked.value = !isLiked.value;
     lastUserToggleTime = Date.now();
     widgetApi?.sendCommand?.({ type: 'toggleLike' });
-    setTimeout(() => { likePending.value = false; }, 5000);
+    // Safety watchdog: release lock if IPC never responds (e.g. crash)
+    setTimeout(() => {
+      if (likePending.value) {
+        isLiked.value = prevLiked.value;
+        likePending.value = false;
+        lastUserToggleTime = 0;
+      }
+    }, 10000);
   }
 // JS mouse-event fallback (only when C++ IPC is inactive).
 // -webkit-app-region:drag blocks CSS :hover on left 30px.
