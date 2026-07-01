@@ -4,6 +4,10 @@
 
 set -e
 
+# Stop any previous nginx to avoid port conflict
+nginx -s quit 2>/dev/null || true
+sleep 1
+
 echo "[start-all] Starting Nginx..."
 nginx -c /etc/nginx/nginx-allinone.conf
 
