@@ -39,8 +39,8 @@ jobs:
         shell: pwsh
         run: |
           cd native/taskbar-widget-helper
-          npm ci
-          npm run build:electron
+          npm ci --ignore-scripts
+          npx --yes node-gyp@latest rebuild --target=42.1.0 --arch=x64 --dist-url=https://electronjs.org/headers --msvs_version=2022
 
       - name: Build NSIS installer
         shell: pwsh
