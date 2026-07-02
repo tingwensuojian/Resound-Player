@@ -208,11 +208,11 @@
           </div>
         </div>
         <div class="about-actions">
-          <button class="about-update-btn" type="button" @click="checkUpdate" :disabled="updateStatus === '检查中' || updateStatus === '下载中'">
+          <button class="about-update-btn" type="button" @click="checkUpdate" :disabled="updateStatus === 'checking' || updateStatus === 'downloading'">
             {{ updateStatus === 'idle' ? '检查更新' :
-               updateStatus === '检查中' ? '检查中...' :
+               updateStatus === 'checking' ? '检查中...' :
                updateStatus === 'available' ? '发现新版本 ' + updateVersion :
-               updateStatus === '下载中' ? '下载中 ' + updateProgress + '%' :
+               updateStatus === 'downloading' ? '正在下载更新...' :
                updateStatus === 'downloaded' ? '更新已下载' :
                updateStatus === 'not-available' ? '已是最新版' :
                updateStatus === 'error' && updatePhase === 'download' ? '下载失败，重试' :
@@ -222,12 +222,18 @@
             下载更新
           </button>
           <button v-if="updateStatus === 'downloaded'" class="about-download-link" @click="installUpdate">
-            立即安装
+            立即安装并重启
           </button>
           <button class="about-changelog-btn" type="button" @click="changelogExpanded = !changelogExpanded; if (changelogExpanded) fetchChangelog()">
             <svg class="about-chevron" :class="{ rotated: changelogExpanded }" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M4 6l4 4 4-4"/></svg>
             更新日志
           </button>
+        </div>
+        <div v-if="updateStatus === 'downloading'" class="about-download-progress">
+          <div class="progress-track">
+            <div class="progress-fill" :style="{ width: updateProgress + '%' }"></div>
+          </div>
+          <span class="progress-text">{{ updateProgress }}%</span>
         </div>
         <div v-show="changelogExpanded" class="about-changelog">
           <div v-if="changelogLoading" class="changelog-loading">加载中…</div>
@@ -742,7 +748,7 @@ async function fetchChangelog() {
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__}` : 'v0.0.0';
 
 // ── 自动更新状态 (electron-updater) ──
-const updateStatus = ref('idle'); // idle | 检查中 | available | 下载中 | downloaded | not-available | error
+const updateStatus = ref('idle'); // idle | checking | available | downloading | downloaded | not-available | error
 const updateVersion = ref('');
 const updateProgress = ref(0);
 const updatePhase = ref<'check' | 'download' | null>(null);
@@ -775,8 +781,8 @@ onUnmounted(() => {
 });
 
 async function checkUpdate() {
-  if (updateStatus.value === '检查中' || updateStatus.value === '下载中') return;
-  updateStatus.value = '检查中';
+  if (updateStatus.value === 'checking' || updateStatus.value === 'downloading') return;
+  updateStatus.value = 'checking';
   try {
     await (window as any).appEnv?.autoUpdater?.check();
   } catch (e) {
@@ -1875,6 +1881,44 @@ async function handleAction(key: string) {
 
 .about-chevron.rotated {
   transform: rotate(180deg);
+}
+
+.about-download-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 240px;
+  animation: fadeIn 0.3s ease;
+}
+
+.progress-track {
+  flex: 1;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.progress-text {
+  font-size: var(--text-label-sm);
+  color: var(--text-sub);
+  font-weight: 600;
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .about-changelog {
