@@ -1,5 +1,6 @@
 ﻿import { createRequire } from "node:module";
 import { app, BrowserWindow, ipcMain } from "electron";
+import { spawn } from "child_process";
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
@@ -213,7 +214,7 @@ export function installUpdate() {
     fs.chmodSync(installScript, 0o755);
     log("Written install script at", installScript);
 
-    const { spawn } = require("child_process");
+    
     spawn("/bin/bash", [installScript], { detached: true, stdio: "ignore" }).unref();
 
     log("Quitting app for manual install...");
