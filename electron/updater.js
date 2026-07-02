@@ -93,7 +93,7 @@ function getAutoUpdater() {
 
     autoUpdater.on("update-downloaded", (info) => {
       log("update-downloaded", info);
-      _state = { ..._state, status: Status.DOWNLOADED, info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes }, progress: { percent: 100, bytesPerSecond: 0, total: info.totalSize || 0, transferred: info.totalSize || 0 } };
+      _state = { ..._state, status: Status.DOWNLOADED, info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes }, progress: { percent: 100, bytesPerSecond: 0, total: info.totalSize || 0, transferred: info.totalSize || 0 }, downloadedFilePath: info.downloadedFile || null };
       broadcast();
     });
 
