@@ -34,7 +34,7 @@ let hoverHelper = null;
 let previewHelper = null;
 let themeMonitor = null;
 let isDragging = false;
-let topmostTimer = null;
+// zOrderGuardTimer removed - alwaysOnTop:true handles z-order
 let latestSnapshot = null;
 
 function loadAddon() {
@@ -197,12 +197,6 @@ function positionWidget(x, y) {
 function showWidget() {
   if (!widgetWin || widgetWin.isDestroyed()) return;
   widgetWin.showInactive();
-  if (addon) {
-    try {
-      const hwndBuf = widgetWin.getNativeWindowHandle();
-      addon.ensureAboveTaskbar(hwndBuf);
-    } catch (e) {}
-  }
 }
 
 function hideShadow() {
@@ -225,37 +219,6 @@ function showShadow(pos, size, stage) {
   } catch (e) {
     console.log('[taskbarWidget] IPC send FAILED:', e.message);
   }
-  if (addon) {
-    try { addon.ensureAboveTaskbar(shadowWin.getNativeWindowHandle()); } catch (e) {}
-  }
-}
-
-function startTopmostTimer() {
-  stopTopmostTimer();
-  if (!widgetWin || widgetWin.isDestroyed() || !addon) return;
-  try {
-    topmostTimer = setInterval(function() {
-      if (widgetWin && !widgetWin.isDestroyed()) {
-        try { addon.ensureAboveTaskbar(widgetWin.getNativeWindowHandle()); } catch (e) {}
-        if (config.widgetState === 'docked') {
-          var newPos = calcDockPosition();
-          if (newPos) {
-            var curPos = widgetWin.getPosition();
-            if (curPos[0] !== newPos.x || curPos[1] !== newPos.y) {
-              positionWidget(newPos.x, newPos.y);
-            }
-          }
-        }
-      }
-    }, 500);
-  } catch (e) {}
-}
-
-function stopTopmostTimer() {
-  if (topmostTimer) {
-    clearInterval(topmostTimer);
-    topmostTimer = null;
-  }
 }
 
 async function createWidgetWindow() {
@@ -275,6 +238,7 @@ async function createWidgetWindow() {
     resizable: false,
     title: 'Resound-Player Widget',
     focusable: false,
+    alwaysOnTop: true,
     backgroundColor: '#00000000',
     show: false,
     skipTaskbar: true,
@@ -447,7 +411,6 @@ async function createWidgetWindow() {
     }
   }
 
-  startTopmostTimer();
   showWidget();
   syncPlaybackState();
   sendConfigToWidget();
@@ -507,7 +470,6 @@ function sendThemeToWidget(theme) {
 }
 
 function destroyAll() {
-  stopTopmostTimer();
   if (widgetWin && !widgetWin.isDestroyed() && addon) {
     try {
       const hwndBuf = widgetWin.getNativeWindowHandle();

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
-import { init as initTaskbarWidget, registerIpc as registerTaskbarWidgetIpc, enable as enableTaskbarWidget, disable as disableTaskbarWidget, getConfig as getTaskbarWidgetConfig, updatePlaybackSnapshot as updateTaskbarWidgetSnapshot } from './services/taskbarWidgetService.js';
+import { init as initTaskbarWidget, registerIpc as registerTaskbarWidgetIpc, enable as enableTaskbarWidget, disable as disableTaskbarWidget, setEnabled as setTaskbarWidgetEnabled, getConfig as getTaskbarWidgetConfig, updatePlaybackSnapshot as updateTaskbarWidgetSnapshot } from './services/taskbarWidgetService.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -14,6 +14,7 @@ import { runWavMetadataE2E } from './wav-metadata-e2e.js';
 import zlib from 'node:zlib';
 import { initNativeUnblockMatch, isNativeUnblockMatchReady, nativeUnblockMatchSong } from './unblock-native-match.js';
 import { initUpdater, registerUpdaterIpc } from './updater.js';
+import { createRequire } from 'node:module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -801,11 +802,11 @@ function handleActivateWindow() {
     if (w.isMinimized()) w.restore();
     w.show();
     w.focus();
-    if (process.platform === 'darwin') {
-      // macOS: 额外确保窗口置前
-      w.setAlwaysOnTop(true, 'floating');
+    if (process.platform === 'win32' || process.platform === 'darwin') {
+      // Force window to foreground: briefly set topmost then release
+      w.setAlwaysOnTop(true);
       setTimeout(function() {
-        if (!w.isDestroyed()) w.setAlwaysOnTop(false);
+        try { if (!w.isDestroyed()) w.setAlwaysOnTop(false); } catch(e) {}
       }, 200);
     }
     return;
@@ -817,23 +818,25 @@ function handleActivateWindow() {
 // ── 系统托盘点击：唤出主窗口 ──
 function showMainWindowFromTray() {
   console.log('[tray] clicked');
-  if (preMiniState) {
-    restoreMainWindowFromMiniMode();
-    setTrayMenu(win);
-    return;
-  }
-  const existing = BrowserWindow.getAllWindows().filter(function(w) { return !w.isDestroyed(); });
+  // Follow SodaMusic implementation: setAlwaysOnTop(true) -> app.focus() -> setAlwaysOnTop(false) -> show()
+  // This order (show after topmost trick) is critical for Windows foreground activation from tray.
+  var existing = BrowserWindow.getAllWindows().filter(function(w) { return !w.isDestroyed(); });
   if (existing.length > 0) {
-    const w = existing[0];
+    var w = existing[0];
     if (w.isMinimized()) w.restore();
-    w.show();
-    w.focus();
+    if (process.platform === 'win32' || process.platform === 'darwin') {
+      w.setAlwaysOnTop(true);
+      try { app.focus(); } catch(e) {}
+      w.setAlwaysOnTop(false);
+      w.show();
+      w.focus();
+    } else {
+      w.show();
+      w.focus();
+    }
     return;
   }
-  // 没有窗口存在，走完整启动流程（前台 API 已启动）
-  // 注意：bootstrap 包含服务重启逻辑，此处避免重复启动
-  // 仅重建主窗口（服务已存在）
-  createMainWindow(currentServicePorts);
+  bootstrap();
 }
 
 const gotTheLock = app.requestSingleInstanceLock();
@@ -1112,20 +1115,40 @@ function buildTrayMenu(win) {
         });
       },
     },
-    {
-      label: '状态栏歌词',
-      type: 'checkbox',
-      checked: trayCfg.enabled,
-      click: () => {
-        const newState = !trayCfg.enabled;
-        setTrayLyricConfig({ enabled: newState });
-        setTrayDisplay(trayCurrentTrackName || trayCurrentLine || '');
-        BrowserWindow.getAllWindows().forEach((w2) => {
-          if (!w2.isDestroyed()) w2.webContents.send('tray-lyric:config-changed', { ...getTrayLyricConfig() });
-        });
-        setTrayMenu(getWin());
-      },
-    },
+    ...(process.platform === 'darwin'
+      ? [{
+          label: '状态栏歌词',
+          type: 'checkbox',
+          checked: trayCfg.enabled,
+          click: () => {
+            const newState = !trayCfg.enabled;
+            setTrayLyricConfig({ enabled: newState });
+            setTrayDisplay(trayCurrentTrackName || trayCurrentLine || '');
+            BrowserWindow.getAllWindows().forEach((w2) => {
+              if (!w2.isDestroyed()) w2.webContents.send('tray-lyric:config-changed', { ...getTrayLyricConfig() });
+            });
+            setTrayMenu(getWin());
+          },
+        }]
+      : [{
+          label: '任务栏播控',
+          type: 'checkbox',
+          checked: getTaskbarWidgetConfig().enabled,
+          click: () => {
+            const newState = !getTaskbarWidgetConfig().enabled;
+            try {
+              setTaskbarWidgetEnabled(newState);
+            } catch (e) {
+              console.error('[tray] 切换任务栏播控失败:', e);
+            }
+            BrowserWindow.getAllWindows().forEach((w) => {
+              if (!w.isDestroyed()) w.webContents.send('taskbar-widget:config-changed', { ...getTaskbarWidgetConfig() });
+            });
+            setTrayMenu(getWin());
+          },
+        }]),
+
+
   ];
 
   items.push(

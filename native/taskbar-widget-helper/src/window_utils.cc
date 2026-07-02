@@ -102,11 +102,14 @@ Napi::Value JsRefreshCursor(const Napi::CallbackInfo& info) {
   return info.Env().Undefined();
 }
 
-// JS: ensureAboveTaskbar(hwndBuffer | hwndNum)
+// JS: ensureAboveTaskbar(hwndBuffer | hwndNum, [insertAfterHwnd])
+// When insertAfterHwnd is provided, inserts AFTER that window (above taskbar,
+// not at top of topmost band). Uses HWND_TOPMOST otherwise.
 Napi::Value JsEnsureAboveTaskbar(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 1) return Napi::Boolean::New(env, false);
   HWND hwnd;
+  HWND insertAfter = HWND_TOPMOST;
   if (info[0].IsBuffer()) {
     HWND* hwndPtr = info[0].As<Napi::Buffer<HWND>>().Data();
     if (!hwndPtr) return Napi::Boolean::New(env, false);
@@ -117,7 +120,20 @@ Napi::Value JsEnsureAboveTaskbar(const Napi::CallbackInfo& info) {
     return Napi::Boolean::New(env, false);
   }
   if (!IsWindow(hwnd)) return Napi::Boolean::New(env, false);
-  SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+  // Optional second param: insertAfter HWND
+  if (info.Length() >= 2) {
+    HWND afterHwnd = nullptr;
+    if (info[1].IsBuffer()) {
+      HWND* afterPtr = info[1].As<Napi::Buffer<HWND>>().Data();
+      if (afterPtr) afterHwnd = *afterPtr;
+    } else if (info[1].IsNumber()) {
+      afterHwnd = (HWND)(int64_t)info[1].As<Napi::Number>();
+    }
+    if (afterHwnd && IsWindow(afterHwnd)) {
+      insertAfter = afterHwnd;
+    }
+  }
+  SetWindowPos(hwnd, insertAfter, 0, 0, 0, 0,
     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
   if (!IsWindowVisible(hwnd))
     ShowWindow(hwnd, SW_SHOWNOACTIVATE);
@@ -125,31 +141,19 @@ Napi::Value JsEnsureAboveTaskbar(const Napi::CallbackInfo& info) {
 }
 
 
-// --- PreventHide subclass ---
+// --- PreventHide subclass (simplified: no WM_WINDOWPOSCHANGED to avoid flicker) ---
 static LRESULT CALLBACK PreventHideSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
   switch (uMsg) {
     case WM_SHOWWINDOW:
-      if (wParam == FALSE) return 0; // Block hide
+      if (wParam == FALSE) return 0;
       break;
     case WM_WINDOWPOSCHANGING: {
       WINDOWPOS* wp = (WINDOWPOS*)lParam;
       if ((wp->flags & SWP_HIDEWINDOW) && !(wp->flags & SWP_SHOWWINDOW))
-        return 0; // Block hide via position change
+        return 0;
       break;
     }
-    case WM_ACTIVATEAPP:
-      // Block activation change notification - prevents Electron
-      // from hiding the widget when taskbar or other apps are clicked.
-      return 0;
-    case WM_WINDOWPOSCHANGED: {
-      // After any position change, ensure we stay at HWND_TOPMOST
-      WINDOWPOS* wp = (WINDOWPOS*)lParam;
-      if (!(wp->flags & SWP_NOZORDER)) {
-        SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0,
-          SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
-      }
-      break;
-    }
+    // WM_WINDOWPOSCHANGED intentionally omitted (caused flicker)
   }
   return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
@@ -168,7 +172,7 @@ Napi::Value JsEmbedInTaskbar(const Napi::CallbackInfo& info) {
   
   // Set as child of taskbar (matching SodaMusic approach)
   SetWindowLongPtrW(*hwndPtr, GWLP_HWNDPARENT, (LONG_PTR)hwndTaskbar);
-  // Ensure widget stays above taskbar
+  // Ensure widget stays above taskbar (re-assert HWND_TOPMOST after parent change)
   SetWindowPos(*hwndPtr, HWND_TOPMOST, 0, 0, 0, 0,
     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
   return Napi::Boolean::New(env, true);
@@ -193,7 +197,7 @@ Napi::Value JsRemoveFromTaskbar(const Napi::CallbackInfo& info) {
   return Napi::Boolean::New(env, true);
 }
 
-// JS: installPreventHide(hwndBuffer) - installs subclass to block WM_SHOWWINDOW/WM_WINDOWPOSCHANGING
+// JS: installPreventHide(hwndBuffer)
 Napi::Value JsInstallPreventHide(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsBuffer())
@@ -201,12 +205,11 @@ Napi::Value JsInstallPreventHide(const Napi::CallbackInfo& info) {
   HWND* hwndPtr = info[0].As<Napi::Buffer<HWND>>().Data();
   if (!hwndPtr || !IsWindow(*hwndPtr))
     return Napi::Boolean::New(env, false);
-  
   BOOL result = SetWindowSubclass(*hwndPtr, PreventHideSubclassProc, 3, 0);
   return Napi::Boolean::New(env, result != FALSE);
 }
 
-// JS: removePreventHide(hwndBuffer) - removes the prevent-hide subclass
+// JS: removePreventHide(hwndBuffer)
 Napi::Value JsRemovePreventHide(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsBuffer())
@@ -214,7 +217,6 @@ Napi::Value JsRemovePreventHide(const Napi::CallbackInfo& info) {
   HWND* hwndPtr = info[0].As<Napi::Buffer<HWND>>().Data();
   if (!hwndPtr || !IsWindow(*hwndPtr))
     return Napi::Boolean::New(env, false);
-  
   BOOL result = RemoveWindowSubclass(*hwndPtr, PreventHideSubclassProc, 3);
   return Napi::Boolean::New(env, result != FALSE);
 }
@@ -261,6 +263,67 @@ Napi::Value JsIsMouseButtonDown(const Napi::CallbackInfo& info) {
   return Napi::Boolean::New(env, (GetAsyncKeyState(vk) & 0x8000) != 0);
 }
 
+
+Napi::Value JsActivateWindow(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsBuffer())
+    return Napi::Boolean::New(env, false);
+  HWND* hwndPtr = info[0].As<Napi::Buffer<HWND>>().Data();
+  if (!hwndPtr || !IsWindow(*hwndPtr))
+    return Napi::Boolean::New(env, false);
+  HWND hwnd = *hwndPtr;
+
+  // Show/restore the window
+  if (IsIconic(hwnd))
+    ShowWindow(hwnd, SW_RESTORE);
+  ShowWindow(hwnd, SW_SHOW);
+
+  // Also bring to top of z-order
+  BringWindowToTop(hwnd);
+  SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+  // Primary: SwitchToThisWindow (undocumented but universally used by Chrome, VS Code, etc.)
+  HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
+  if (hUser32) {
+    typedef BOOL (WINAPI *SwitchToThisWindow_t)(HWND, BOOL);
+    SwitchToThisWindow_t pfn = (SwitchToThisWindow_t)GetProcAddress(hUser32, "SwitchToThisWindow");
+    if (pfn) {
+      pfn(hwnd, TRUE);
+    }
+  }
+
+  // AttachThreadInput + SetForegroundWindow:
+  // By attaching to the foreground thread's input queue, we bypass Windows'
+  // foreground-privilege restrictions. We keep attached through all z-order
+  // operations to prevent the window manager from reclaiming the foreground
+  // when we detach.
+  HWND foreWnd = GetForegroundWindow();
+  DWORD foreThread = GetWindowThreadProcessId(foreWnd, NULL);
+  DWORD curThread = GetCurrentThreadId();
+
+  BOOL attached = FALSE;
+  if (foreThread != 0 && foreThread != curThread) {
+    attached = AttachThreadInput(curThread, foreThread, TRUE);
+  }
+
+  // Now we have foreground privilege (either natively or via attachment)
+  SetForegroundWindow(hwnd);
+
+  // While still "privileged", ensure the window is on top of the z-order
+  // IMPORTANT: Do NOT use HWND_TOPMOST here. That enters the topmost z-order
+  // band and triggers WM_WINDOWPOSCHANGED on the widget (causing flicker).
+  // HWND_TOP brings the window to the top of the NORMAL z-order band only.
+  BringWindowToTop(hwnd);
+  SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+  // Detach after all operations are complete
+  if (attached) {
+    AttachThreadInput(curThread, foreThread, FALSE);
+  }
+
+  return Napi::Boolean::New(env, true);
+}
+
 Napi::Object RegisterWindowUtils(Napi::Env env, Napi::Object exports) {
   exports.Set("findTaskbar", Napi::Function::New(env, JsFindTaskbar));
   exports.Set("getWindowRect", Napi::Function::New(env, JsGetWindowRect));
@@ -275,5 +338,6 @@ Napi::Object RegisterWindowUtils(Napi::Env env, Napi::Object exports) {
   exports.Set("startWindowDrag", Napi::Function::New(env, JsStartWindowDrag));
   exports.Set("getCursorPos", Napi::Function::New(env, JsGetCursorPos));
   exports.Set("isMouseButtonDown", Napi::Function::New(env, JsIsMouseButtonDown));
+  exports.Set("activateWindow", Napi::Function::New(env, JsActivateWindow));
   return exports;
 }
