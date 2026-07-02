@@ -35,6 +35,13 @@ jobs:
         shell: pwsh
         run: npm ci
 
+      - name: Build native taskbar widget addon
+        shell: pwsh
+        run: |
+          cd native/taskbar-widget-helper
+          npm ci
+          npm run build:electron
+
       - name: Build NSIS installer
         shell: pwsh
         run: npm run dist:win
