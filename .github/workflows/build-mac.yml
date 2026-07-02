@@ -116,8 +116,8 @@ jobs:
             ARM64_ZIP_NAME=$(basename "$ARM64_ZIP")
             X64_ZIP_SIZE=$(stat -c%s "$X64_ZIP")
             ARM64_ZIP_SIZE=$(stat -c%s "$ARM64_ZIP")
-            X64_ZIP_SHA=$(openssl dgst -sha512 -binary "$X64_ZIP" | base64)
-            ARM64_ZIP_SHA=$(openssl dgst -sha512 -binary "$ARM64_ZIP" | base64)
+            X64_ZIP_SHA=$(openssl dgst -sha512 -binary "$X64_ZIP" | base64 -w 0)
+            ARM64_ZIP_SHA=$(openssl dgst -sha512 -binary "$ARM64_ZIP" | base64 -w 0)
             printf '  - url: %s\n    sha512: %s\n    size: %s\n  - url: %s\n    sha512: %s\n    size: %s\n' \
               "$X64_ZIP_NAME" "$X64_ZIP_SHA" "$X64_ZIP_SIZE" "$ARM64_ZIP_NAME" "$ARM64_ZIP_SHA" "$ARM64_ZIP_SIZE" >> latest-mac.yml
           fi
