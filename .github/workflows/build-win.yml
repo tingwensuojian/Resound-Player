@@ -99,8 +99,11 @@ jobs:
           $null = $NL.Add("| Resound-Player-Mac-x64-" + $Version + ".dmg | **Intel " + [char]0x82AF + [char]0x7247 + "** | DMG " + [char]0x5B89 + [char]0x88C5 + [char]0x5305 + [char]0xFF0C + [char]0x62D6 + [char]0x5165 + " Applications " + [char]0x5373 + [char]0x53EF + " |")
           $null = $NL.Add("| Resound-Player-Mac-arm64-" + $Version + ".dmg | **Apple " + [char]0x82AF + [char]0x7247 + "** | DMG " + [char]0x5B89 + [char]0x88C5 + [char]0x5305 + [char]0xFF0C + [char]0x62D6 + [char]0x5165 + " Applications " + [char]0x5373 + [char]0x53EF + " |")
           $null = $NL.Add("")
-          $null = $NL.Add("### Windows")
+          # Read macOS tips from file
+          $MacTipsLines = Get-Content "deploy/release-macos-tips.md" -Encoding UTF8
+          foreach ($l in $MacTipsLines) { $null = $NL.Add($l) }
           $null = $NL.Add("")
+          $null = $NL.Add("### Windows")
           $null = $NL.Add("| " + [char]0x6587 + [char]0x4EF6 + " | " + [char]0x9002 + [char]0x7528 + [char]0x573A + [char]0x666F + " | " + [char]0x8BF4 + [char]0x660E + " |")
           $null = $NL.Add("|---|----|---|")
           $null = $NL.Add("| Resound-Player Setup " + $Version + ".exe | **" + [char]0x65E5 + [char]0x5E38 + [char]0x4F7F + [char]0x7528 + [char]0xFF08 + [char]0x63A8 + [char]0x8350 + [char]0xFF09 + "** | NSIS " + [char]0x5B89 + [char]0x88C5 + [char]0x5305 + [char]0xFF0C + [char]0x5B89 + [char]0x88C5 + [char]0x540E + [char]0x542F + [char]0x52A8 + [char]0x5373 + [char]0x65F6 + [char]0xFF0C + [char]0x4EFB + [char]0x52A1 + [char]0x680F + [char]0x56FE + [char]0x6807 + [char]0x6B63 + [char]0x786E + [char]0x663E + [char]0x793A + " |")

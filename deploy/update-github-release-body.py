@@ -46,6 +46,11 @@ lines.append("|---|----|---|")
 lines.append("| Resound-Player-Mac-x64-" + version + ".dmg | **Intel \u82af\u7247** | DMG \u5b89\u88c5\u5305\uff0c\u62d6\u5165 Applications \u5373\u53ef |")
 lines.append("| Resound-Player-Mac-arm64-" + version + ".dmg | **Apple \u82af\u7247** | DMG \u5b89\u88c5\u5305\uff0c\u62d6\u5165 Applications \u5373\u53ef |")
 lines.append("")
+# Read macOS tips from file
+with open("deploy/release-macos-tips.md", "r", encoding="utf-8") as _f:
+    for _line in _f:
+        lines.append(_line.rstrip("\n"))
+lines.append("")
 lines.append("### Windows")
 lines.append("")
 lines.append("| \u6587\u4ef6 | \u9002\u7528\u573a\u666f | \u8bf4\u660e |")
