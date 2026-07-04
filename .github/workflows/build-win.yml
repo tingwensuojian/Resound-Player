@@ -54,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $Tag = "${{ env.GITHUB_REF_NAME }}"
+          $Tag = "${env:GITHUB_REF_NAME}"
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $Tag = "${{ inputs.release_tag }}"
           }
