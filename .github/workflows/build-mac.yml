@@ -63,8 +63,7 @@ jobs:
           gh release view "${TAG}" >/dev/null 2>&1 || \
             gh release create "${TAG}" \
               --target "${GITHUB_SHA}" \
-              --title "Resound-Player ${TAG}" \
-              --notes "构建中，请稍后查看完整发布说明..."
+              --title "Resound-Player ${TAG}"
           echo "Uploading DMG (${{ matrix.arch }}) to release ${TAG}..."
           gh release upload "${TAG}" dist-build/*.dmg dist-build/*.dmg.blockmap dist-build/*.zip dist-build/*.zip.blockmap dist-build/latest-mac.yml --clobber
 
@@ -139,10 +138,10 @@ jobs:
           gh release view "${TAG}" >/dev/null 2>&1 || \
             gh release create "${TAG}" \
               --target "${GITHUB_SHA}" \
-              --title "Resound-Player ${TAG}" \
-              --notes "构建中，请稍后查看完整发布说明..."
+              --title "Resound-Player ${TAG}"
           gh release view "${TAG}" --json assets -q ".assets[] | select(.name==\"latest-mac.yml\") | .id" 2>/dev/null | while read id; do
             gh api -X DELETE "repos/tingwensuojian/Resound-Player/releases/assets/$id" 2>/dev/null || true
           done
           echo "Uploading merged latest-mac.yml as latest-mac.yml..."
           gh release upload "${TAG}" latest-mac.yml --clobber
+
