@@ -16,8 +16,10 @@ import { initNativeUnblockMatch, isNativeUnblockMatchReady, nativeUnblockMatchSo
 import { initUpdater, registerUpdaterIpc } from './updater.js';
 import { createRequire } from 'node:module';
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const mainLogFile = path.join(os.tmpdir(), 'resound-player-main.log');
 
 function writeMainLog(...parts) {
@@ -31,6 +33,17 @@ function writeMainLog(...parts) {
   } catch {
     // ignore
   }
+}
+
+// Native addon for Win32 window activation (no topmost band flicker)
+const _require = createRequire(import.meta.url);
+const NATIVE_ADDON_PATH = path.join(__dirname, '..', 'native', 'taskbar-widget-helper', 'build', 'Release', 'taskbar_widget_helper.node');
+let nativeAddon = null;
+try {
+  nativeAddon = _require(NATIVE_ADDON_PATH);
+  writeMainLog('[native] addon loaded for window activation');
+} catch (e) {
+  writeMainLog('[native] addon not available', e.message);
 }
 
 writeMainLog('[module-load]', {
@@ -820,18 +833,24 @@ function handleActivateWindow() {
 // ── 系统托盘点击：唤出主窗口 ──
 function showMainWindowFromTray() {
   console.log('[tray] clicked');
-  // Follow SodaMusic implementation: setAlwaysOnTop(true) -> app.focus() -> setAlwaysOnTop(false) -> show()
-  // This order (show after topmost trick) is critical for Windows foreground activation from tray.
+  // On Windows, tray click grants foreground activation (shell -> app process),
+  // so w.show() + app.focus() is sufficient. No setAlwaysOnTop trick needed.
+  // On macOS, fall back to deferred setAlwaysOnTop trick.
   var existing = BrowserWindow.getAllWindows().filter(function(w) { return !w.isDestroyed(); });
   if (existing.length > 0) {
     var w = existing[0];
     if (w.isMinimized()) w.restore();
-    if (process.platform === 'win32' || process.platform === 'darwin') {
+    if (process.platform === 'win32') {
+      w.show();
+      try { app.focus(); } catch(e) {}
+    } else if (process.platform === 'darwin') {
       w.setAlwaysOnTop(true);
       try { app.focus(); } catch(e) {}
-      w.setAlwaysOnTop(false);
       w.show();
       w.focus();
+      setTimeout(function() {
+        try { if (!w.isDestroyed()) w.setAlwaysOnTop(false); } catch(e) {}
+      }, 200);
     } else {
       w.show();
       w.focus();

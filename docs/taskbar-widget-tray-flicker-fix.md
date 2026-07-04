@@ -763,15 +763,16 @@ saveConfig()：
 1. 获取所有未销毁的 BrowserWindow
 2. 取第一个窗口 (主窗口)
 3. 若窗口最小化则 restore()
-4. setAlwaysOnTop(true) -- 主窗口进入 topmost band，获取前台焦点权限
-5. app.focus() -- 将整个应用程序设置为前台
-6. setAlwaysOnTop(false) -- 释放主窗口回到普通 z-order band
-7. show() -- 确保窗口可见
-8. focus() -- 聚焦窗口
+4. 平台判断：
+   - **Windows**：show() + app.focus()（无需 setAlwaysOnTop）
+   - **macOS**：setAlwaysOnTop(true) + app.focus() + show() + focus()，200ms 后 setAlwaysOnTop(false)
+   - **其他**：show() + focus()
 
-步骤 4-6 的原理：Windows 的前台权限规则规定，只有前台进程可以设置另一个窗口为前台。
-通过 setAlwaysOnTop(true) 短暂将主窗口放入 topmost band，再 app.focus() 将应用设为前台，
-最后 setAlwaysOnTop(false) 释放回普通层级。这种手法是 Electron 应用的标准做法。
+Windows 路径的原理：托盘点击由 Windows Shell (explorer.exe) 发送消息触发，属于用户交互上下文，
+系统会授予本进程前台激活权限。因此 show() + app.focus() 足以将主窗口唤到前台，
+无需 setAlwaysOnTop(true/false) 绕过权限检查。
+相比旧方案（setAlwaysOnTop(true) 进入 topmost band → 短暂离开后再返回），
+新方案完全不进入 topmost band，避免了播控窗口因 z-order 重排而产生的视觉闪烁。
 
 ### 9.2 任务栏图标激活 (handleActivateWindow / second-instance)
 
@@ -796,6 +797,8 @@ handleActivateWindow 流程：
 1. 系统托盘左键点击 (唤出主界面)：播控窗口闪烁一次
 2. 系统托盘右键点击 (打开上下文菜单)：播控窗口闪烁或消失
 3. 切换到其他应用：播控窗口可能消失
+4. 原始方案（setAlwaysOnTop 技巧）使用 HWND_TOPMOST 导致播控窗口因 z-order 重排闪烁；
+   移除 topmost 后使用 native addon activateWindow 又存在兼容性不稳定问题
 
 ## 根本原因
 
@@ -812,6 +815,13 @@ showMainWindowFromTray() 使用 setAlwaysOnTop(true/false) 将主窗口短暂送
 为解决闪烁加入的 z-order 守卫定时器 (250ms) 使用 SetWindowPos(hwnd, taskbarHwnd) 将播控插入到任务栏之后而非 HWND_TOPMOST。
 
 问题在于：SetWindowPos(hwnd, taskbarHwnd) 在播控处于 topmost band 时调用，会将播控移出 topmost band 并放入任务栏所在的普通 z-order band。由于播控没有 alwaysOnTop 来即时恢复，每次定时器触发都将播控推出 topmost band，导致它掉到任务栏下方消失且无法自动恢复。
+
+### 问题三：native addon activateWindow 方法兼容性不稳定
+
+为彻底避免 topmost band 操作，引入了 native addon 的 activateWindow() 方法。
+该方法使用 SwitchToThisWindow + AttachThreadInput + SetForegroundWindow 组合，
+然而通过 Napi::Buffer<HWND> 接收的窗口句柄在不同 Electron 版本中可能不稳定，
+AttachThreadInput 在某些 Windows 环境也可能失败，最终表现为窗口无法正确唤到前台。
 
 ### 完整的影响链
 
@@ -835,6 +845,23 @@ showMainWindowFromTray() 使用 setAlwaysOnTop(true/false) 将主窗口短暂送
 
 移除每 250ms 执行的 z-order 守卫定时器。alwaysOnTop: true 已提供足够的 topmost 维持能力，定时器中的 SetWindowPos(hwnd, taskbarHwnd) 反而会主动破坏 topmost 状态。
 
+### 4. main.js 激活策略重构 -- 移除 setAlwaysOnTop
+
+在 showMainWindowFromTray() 中，将 Windows 平台的激活策略从 setAlwaysOnTop(true/false)
+改为 w.show() + app.focus()。原理：
+- Windows 托盘点击通过 Shell 消息循环传递，属于用户交互上下文
+- 系统前台权限规则允许接收 Shell 消息的进程激活自身窗口
+- 无需进入 topmost band，播控窗口不受 z-order 重排影响
+
+macOS 保留 deferred setAlwaysOnTop 方案（200ms 延迟释放），因 macOS 前台规则更严格。
+
+### 5. native addon 加载顺序修复
+
+native addon 的加载代码最初放置在 __dirname 和 mainLogFile 定义之前，
+writeMainLog() 在 mainLogFile 初始化前被调用，抛出 ReferenceError（const TDZ）。
+将 addon 加载移至 writeMainLog 和 mainLogFile 之后解决。
+addon 仍正常加载（taskbar widget 需要），仅不再用于窗口激活。
+
 ## 改动文件清单
 
 ### electron/services/taskbarWidgetService.js
@@ -851,11 +878,23 @@ showMainWindowFromTray() 使用 setAlwaysOnTop(true/false) 将主窗口短暂送
 - embedInTaskbar 保持 SetWindowPos(HWND_TOPMOST) (parent 变更后重断言 topmost)
 - ensureAboveTaskbar 保留双参数支持 ((hwnd, insertAfterHwnd)，后续可复用)
 
+### electron/main.js
+
+#### a. 加载 native addon（模块加载顺序修复）
+- 在 import 后使用 createRequire 加载 taskbar_widget_helper.node
+- 加载代码调整到 __dirname、mainLogFile、writeMainLog 定义之后
+- addon 仍正常加载，仅不再用于窗口激活
+
+#### b. showMainWindowFromTray 激活策略重构
+- Windows 路径：w.show() + app.focus()（无需 setAlwaysOnTop）
+- macOS 路径：保留 setAlwaysOnTop(true) + deferred restore（200ms 延迟）
+- 其他平台：w.show() + w.focus()
+
 ## 验证结果
 
 | 场景 | 结果 |
 |------|------|
-| 托盘左键 -> 唤出主界面 | 播控不闪烁、不消失 |
+| 托盘左键 -> 唤出主界面 | 播控不闪烁、不消失，主窗口正确唤到前台 |
 | 托盘右键 -> 上下文菜单 | 播控不闪烁、不消失 |
 | 切换到其他应用 | 播控保持显示 |
 | 点击任务栏空白区域 | 播控保持显示 |
@@ -877,6 +916,27 @@ egisterTaskbarWidgetIpc() 从 ootstrap() 最开头（第 657 行）移到 creat
 **原因：** enable() → createWidgetWindow() 依赖 calcDockPosition() 计算吸附位置。若在任务栏尚未稳定时就初始化，getTaskbarBounds() + Tracker.findBlanks() 会计算出偏右的 x 坐标（压住托盘图标区域），等任务栏完全就绪后才会校正。窗口首次定位偏右约 30px（x:1714），再跳回正确位置（x:1682）。
 
 **效果：** 首次定位即与拖拽吸附后的位置一致，无先偏右再校正的视觉跳动。
+
+### 2026-07 — 托盘激活改为纯 JS 方案（移除 HWND_TOPMOST）
+
+**文件：** electron/main.js
+
+**改动：**
+1. 加载 native addon（用于 window_utils.activateWindow）—— 发现该 C++ 方法存在兼容性问题
+2. 回退到纯 JS 方案：Windows 托盘点击使用 w.show() + app.focus()，完全移除 setAlwaysOnTop 调用
+3. 修复 native addon 加载顺序（因 const mainLogFile 的 temporal dead zone 导致静默失败）
+
+**原因：**
+- 原始 showMainWindowFromTray 使用 setAlwaysOnTop(true/false) 导致主窗口进入/离开 topmost band
+- 每次 topmost band 变化触发播控窗口的 WM_WINDOWPOSCHANGED，导致视觉闪烁
+- native addon 的 activateWindow 方法存在兼容性问题，无法稳定激活窗口
+- Windows 托盘点击由 Shell 消息循环触发，系统已授予本进程前台激活权限，
+  因此 w.show() + app.focus() 不需要额外的权限绕过
+
+**效果：**
+- 托盘左键点击：主窗口正确唤到前台，播控窗口无闪烁
+- 托盘右键点击：上下文菜单正常弹出，播控窗口无闪烁
+- native addon 仍正常加载，taskbar widget 功能不受影响
 
 ### 2026-07 — openExpanded IPC 主窗口搜索修复
 
