@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: '涓婁紶鍒版寚瀹?Release tag锛堢暀绌哄垯鍙繚瀛樹负 artifact锛?
+        description: '上传到指定 Release tag（留空则只保存为 artifact）'
         required: false
         type: string
   push:
@@ -14,6 +14,8 @@ on:
 jobs:
   build-win:
     name: Build Windows Installer
+    permissions:
+      contents: write
     runs-on: windows-latest
     timeout-minutes: 60
 
@@ -61,13 +63,13 @@ jobs:
           # Generate release notes from commits
           $PrevTag = git tag --sort=-version:refname | Select-Object -First 2 | Select-Object -Last 1
           $NotesFile = [System.IO.Path]::GetTempFileName()
-          "# Resound-Player v$Version`n`n## 鏇存柊鍐呭`n" | Out-File -FilePath $NotesFile -Encoding UTF8
+          "# Resound-Player v$Version`n`n## 更新内容`n" | Out-File -FilePath $NotesFile -Encoding UTF8
           if ($PrevTag) {
             git log "$PrevTag..$Tag" --no-merges --oneline --reverse | ForEach-Object {
               $_ -replace '^[0-9a-f]+ ', '- '
             } | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
           }
-          "`n---`n`n## 瀹夎璇存槑`n`n### macOS`n1. 涓嬭浇瀵瑰簲鏋舵瀯鐨?.dmg 鏂囦欢锛圓pple Silicon 閫?arm64锛孖ntel 閫?x64锛塦n2. 鎵撳紑鍚庢嫋鍏?Applications 鏂囦欢澶筦n3. 棣栨鎵撳紑鑻ユ彁绀烘棤娉曢獙璇佸紑鍙戣€咃紝闇€鍓嶅線 绯荤粺璁剧疆 > 闅愮涓庡畨鍏ㄦ€?> 浠嶈鎵撳紑`n`n### Windows`n1. 涓嬭浇 Resound-Player-Setup-v$Version.exe`n2. 鍙屽嚮杩愯瀹夎`n`n### Docker`n```````ndocker run -d -p 80:80 tingwensuojian/resound-player-server:${Version}`n```````n`n## 鏍￠獙璇存槑`n`nSHA256 鏍￠獙鍊艰 Release 闄勪欢涓殑 .blockmap 鏂囦欢銆? | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
+          "`n---`n`n## 安装说明`n`n### macOS`n1. 下载对应架构的 .dmg 文件（Apple Silicon 选 arm64，Intel 选 x64）`n2. 打开后拖入 Applications 文件夹`n3. 首次打开若提示无法验证开发者，需前往 系统设置 > 隐私与安全性 > 仍要打开`n`n### Windows`n1. 下载 Resound-Player-Setup-v$Version.exe`n2. 双击运行安装`n`n### Docker`n```````ndocker run -d -p 80:80 tingwensuojian/resound-player-server:${Version}`n```````n`n## 校验说明`n`nSHA256 校验值见 Release 附件中的 .blockmap 文件。" | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
 
           gh release view $Tag *> $null
           if ($LASTEXITCODE -eq 0) {
