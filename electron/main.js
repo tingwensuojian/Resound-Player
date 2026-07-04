@@ -654,8 +654,6 @@ function closeSplashWindow() {
 
 async function bootstrap() {
   writeMainLog('[bootstrap] start');
-  initTaskbarWidget();
-  registerTaskbarWidgetIpc();
   console.log('[main] 应用启动中...');
   console.log('[main] 平台:', process.platform, 'cwd:', process.cwd());
 
@@ -770,6 +768,10 @@ async function bootstrap() {
   loadTrayLyricConfig(); // 加载持久化的托盘歌词配置
   await createMainWindow(ports);
   writeMainLog('[bootstrap] main window created');
+
+  // ── 初始化任务栏播控（主窗口已创建，任务栏按钮稳定） ──
+  initTaskbarWidget();
+  registerTaskbarWidgetIpc();
 
   // 初始化自动更新模块
   initUpdater(win);

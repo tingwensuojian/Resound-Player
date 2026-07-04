@@ -861,3 +861,44 @@ showMainWindowFromTray() 使用 setAlwaysOnTop(true/false) 将主窗口短暂送
 | 点击任务栏空白区域 | 播控保持显示 |
 | 任务栏播控拖拽到桌面 | 吸附 UI 正常 |
 | 播控从桌面拖回任务栏 | 正确吸附 |
+
+
+---
+
+## 补充记录
+
+### 2026-07 — 启动时序优化
+
+**文件：** electron/main.js
+
+**改动：** 将 initTaskbarWidget() 和 
+egisterTaskbarWidgetIpc() 从 ootstrap() 最开头（第 657 行）移到 createMainWindow() 之后（第 773 行）。
+
+**原因：** enable() → createWidgetWindow() 依赖 calcDockPosition() 计算吸附位置。若在任务栏尚未稳定时就初始化，getTaskbarBounds() + Tracker.findBlanks() 会计算出偏右的 x 坐标（压住托盘图标区域），等任务栏完全就绪后才会校正。窗口首次定位偏右约 30px（x:1714），再跳回正确位置（x:1682）。
+
+**效果：** 首次定位即与拖拽吸附后的位置一致，无先偏右再校正的视觉跳动。
+
+### 2026-07 — openExpanded IPC 主窗口搜索修复
+
+**文件：** electron/services/taskbarWidgetService.js
+
+**改动：** 	askbar-widget:playback-command 处理器中，openExpanded 查找主窗口的方式从标题匹配改为排除法：
+
+`js
+// 之前（标题搜索，脆弱）
+const mainWin = wins.find(function(w) {
+  return w.title && w.title.includes('Resound');
+});
+
+// 之后（排除法，健壮）
+const mainWin = wins.find(function(w) {
+  return !w.isDestroyed() &&
+    w.title !== 'Resound-Player Widget' &&
+    w.title !== 'Resound-Player Snap';
+});
+`
+
+**原因：**
+- 窗口标题可能被 cmd: 前缀覆盖（如最小化时 document.title 设为 cmd:minimize:xxx），导致 includes('Resound') 搜索失败
+- Widget/Snap 窗口标题本身包含 'Resound'，ind() 优先命中主窗口仅因创建顺序靠前，属于脆弱假设
+- 排除法与同一 handler 中 irstWin 的搜索模式一致

@@ -57,7 +57,8 @@ contextBridge.exposeInMainWorld('widgetEnv', {
       return () => ipcRenderer.removeListener('taskbar-widget:like-status', handler);
     },
 
-        diagnostic: () => ipcRenderer.invoke('taskbar-widget:diagnostic'),
+        checkLogin: () => ipcRenderer.invoke('taskbar-widget:check-login'),
+    diagnostic: () => ipcRenderer.invoke('taskbar-widget:diagnostic'),
     onDragRegionChanged: (cb) => {
       const handler = (_e, inDragRegion) => cb(inDragRegion);
       ipcRenderer.on('taskbar-widget:drag-region-changed', handler);

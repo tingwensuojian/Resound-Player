@@ -55,7 +55,13 @@ export function useCurrentTrackLike() {
     if (likeLoading.value || !canToggleCurrentLike.value) return;
 
     if (!userStore.state.isLogin) {
-      loginModalStore.showLoginModal('like');
+      // Mini window: exit mini mode first, then trigger login in main window
+      if (window.appEnv?.windowRole === 'mini') {
+        try { window.appEnv?.miniMode?.exit?.(); } catch {}
+        try { window.appEnv?.playback?.sendCommand?.({ type: 'toggleLike' }); } catch {}
+      } else {
+        loginModalStore.showLoginModal('like');
+      }
       return;
     }
 

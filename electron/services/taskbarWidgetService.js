@@ -116,6 +116,13 @@ function calcDockPosition() {
       console.error('[taskbarWidget] tracker.findBlanks error:', e.message);
     }
   }
+  // Fallback: when tracker unavailable, estimate tray area width to prevent
+  // widget overlapping system tray (notification area + clock). ~300px at 100% DPI.
+  if (!tracker) {
+    const sf = screen.getPrimaryDisplay().scaleFactor;
+    const trayEstimate = Math.round(300 * sf);
+    gapRight = Math.min(gapRight, tb.right - trayEstimate - 2);
+  }
   const gapWidth = gapRight - gapLeft;
   let dockedX = gapWidth >= w ? Math.round(gapRight - w - 2) : Math.round(gapLeft);
   dockedX = Math.max(gapLeft, Math.min(dockedX, gapRight - w));
@@ -595,7 +602,11 @@ export function registerIpc() {
   ipcMain.on('taskbar-widget:playback-command', function(_event, command) {
     if (command && command.type === 'openExpanded') {
       const wins = BrowserWindow.getAllWindows();
-      const mainWin = wins.find(function(w) { return w.title && w.title.includes('Resound'); });
+      const mainWin = wins.find(function(w) {
+        return !w.isDestroyed() &&
+          w.title !== 'Resound-Player Widget' &&
+          w.title !== 'Resound-Player Snap';
+      });
       if (mainWin) {
         if (mainWin.isMinimized()) mainWin.restore();
         if (!mainWin.isVisible()) mainWin.show();
@@ -640,6 +651,22 @@ export function registerIpc() {
   });
 
   
+  // ── 登录状态查询（给 widget 判断是否可点赞） ──
+  ipcMain.handle('taskbar-widget:check-login', async function() {
+    var mainWin = BrowserWindow.getAllWindows().find(function(w) {
+      return !w.isDestroyed() && w.title !== 'Resound-Player Widget' && w.title !== 'Resound-Player Snap';
+    });
+    if (!mainWin) return false;
+    try {
+      var isLogin = await mainWin.webContents.executeJavaScript(
+        'try { var el = document.querySelector("#app"); var pinia = el.__vue_app__.config.globalProperties.; return !!pinia.state.value.user?.isLogin; } catch(e) { return false; }'
+      );
+      return Boolean(isLogin);
+    } catch (e) {
+      return false;
+    }
+  });
+
   // DIAGNOSTIC: check hoverHelper state
   ipcMain.handle('taskbar-widget:diagnostic', function() {
     var result = {

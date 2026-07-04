@@ -298,3 +298,41 @@ Phase 1 是最小可用。Phase 1-4 是完整体验。
 | 原生 HWND 与 BrowserWindow 位置不同步 | 视觉错位 | 每次 move 事件同步两个窗口坐标 |
 | Electron `move` 事件不触发（某些 edge case） | 拖拽检测失败 | 备选：用 `will-resize` 或定时轮询 |
 | `screen` API fallback 精度不足 | 任务栏位置偏差 | 仅在原生插件不可用时使用，精度够用 |
+
+
+---
+
+## 修订记录
+
+### 2026-07 — 启动时序优化
+
+**改动：** 将 initTaskbarWidget() 和 
+egisterTaskbarWidgetIpc() 从 ootstrap() 最开头移到 createMainWindow() 之后。
+
+**原因：** 任务栏播控初始化时需要依赖任务栏按钮稳定。主窗口创建前任务栏尚未就绪，calcDockPosition() 可能计算出偏右的 x 坐标（压住托盘图标），等任务栏稳定后才会校正到正确位置。
+
+**效果：** 播控窗口首次定位即与拖拽吸附后的位置一致（x:1682），不再出现先偏右再跳回的现象。
+
+### 2026-07 — openExpanded 主窗口搜索修复
+
+**文件：** electron/services/taskbarWidgetService.js
+
+**改动：** openExpanded 查找主窗口的方式，从基于标题包含 'Resound' 改为排除法（排除两个已知的 widget 窗口）。与同一 handler 中 irstWin 的搜索模式一致。
+
+`js
+// 之前（标题搜索，脆弱）
+const mainWin = wins.find(function(w) {
+  return w.title && w.title.includes('Resound');
+});
+
+// 之后（排除法，健壮）
+const mainWin = wins.find(function(w) {
+  return !w.isDestroyed() &&
+    w.title !== 'Resound-Player Widget' &&
+    w.title !== 'Resound-Player Snap';
+});
+`
+
+**原因：** page-title-updated 处理器曾存在 _originalTitle 被 cmd: 标题（如 cmd:minimize:xxx）覆盖的问题，导致窗口标题不包含 'Resound' 时搜索失败。标题搜索本身也是脆弱模式——mini window 和 widget 窗口的标题同样包含 'Resound'，ind() 可能命中非目标窗口。
+
+> 注：main.js 中 _originalTitle = title 已在 else 分支内，不会被 cmd: 前缀的标题污染。

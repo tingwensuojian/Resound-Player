@@ -1,6 +1,6 @@
 {
   "name": "resound-player",
-  "version": "1.1.9",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "main": "electron/main.js",
@@ -92,7 +92,7 @@
     "appId": "com.resound.player",
     "productName": "Resound-Player",
     "directories": {
-      "output": "dist-build"
+      "output": "dist-build-v2"
     },
     "files": [
       "build/**/*",
@@ -160,7 +160,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "unicode": true,
-      "artifactName": "Resound-Player-Setup-${version}.${ext}"
+      "artifactName": "Resound-Player-Setup-${version}.${ext}",
+      "script": "build/nsis-custom/installer.nsi"
     },
     "mac": {
       "icon": "build/icon.icns",

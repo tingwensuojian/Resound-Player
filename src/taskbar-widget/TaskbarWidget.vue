@@ -217,8 +217,18 @@ onUnmounted(() => {
 function sendCmd(cmd: any) { widgetApi?.sendCommand?.(cmd); }
 function openExpanded() { widgetApi?.sendCommand?.({ type: "openExpanded" }); }
 function onDragHandlerMouseDown() { widgetApi?.startDrag?.(); }
-function toggleCollect() {
+async function toggleCollect() {
     if (likePending.value) return;
+    if (!currentTrack.value) return;
+
+    // 未登录时不翻红，仅发 IPC 触发登录框
+    var isLoggedIn = await widgetApi?.checkLogin?.() ?? false;
+    if (!isLoggedIn) {
+      widgetApi?.sendCommand?.({ type: 'toggleLike' });
+      widgetApi?.sendCommand?.({ type: 'openExpanded' });
+      return;
+    }
+
     prevLiked.value = isLiked.value;
     likePending.value = true;
     isLiked.value = !isLiked.value;
