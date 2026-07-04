@@ -166,7 +166,7 @@ jobs:
 
           if [ -z "$REL_ID" ]; then
             echo "Creating Gitee release..."
-            REL_ID=$(curl -s -X POST "$API/releases"               -H "$AUTH"               -H "Content-Type: application/json"               -d "{"tag_name":"${TAG}","name":"v${TAG#v}"}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
+            REL_ID=$(curl -s -X POST "$API/releases"               -H "$AUTH"               -H "Content-Type: application/json"               -d "$(printf '{"tag_name":"%s","name":"v%s"}' "${TAG}" "${TAG#v}")" | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
           fi
 
           if [ -z "$REL_ID" ]; then

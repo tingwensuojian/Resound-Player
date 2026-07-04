@@ -16,6 +16,9 @@ function log(...parts) {
 let _mainWindowRef = null;
 let _statusCallbacks = new Set();
 let _autoUpdater = null;
+let _updaterBusy = false;
+let _giteeBusy = false;
+
 
 // ── Status helpers ──
 
@@ -154,6 +157,11 @@ export function initUpdater(mainWindow) {
 }
 
 export async function checkForUpdates() {
+  if (_updaterBusy) {
+    log("checkForUpdates skipped: already busy");
+    return;
+  }
+  _updaterBusy = true;
   log("checkForUpdates triggered by user");
   if (!app.isPackaged) {
     log("dev mode, skipping update check");
@@ -164,18 +172,23 @@ export async function checkForUpdates() {
   const updater = getAutoUpdater();
   const TIMEOUT_MS = 15000;
   const timer = setTimeout(() => {
-    log("checkForUpdates timed out, falling back to Gitee...");
-    doGiteeCheck();
+    log("checkForUpdates timed out -- falling back to Gitee...");
+    _runGiteeFallback();
   }, TIMEOUT_MS);
   updater.checkForUpdates().then(() => {
     clearTimeout(timer);
+    _updaterBusy = false;
   }).catch((err) => {
     clearTimeout(timer);
-    log("checkForUpdates failed, falling back to Gitee", err);
-    doGiteeCheck();
+    log("checkForUpdates failed -- falling back to Gitee", err);
+    _runGiteeFallback();
   });
 }
 export function downloadUpdate() {
+  if (_updaterBusy && _state.status === Status.DOWNLOADING) {
+    log("downloadUpdate skipped: Gitee download already in progress");
+    return;
+  }
   log("downloadUpdate triggered by user");
   const updater = getAutoUpdater();
   _state = { ..._state, status: Status.DOWNLOADING, phase: 'download' };
@@ -227,6 +240,19 @@ export function installUpdate() {
   // Fallback to Squirrel
   updater.quitAndInstall(true, true);
 }
+
+function _runGiteeFallback() {
+  if (_giteeBusy) {
+    log("_runGiteeFallback skipped: Gitee already running");
+    return;
+  }
+  _giteeBusy = true;
+  doGiteeCheck().finally(() => {
+    _giteeBusy = false;
+    _updaterBusy = false;
+  });
+}
+
 
 // ?? Gitee fallback helpers ??
 
