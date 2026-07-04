@@ -28,11 +28,29 @@ const ACCELERATOR_MODIFIER = {
 
 const ACCELERATOR_MODIFIER_ORDER = ['alt', 'meta', 'ctrl', 'shift']
 
+const ELECTRON_KEY_MAP = {
+  Backquote: '`',
+  Minus: '-',
+  Equal: '=',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Backslash: '\\',
+  Semicolon: ';',
+  Quote: "'",
+  Comma: ',',
+  Period: '.',
+  Slash: '/',
+}
+
 /**
  * 将 ShortcutCombo 转换为 Electron globalShortcut 可接受的 accelerator 字符串。
  */
 function toElectronAccelerator(combo, platform) {
   let accelKey = combo.key
+  // 标点符号键映射为 Electron 可接受的 accelerator 格式
+  if (ELECTRON_KEY_MAP[accelKey]) {
+    accelKey = ELECTRON_KEY_MAP[accelKey]
+  }
   const parts = ACCELERATOR_MODIFIER_ORDER
     .filter((m) => combo.modifiers.includes(m))
     .map((m) => ACCELERATOR_MODIFIER[m])

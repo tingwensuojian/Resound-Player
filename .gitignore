@@ -5,3 +5,39 @@ node_modules/
 native/node_modules/
 native/taskbar-widget-helper/build/Release/
 
+
+# macOS
+.DS_Store
+
+# Cache directories
+.npm-cache/
+.electron-cache/
+.electron-builder-cache/
+.tsc-out/
+.pnpm-store/
+.playwright-cli/
+
+# IDE / AI
+.claude/
+.codex/
+.codeartsdoer/
+.codegraph/
+.gstack/
+.cursor/
+
+# Build output
+dist/
+dist-build/
+desktop-dist/
+desktop-release/
+release/
+
+# Deploy secrets
+deploy/.env.production
+
+# Reference / test assets
+播放页相关/
+测试音乐/
+
+# NPM
+pnpm-lock.yaml

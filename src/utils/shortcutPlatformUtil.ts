@@ -35,12 +35,80 @@ const ACCELERATOR_MODIFIER: Record<ModifierKey, string> = {
 
 // ── 按键名展示映射 ──
 
+/** 底层键名 → UI 展示文本 */
 const KEY_DISPLAY: Record<string, { mac: string; win: string }> = {
+  // 标点符号
+  Backquote: { mac: '\`', win: '\`' },
+  Minus: { mac: '-', win: '-' },
+  Equal: { mac: '=', win: '=' },
+  BracketLeft: { mac: '[', win: '[' },
+  BracketRight: { mac: ']', win: ']' },
+  Backslash: { mac: '\\', win: '\\' },
+  Semicolon: { mac: ';', win: ';' },
+  Quote: { mac: "'", win: "'" },
+  Comma: { mac: ',', win: ',' },
+  Period: { mac: '.', win: '.' },
+  Slash: { mac: '/', win: '/' },
+  Plus: { mac: '+', win: '+' },
+
+  // 控制键
   Space: { mac: '空格', win: 'Space' },
+  Tab: { mac: 'Tab', win: 'Tab' },
+  Capslock: { mac: 'CapsLock', win: 'CapsLock' },
+  Backspace: { mac: '退格', win: 'Backspace' },
+  Return: { mac: 'Enter', win: 'Enter' },
+  Enter: { mac: 'Enter', win: 'Enter' },
+  Escape: { mac: 'Esc', win: 'Esc' },
+  Delete: { mac: 'Delete', win: 'Delete' },
+  Insert: { mac: 'Insert', win: 'Insert' },
+
+  // 方向键
   Left: { mac: '←', win: '←' },
   Right: { mac: '→', win: '→' },
   Up: { mac: '↑', win: '↑' },
   Down: { mac: '↓', win: '↓' },
+  Home: { mac: 'Home', win: 'Home' },
+  End: { mac: 'End', win: 'End' },
+  PageUp: { mac: 'PgUp', win: 'PgUp' },
+  PageDown: { mac: 'PgDn', win: 'PgDn' },
+
+  // 小键盘
+  Num0: { mac: '0', win: '0' },
+  Num1: { mac: '1', win: '1' },
+  Num2: { mac: '2', win: '2' },
+  Num3: { mac: '3', win: '3' },
+  Num4: { mac: '4', win: '4' },
+  Num5: { mac: '5', win: '5' },
+  Num6: { mac: '6', win: '6' },
+  Num7: { mac: '7', win: '7' },
+  Num8: { mac: '8', win: '8' },
+  Num9: { mac: '9', win: '9' },
+  NumDec: { mac: '.', win: '.' },
+  NumAdd: { mac: '+', win: '+' },
+  NumSub: { mac: '-', win: '-' },
+  NumMult: { mac: '*', win: '*' },
+  NumDiv: { mac: '/', win: '/' },
+  NumEnter: { mac: 'NumEnter', win: 'NumEnter' },
+
+  // 多媒体
+  VolumeUp: { mac: '音量+', win: 'VolumeUp' },
+  VolumeDown: { mac: '音量-', win: 'VolumeDown' },
+  VolumeMute: { mac: '静音', win: 'VolumeMute' },
+  MediaPlayPause: { mac: '播放/暂停', win: 'MediaPlayPause' },
+  MediaNextTrack: { mac: '下一曲', win: 'MediaNextTrack' },
+  MediaPreviousTrack: { mac: '上一曲', win: 'MediaPreviousTrack' },
+  MediaStop: { mac: '停止', win: 'MediaStop' },
+
+  // 系统键
+  PrintScreen: { mac: 'PrtSc', win: 'PrtSc' },
+  PauseBreak: { mac: 'Pause', win: 'Pause' },
+}
+
+/** 中文界面专用按键映射（覆盖英文标点为中文标点） */
+const KEY_DISPLAY_CN: Record<string, string> = {
+  Comma: '，',
+  Period: '。',
+  Slash: '、',
 }
 
 /**
@@ -52,6 +120,24 @@ const MODIFIER_DISPLAY_ORDER: ModifierKey[] = ['alt', 'meta', 'ctrl', 'shift']
 /** Electron accelerator 修饰符注册顺序 */
 const ACCELERATOR_MODIFIER_ORDER: ModifierKey[] = ['alt', 'meta', 'ctrl', 'shift']
 
+/**
+ * event.code / ShortcutCombo.key → Electron accelerator 键名映射
+ * 对标点/符号键使用 Electron 可接受的 accelerator 格式。
+ */
+const ELECTRON_KEY_MAP: Record<string, string> = {
+  Backquote: '\`',
+  Minus: '-',
+  Equal: '=',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Backslash: '\\',
+  Semicolon: ';',
+  Quote: "'",
+  Comma: ',',
+  Period: '.',
+  Slash: '/',
+}
+
 // ── 格式化函数 ──
 
 /**
@@ -59,12 +145,14 @@ const ACCELERATOR_MODIFIER_ORDER: ModifierKey[] = ['alt', 'meta', 'ctrl', 'shift
  * macOS 使用符号（⌘⌃⌥⇧），Windows 使用文本（Ctrl Alt Shift）。
  * null 组合返回 '-'。
  */
-export function formatShortcut(combo: ShortcutCombo | null, platform: PlatformType): string {
+export function formatShortcut(combo: ShortcutCombo | null, platform: PlatformType, useCn = false): string {
   if (!combo) return '-'
 
   const modifierMap = platform === 'darwin' ? MACOS_MODIFIER : WINDOWS_MODIFIER
   const displayKey = KEY_DISPLAY[combo.key]
-  const keyLabel = displayKey ? displayKey[platform === 'darwin' ? 'mac' : 'win'] : combo.key
+  // 中文界面标点覆盖
+  const cnLabel = useCn ? KEY_DISPLAY_CN[combo.key] : undefined
+  const keyLabel = cnLabel ?? (displayKey ? displayKey[platform === 'darwin' ? 'mac' : 'win'] : combo.key)
 
   const modTexts = MODIFIER_DISPLAY_ORDER
     .filter((m) => combo.modifiers.includes(m))
@@ -82,10 +170,10 @@ export function formatShortcut(combo: ShortcutCombo | null, platform: PlatformTy
  * macOS 用 Command，Windows 用 Control。
  */
 export function toElectronAccelerator(combo: ShortcutCombo, platform: PlatformType): string {
-  // Electron accelerator 按键名映射
   let accelKey = combo.key
-  if (accelKey === 'Left' || accelKey === 'Right' || accelKey === 'Up' || accelKey === 'Down') {
-    // keep as is
+  // 标点符号键 → Electron 可接受的 accelerator 键名
+  if (ELECTRON_KEY_MAP[accelKey]) {
+    accelKey = ELECTRON_KEY_MAP[accelKey]
   } else if (accelKey === 'Space') {
     accelKey = 'Space'
   } else if (/^[A-Z]$/.test(accelKey) || /^\d$/.test(accelKey) || /^F\d{1,2}$/.test(accelKey)) {
