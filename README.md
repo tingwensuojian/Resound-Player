@@ -6,7 +6,7 @@ Resound-Player 是一个基于 `Vue 3 + TypeScript + Vite + Electron` 构建的�
 
 ## 项目现状
 
-- 当前版本：`1.1.9`
+- 当前版本：`1.2.1`
 - 主要形态：`Electron` 桌面应用
 - 调试形态：支持 `Web` 前端单独运行或前后端联调
 - 桌面端状态：开发模式会自动拉起 `Vite + Netease API + Unblock Proxy + Unblock Match`
