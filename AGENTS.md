@@ -50,7 +50,195 @@
    ```
 
 5. **AI Agent 注意事项**：在 `apply_patch` 不可用或工具调用受限时，如需通过 shell 命令编辑含中文的文件，优先写独立脚本到磁盘再执行，避免在命令行中直接内联中文代码字符串。
-## 2. 样式统一规范
+
+## 1.3 文件编码与跨平台兼容性规范
+
+本节承接 §1.2（文件编码规则），将编码关注点从单文件存储延伸到跨平台同步场景。§1.2 中的 UTF-8 without BOM、PowerShell 中文编码保护等规则在此同样适用，不再重复。
+
+**工作流背景**：Windows 开发 → push → macOS 拉取开发 → push → Windows 再拉取。三端间 `core.autocrlf` 配置不同（Windows 默认 `true`，macOS 通常不设置或 `input`），编码问题会在每次同步中放大。以下各条均对应此流程中的真实故障。
+
+---
+
+### 1.3.1 换行符（Line Endings）
+
+**场景**：你在 Windows 上写了 `scripts/fix-mac-release.sh`，编辑器保存为 CRLF。Windows 的 `core.autocrlf=true` 会将 CRLF 转为 LF 后入库，macOS 拉取后正常。但若某次 Windows 上新增文件时 Git 转换未生效（例如通过 IDE 直接提交或编辑器保留了 CRLF），CRLF 入库后 macOS 拉取到 `.sh` 文件 → `#!/bin/bash\r` 无法识别 → 报错。
+
+- 所有源文件（`.ts`、`.vue`、`.js`、`.css` 等）统一使用 LF（`\n`）
+- `.sh` 文件强制 LF，CRLF 的 `.sh` 在 macOS 上第一行就会报 `command not found`
+- `.bat` / `.cmd` 文件可使用 CRLF（Windows 原生脚本格式，仅在本端执行）
+
+**必须在项目根目录创建 `.gitattributes`**，用 Git 属性覆盖各机器本地的 `core.autocrlf` 差异，确保三端检出一致：
+
+```gitattributes
+# 自动检测文本/二进制（兜底，覆盖 .gitignore、.dockerignore 等无扩展名文件）
+* text=auto
+
+# 源文件
+*.ts        text eol=lf
+*.vue       text eol=lf
+*.js        text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.css       text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.html      text eol=lf
+*.md        text eol=lf
+*.py        text eol=lf
+*.txt       text eol=lf
+*.log       text eol=lf
+
+# Shell 脚本
+*.sh        text eol=lf
+
+# Windows 原生批处理
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# 二进制/数据库
+*.png       binary
+*.jpg       binary
+*.ico       binary
+*.icns      binary
+*.woff2     binary
+*.sqlite    binary
+```
+
+**首次引入 `.gitattributes` 后，必须在当前仓库执行一次全量换行符标准化：**
+
+```bash
+# 在此之前先提交手头工作，然后：
+git add --renormalize .
+git commit -m "chore: normalize line endings after adding .gitattributes"
+```
+
+> `--renormalize` 是 Git 2.16+ 的标准做法，直接在索引中重跑 clean filter，不需要 `git rm --cached` 清索引。此操作只需执行一次，不做的话仓库中已有的 CRLF 文件会持续在 macOS 上出问题。
+
+---
+
+### 1.3.2 路径分隔符（Path Separators）
+
+**场景**：Windows 上用户选择了音乐目录 `D:\音乐\周杰伦`，通过 Electron IPC 传到主进程存储为 `D:\音乐\周杰伦`。macOS 拉取代码后本地扫描，产生路径 `/Users/name/Music/周杰伦`。两种格式都需要统一存储和比较。
+
+- 代码中禁止硬编码 `\` 或 `/`，使用 `path.join()` / `path.resolve()`
+- Electron 主进程中与文件系统交互的路径，统一通过 `path.normalize()` 或 `path.resolve()` 处理后使用（设计精神同 §13.1 的统一入口模块）
+- 存储到 SQLite 或 JSON 的路径**必须统一使用前斜杠 `/`**，参考 `LocalMusicDB.js` 中 `replace(/\\\\/g, "/")` 模式
+- 渲染进程→主进程的 IPC 文件路径，应在主进程端用 `path.resolve()` 标准化
+
+```ts
+// 正确，跨平台安全
+import path from 'path'
+const fullPath = path.join(baseDir, fileName)
+
+// 正确，存储到数据库前统一化
+const forStorage = rawPath.replace(/\\\\/g, '/')
+
+// 错误，Windows 硬编码
+const fullPath = baseDir + '\\\\' + fileName
+
+// 错误，跨平台不兼容
+const fullPath = baseDir + '/' + fileName
+```
+---
+
+### 1.3.3 Unicode 规范化（NFC / NFD）
+
+**场景**：你的本地音乐功能涉及大量路径操作。含组合字符的文件名（如 `Caf\u00e9.mp3`）在 Windows 和 macOS 上编码不同：
+- Windows NTFS：`\u00e9` 存为 U+00E9（NFC，单码点）
+- macOS APFS：`\u00e9` 存为 `e` + U+0301（NFD，分解为两个码点）
+
+如果 `LocalMusicDB` 存储的路径来自 Windows（NFC），而运行时从 macOS 文件系统扫描得到的是 NFD，直接字符串比较或 SQL `WHERE` 查询必然不匹配。
+
+```ts
+// 正确：比较路径前统一为 NFC
+const a = pathFromDb.normalize('NFC')   // Windows 侧写入的数据库路径
+const b = pathFromFs.normalize('NFC')   // macOS 文件系统扫描的路径
+if (a === b) { /* 匹配 */ }
+
+// 错误
+if (pathFromDb === pathFromFs) { /* macOS 上可能永远不相等 */ }
+```
+
+- 用户输入的路径（Electron 对话框选择）在 macOS 上为 NFD，入库前 `normalize('NFC')`
+- 从文件系统读取的文件名在 macOS 上为 NFD，持久化存储前转为 NFC
+- `LocalMusicDB.js` 中任何涉及路径字符串的 `WHERE` 查询或去重逻辑，都应统一规范化
+
+---
+
+### 1.3.4 Shell 脚本与 npm Scripts 跨平台兼容性
+
+按 §13.3 的差异度分级，Shell 脚本与 npm scripts 的环境变量机制属于**「大」差异度**，应使用平台无关的替代方案而非条件分支。
+
+- `.sh` 文件**仅限 macOS / Linux 环境（含 CI）使用**，禁止 `package.json` 直接依赖 `.sh` 脚本在 Windows 上可执行
+- 构建、部署等跨平台逻辑优先用 `.mjs` / `.cjs` / `.js` 实现（项目已有 `scripts/build-mac.mjs`、`scripts/start-api.cjs` 等先例）
+
+当前项目中以下 npm script 使用了 Unix 风格的环境变量赋值，在 Windows 上会失效：
+
+```jsonc
+// 原有（Unix 语法，Windows cmd/PowerShell 无法解析）
+"dev:unblock": "ENABLE_FLAC=true node node_modules/@unblockneteasemusic/server/app.js -p 38762"
+"dev:api": "PORT=38761 node scripts/start-api.cjs"
+```
+
+跨平台方案（二选一）：
+
+1. **推荐——写 `.mjs` 包装脚本**（差异度「大」的标准策略，零依赖），在脚本内部设 `process.env.XXX` 后再 `spawn`
+2. **备选——安装 `cross-env`**：`npm i -D cross-env`，改写为 `cross-env ENABLE_FLAC=true node app.js`
+
+---
+
+### 1.3.5 音乐元数据编码处理
+
+**场景**：项目中处理的音乐文件来自中英文混合环境。ID3 标签可能为 GBK 编码（国内常见），在 macOS 上直接解码会乱码。Windows 系统代码页为 GBK 时会自动处理，但 macOS 默认 UTF-8 无法解析。
+
+保持现有方案：
+
+```ts
+// 已有实践（electron/services/ipc/localMusicIpc.js）
+const detected = jschardet.detect(raw)
+const encoding = ['GB2312', 'GBK', 'gb2312', 'gbk'].includes(detected.encoding)
+  ? 'gbk'
+  : detected.encoding?.toLowerCase() || 'utf-8'
+const text = iconv.decode(raw, encoding)
+```
+
+新增元数据处理逻辑时必须复用此模式，禁止自行实现编码猜测逻辑。
+
+---
+
+### 1.3.6 项目基础配置
+
+**必须在项目根目录创建 `.editorconfig`**，避免同一文件在两台机器上用不同编码打开：
+
+```ini
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{bat,cmd}]
+end_of_line = crlf
+
+[*.sh]
+end_of_line = lf
+```
+
+---
+
+### 1.3.7 强制约束
+
+1. `.gitattributes` 和 `.editorconfig` 必须在项目根目录存在且保持最新，随新文件类型同步更新规则
+2. 新增 `.sh` 文件时，禁止 `package.json` 的 `scripts` 直接调用它（Windows 无法保证 bash 可用）
+3. 新增文件路径比较逻辑时，必须使用 `.normalize('NFC')` 统一规范化后再比较
+4. 新增元数据处理时，必须复用 `iconv-lite` + `jschardet` 的编码检测方案
+5. 禁止在代码中硬编码路径分隔符（`\` 或 `/`），使用 `path` 模块或统一化函数
+6. 首次引入 `.gitattributes` 时，必须执行 `git add --renormalize .`，清理仓库中已有的 CRLF 残留## 2. 样式统一规范
 
 ### 2.1 spacing 统一
 

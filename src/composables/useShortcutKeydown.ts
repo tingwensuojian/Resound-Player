@@ -30,17 +30,23 @@ export function useShortcutKeydown(): void {
   // 2. 监听主进程发来的全局快捷键动作（shortcut:action IPC）
   shortcutStore.startListening()
 
-  // 3. 注册应用内 keydown 监听
+  // 3. 注册应用内 keydown 监听（捕获阶段）
   const handler = (event: KeyboardEvent): void => {
-    // 输入元素中不触发快捷键
-    const tag = (event.target as HTMLElement)?.tagName?.toLowerCase()
-    if (tag === 'input' || tag === 'textarea' || tag === 'select') return
-    if ((event.target as HTMLElement)?.contentEditable === 'true') return
-
     // 忽略长按重复
     if (event.repeat) return
 
+    // 构建快捷键组合用于匹配和调试
     const combo = eventToShortcutCombo(event.code, event.altKey, event.ctrlKey, event.metaKey, event.shiftKey)
+
+    // 输入元素中不触发快捷键（除了 Ctrl/Meta+Left/Right 用于切歌）
+    const tag = (event.target as HTMLElement)?.tagName?.toLowerCase()
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+      // 仅允许 range input 上的 Ctrl/Meta+Left/Right 组合通过
+      if (['Left', 'Right'].includes(combo.key) && (event.ctrlKey || event.metaKey)) {
+        // 允许继续匹配
+      } else return
+    }
+    if ((event.target as HTMLElement)?.contentEditable === 'true') return
 
     // 匹配 appShortcut
     for (const actionId of SHORTCUT_ACTION_ORDER) {
@@ -58,16 +64,22 @@ export function useShortcutKeydown(): void {
 
       if (match) {
         event.preventDefault()
+        event.stopPropagation()
         shortcutStore.dispatchAction(actionId)
         return
       }
     }
   }
 
+  // 捕获阶段：优先于页面内任何元素拦截快捷键，解决 Windows 上 Ctrl+Arrow 被进度条等元素吞掉的问题
+  window.addEventListener('keydown', handler, { capture: true })
+
+  // 冒泡阶段：作为捕获阶段的补充
   window.addEventListener('keydown', handler)
 
   // 4. 组件卸载时清理
   onUnmounted(() => {
+    window.removeEventListener('keydown', handler, { capture: true })
     window.removeEventListener('keydown', handler)
     shortcutStore.stopListening()
   })

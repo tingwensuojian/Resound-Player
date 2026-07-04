@@ -52,7 +52,7 @@ const KEY_DISPLAY: Record<string, { mac: string; win: string }> = {
   Plus: { mac: '+', win: '+' },
 
   // 控制键
-  Space: { mac: '空格', win: 'Space' },
+  Space: { mac: '空格', win: '空格' },
   Tab: { mac: 'Tab', win: 'Tab' },
   Capslock: { mac: 'CapsLock', win: 'CapsLock' },
   Backspace: { mac: '退格', win: 'Backspace' },

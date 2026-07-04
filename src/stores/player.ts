@@ -3692,7 +3692,7 @@ export const usePlayerStore = defineStore('player', () => {
 
 
 
-  async function next(options?: { fromRemote?: boolean }) {
+  async function next(options?: { fromRemote?: boolean; forceNext?: boolean }) {
 
 
     if (isMiniWindow() && !options?.fromRemote) {
@@ -3719,7 +3719,7 @@ export const usePlayerStore = defineStore('player', () => {
 
 
 
-    if (state.playMode === 'single' && !isPersonalFmMode) {
+    if (state.playMode === 'single' && !isPersonalFmMode && !options?.forceNext) {
 
 
       await playByIndex(state.currentIndex);

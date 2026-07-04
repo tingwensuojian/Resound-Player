@@ -425,6 +425,10 @@ async function createMainWindow(ports) {
   win.once('ready-to-show', () => {
     closeSplashWindow();
     if (process.env.VITE_DEV_SERVER_URL) win.webContents.openDevTools({ mode: 'detach' });
+    win.webContents.on('console-message', (_event, level, message) => {
+      const prefix = level === 2 ? '[renderer:warn]' : level === 3 ? '[renderer:err]' : '[renderer:log]';
+      writeMainLog(prefix, message);
+    });
     win.show();
     if (process.platform === 'darwin') win.setAlwaysOnTop(false);
   });
@@ -795,6 +799,7 @@ async function bootstrap() {
 
   // ── 注册全局快捷键（需要 win 引用）
   shortcutMgr.registerAll(win);
+  shortcutMgr.broadcastRegisterStatus();
 
   // ── 初始化任务栏播控（主窗口已创建，任务栏按钮稳定） ──
   initTaskbarWidget();

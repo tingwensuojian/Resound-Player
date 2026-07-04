@@ -138,6 +138,8 @@ class ShortcutManager {
   #config = null
   /** Map<actionId, fn> — 注册的 globalShortcut 注销函数 */
   #registry = new Map()
+  /** Map<actionId, boolean> — 全局快捷键注册结果 true=成功 false=失败 */
+  #regStatus = new Map()
   /** 当前 BrowserWindow 引用，用于 IPC 动作分发 */
   #win = null
   #platform = process.platform
@@ -194,6 +196,10 @@ class ShortcutManager {
     this.#registerIpcHandlers()
 
     console.log('[shortcutManager] initialized, platform=' + this.#platform)
+  }
+
+  broadcastRegisterStatus() {
+    this.#broadcastRegStatus()
   }
 
   /**
@@ -281,8 +287,10 @@ class ShortcutManager {
       this.#registry.set(actionId, () => {
         globalShortcut.unregister(accelerator)
       })
+      this.#regStatus.set(actionId, true)
     } else {
       console.warn('[shortcutManager] globalShortcut register failed:', accelerator)
+      this.#regStatus.set(actionId, false)
       return
     }
     console.log('[shortcutManager] registered:', accelerator, 'for', actionId)
@@ -294,11 +302,13 @@ class ShortcutManager {
       unregister()
       this.#registry.delete(actionId)
     }
+    this.#regStatus.delete(actionId)
   }
 
   /** 刷新所有全局快捷键（用户修改配置后） */
   refreshAll() {
     console.log('[shortcutManager] refreshAll called, globalEnabled=' + this.#config?.globalEnabled)
+    this.#regStatus.clear()
     this.#unregisterAllGlobals()
     if (this.#config.globalEnabled) {
       this.#registerAllGlobals()
@@ -339,6 +349,7 @@ class ShortcutManager {
 
   #registerIpcHandlers() {
     ipcMain.handle('shortcut:get-config', () => this.getConfig())
+    ipcMain.handle('shortcut:get-reg-status', () => Object.fromEntries(this.#regStatus))
 
     ipcMain.handle('shortcut:save-config', (_event, config) => {
     console.log('[shortcutManager] save-config received, shortcuts=' + config?.shortcuts?.length)
@@ -346,6 +357,7 @@ class ShortcutManager {
       this.#persist()
       this.refreshAll()
       this.#broadcastConfig()
+      this.#broadcastRegStatus()
     })
 
     ipcMain.handle('shortcut:reset-defaults', () => {
@@ -357,6 +369,7 @@ class ShortcutManager {
       this.#persist()
       this.refreshAll()
       this.#broadcastConfig()
+      this.#broadcastRegStatus()
       return this.getConfig()
     })
 
@@ -386,6 +399,11 @@ class ShortcutManager {
   #broadcastConfig() {
     if (!this.#win || this.#win.isDestroyed()) return
     this.#win.webContents.send('shortcut:config-changed', this.getConfig())
+  }
+
+  #broadcastRegStatus() {
+    if (!this.#win || this.#win.isDestroyed()) return
+    this.#win.webContents.send('shortcut:reg-status-changed', Object.fromEntries(this.#regStatus))
   }
 
   // ── 公开 API ──

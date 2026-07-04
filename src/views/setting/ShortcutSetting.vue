@@ -61,8 +61,10 @@
           <ShortcutInput
             :modelValue="store.state.shortcuts[actionId]?.globalShortcut ?? null"
             :platform="platformType"
+            :conflict="!!(store.state.shortcuts[actionId]?.globalShortcut && !store.state.regStatus[actionId])"
             @update:modelValue="(c) => onShortcutChange(actionId, 'global', c)"
           />
+          <span v-if="!!(store.state.shortcuts[actionId]?.globalShortcut && !store.state.regStatus[actionId])" class="conflict-hint">热键被占用</span>
         </div>
       </div>
     </div>
@@ -109,8 +111,10 @@ const platformType: PlatformType = platform.isMacOS ? 'darwin' : 'win32'
 import type { ShortcutActionId, ShortcutCombo } from '../../types/shortcut'
 import ShortcutInput from '../../components/ShortcutInput.vue'
 import FancySwitch from '../../components/ui/FancySwitch.vue'
+import { useLoginModalStore } from '../../stores/loginModal'
 
 const store = useShortcutStore()
+const loginModalStore = useLoginModalStore()
 const actionOrder = SHORTCUT_ACTION_ORDER
 
 // ── 开关状态绑定 ──
@@ -151,7 +155,7 @@ const conflictDialog = reactive<{
   pending: null,
 })
 
-function onShortcutChange(actionId: ShortcutActionId, type: 'app' | 'global', combo: ShortcutCombo | null): void {
+async function onShortcutChange(actionId: ShortcutActionId, type: 'app' | 'global', combo: ShortcutCombo | null): Promise<void> {
   // 获取修改前的值
   const item = store.state.shortcuts[actionId]
   if (!item) return
@@ -167,13 +171,15 @@ function onShortcutChange(actionId: ShortcutActionId, type: 'app' | 'global', co
   }
 
   // 无冲突，直接保存
-  store.saveShortcut(actionId, type, combo)
+  await store.saveShortcut(actionId, type, combo)
+  loginModalStore.showGlobalToast('快捷键已更新', 'success', 2000)
 }
 
-function confirmConflict(): void {
+async function confirmConflict(): Promise<void> {
   if (!conflictDialog.pending) return
   const { actionId, type, combo } = conflictDialog.pending
-  store.saveShortcut(actionId, type, combo)
+  await store.saveShortcut(actionId, type, combo)
+  loginModalStore.showGlobalToast('快捷键已更新', 'success', 2000)
   conflictDialog.show = false
   conflictDialog.pending = null
 }
@@ -194,6 +200,7 @@ const showResetConfirm = ref(false)
 async function confirmReset(): Promise<void> {
   showResetConfirm.value = false
   await store.resetDefaults()
+  loginModalStore.showGlobalToast('快捷键已重置', 'success', 2000)
 }
 
 // ── 生命周期 ──
@@ -360,11 +367,19 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
   border-right: 1px solid var(--border-soft);
 }
 
 .st-cell-shortcut:last-child {
   border-right: none;
+}
+
+.conflict-hint {
+  font-size: var(--text-label-sm);
+  color: var(--danger);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ── 底部配置 ── */

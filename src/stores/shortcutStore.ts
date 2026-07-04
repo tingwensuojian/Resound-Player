@@ -27,6 +27,7 @@ export const useShortcutStore = defineStore('shortcut', () => {
     mediaKeysEnabled: true,
     /** 是否正在从 IPC 加载 */
     loading: false,
+    regStatus: {} as Record<ShortcutActionId, boolean>,
   })
 
   // ── IPC 通信（带 Desktop-only guard） ──
@@ -39,6 +40,7 @@ export const useShortcutStore = defineStore('shortcut', () => {
     try {
       const config: ShortcutConfig = await api.getConfig()
       applyConfig(config)
+      await loadRegStatus()
     } catch (e) {
       console.warn('[shortcutStore] loadConfig failed:', e)
     } finally {
@@ -69,6 +71,7 @@ export const useShortcutStore = defineStore('shortcut', () => {
 
     try {
       await api.saveConfig(buildConfig())
+      await loadRegStatus()
     } catch (e) {
       console.warn('[shortcutStore] saveShortcut failed:', e)
     }
@@ -81,8 +84,19 @@ export const useShortcutStore = defineStore('shortcut', () => {
     try {
       const config: ShortcutConfig = await api.resetDefaults()
       applyConfig(config)
+      await loadRegStatus()
     } catch (e) {
       console.warn('[shortcutStore] resetDefaults failed:', e)
+    }
+  }
+
+  async function loadRegStatus(): Promise<void> {
+    const api = (window as any).appEnv?.shortcutApi
+    if (!api?.getRegStatus) return
+    try {
+      state.regStatus = (await api.getRegStatus()) as Record<ShortcutActionId, boolean>
+    } catch (e) {
+      console.warn('[shortcutStore] loadRegStatus failed:', e)
     }
   }
 
@@ -145,7 +159,7 @@ export const useShortcutStore = defineStore('shortcut', () => {
         playerStore.prev()
         break
       case 'nextTrack':
-        playerStore.next()
+        playerStore.next({ forceNext: true })
         break
       case 'volumeUp': {
         const v = (playerStore as any).state?.volume ?? 0.7
@@ -235,6 +249,11 @@ export const useShortcutStore = defineStore('shortcut', () => {
         applyConfig(config)
       })
     }
+    if (api.onRegStatusChanged) {
+      api.onRegStatusChanged((status: Record<ShortcutActionId, boolean>) => {
+        state.regStatus = status
+      })
+    }
   }
 
   function stopListening(): void {
@@ -247,6 +266,7 @@ export const useShortcutStore = defineStore('shortcut', () => {
     loadConfig,
     saveShortcut,
     resetDefaults,
+    loadRegStatus,
     setGlobalEnabled,
     setMediaKeysEnabled,
     checkConflict,

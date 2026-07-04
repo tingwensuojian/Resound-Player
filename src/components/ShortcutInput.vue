@@ -5,6 +5,7 @@
       recording,
       'has-value': !!modelValue,
       'is-empty': !modelValue && !recording,
+      conflict,
     }"
     @click="focusInput"
   >
@@ -44,9 +45,11 @@ const props = withDefaults(defineProps<{
   modelValue: ShortcutCombo | null
   platform?: PlatformType
   disabled?: boolean
+  conflict?: boolean
 }>(), {
   platform: 'darwin' as PlatformType,
   disabled: false,
+  conflict: false,
 })
 
 const emit = defineEmits<{
@@ -140,6 +143,7 @@ function clear(): void {
   max-width: 200px;
 }
 
+
 .shortcut-input-field {
   width: 100%;
   height: 34px;
@@ -212,4 +216,10 @@ function clear(): void {
   background: color-mix(in srgb, var(--border) 80%, transparent);
   color: var(--text-main);
 }
+
+.conflict .shortcut-input-field {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 15%, transparent);
+}
+
 </style>

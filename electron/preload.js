@@ -168,6 +168,7 @@ contextBridge.exposeInMainWorld('appEnv', {
     resetDefaults: () => ipcRenderer.invoke('shortcut:reset-defaults'),
     setGlobalEnabled: (enabled) => ipcRenderer.invoke('shortcut:set-global-enabled', enabled),
     setMediaKeysEnabled: (enabled) => ipcRenderer.invoke('shortcut:set-media-keys-enabled', enabled),
+    getRegStatus: () => ipcRenderer.invoke('shortcut:get-reg-status'),
     onShortcutAction: (cb) => {
       const handler = (_e, actionId) => cb(actionId);
       ipcRenderer.on('shortcut:action', handler);
@@ -177,6 +178,11 @@ contextBridge.exposeInMainWorld('appEnv', {
       const handler = (_e, config) => cb(config);
       ipcRenderer.on('shortcut:config-changed', handler);
       return () => ipcRenderer.removeListener('shortcut:config-changed', handler);
+    },
+    onRegStatusChanged: (cb) => {
+      const handler = (_e, status) => cb(status);
+      ipcRenderer.on('shortcut:reg-status-changed', handler);
+      return () => ipcRenderer.removeListener('shortcut:reg-status-changed', handler);
     },
   },
 });
