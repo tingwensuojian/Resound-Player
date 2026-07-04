@@ -145,6 +145,22 @@ contextBridge.exposeInMainWorld('appEnv', {
       return () => ipcRenderer.removeListener("auto-updater:status", handler);
     },
   },
+  // ── 窗口控制 ──
+  closeWindow: () => ipcRenderer.invoke('window-close'),
+  minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window-maximize'),
+  isWindowMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+
+  // ── 关闭行为 ──
+  closeBehavior: {
+    getConfig: () => ipcRenderer.invoke('close-behavior:get-config'),
+    setConfig: (config) => ipcRenderer.invoke('close-behavior:set-config', config),
+    onConfigChanged: (cb) => {
+      const handler = (_e, config) => cb(config);
+      ipcRenderer.on('close-behavior:config-changed', handler);
+      return () => ipcRenderer.removeListener('close-behavior:config-changed', handler);
+    },
+  },
 });
 
 // ── 本地音乐 IPC ──

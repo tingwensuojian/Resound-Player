@@ -578,6 +578,7 @@ const groupsMap: Record<string, SettingGroup[]> = {
         { key: 'autoHidePlayerUI', label: '全屏播放页自动隐藏 UI', desc: '在全屏播放页中，无操作时自动隐藏顶部栏、右侧按钮和底部控制台', type: 'switch' },
         { key: 'playerPageTransition', label: '播放页打开动画', desc: '选择主界面打开和关闭播放页时的动态效果', type: 'select', options: ['经典上滑', '景深推进', '液态扩散', '幕布揭开'] },
         { key: 'miniAlwaysOnTop', label: '迷你模式窗口置顶', desc: '迷你模式下保持窗口置顶；macOS 会在所有桌面显示，Windows 暂保持当前桌面置顶', type: 'switch' },
+        { key: 'closeToTray', label: '关闭主窗口时隐藏到托盘', desc: '关闭按钮仅隐藏到系统托盘，不退出程序（仅桌面端）', type: 'switch' },
       ],
     },
     {
@@ -843,7 +844,7 @@ const currentGroups = computed(() => {
           return false;
         }
         // 系统托盘功能仅桌面端可用
-        if (['desktopControlEnabled', 'miniAlwaysOnTop'].includes(item.key) && !platform.isDesktop) {
+        if (['desktopControlEnabled', 'miniAlwaysOnTop', 'closeToTray'].includes(item.key) && !platform.isDesktop) {
           return false;
         }
         // 桌面歌词：仅桌面端可见
@@ -873,6 +874,7 @@ const switchState = reactive<Record<string, boolean>>({
   autoHidePlayerUI: uiStore.state.autoHidePlayerUI,
   paidContentSkip: playerStore.state.paidContentSkip,
   miniAlwaysOnTop: uiStore.state.miniAlwaysOnTop,
+  closeToTray: false, // 实际值从主进程加载
   desktopControlEnabled: false, // 实际值从主进程加载
   desktopLyricEnabled: false, // 实际值从主进程加载
   desktopLyricAlwaysShowBg: false, // 实际值从主进程加载
@@ -1065,6 +1067,17 @@ watch(
   },
 );
 
+watch(
+  () => switchState.closeToTray,
+  (enabled) => {
+    if (!platform.isDesktop) return;
+    const mode = enabled ? 'hide' : 'quit';
+    window.appEnv.closeBehavior.setConfig({ mode }).catch((e) => {
+      console.warn('[settings] failed to send close behavior config:', e);
+    });
+  },
+);
+
 // 从 playerStore 持久化数据同步到 selectState
 watch(() => playerStore.state.defaultQuality, (val) => {
   selectState.quality = val;
@@ -1200,6 +1213,7 @@ watch(
 
 // 桌面歌词区段
 let cleanupDesktopLyricListener: (() => void) | null = null;
+let cleanupCloseBehaviorListener: (() => void) | null = null;
 
 onMounted(async () => {
   if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
@@ -1223,7 +1237,18 @@ onMounted(async () => {
     desktopLyricTextColor.value = config.textColor || '#ffffff';
     switchState.desktopLyricAlwaysShowBg = config.alwaysShowBg ?? false;
   });
-});
+
+  // —— 关闭行为设置 ——
+  try {
+    const behaviorConfig = await window.appEnv.closeBehavior.getConfig();
+    switchState.closeToTray = behaviorConfig.mode === 'hide';
+  } catch (e) {
+    console.warn('[settings] failed to load close behavior config:', e);
+  }
+  cleanupCloseBehaviorListener = window.appEnv.closeBehavior.onConfigChanged((config) => {
+    switchState.closeToTray = config.mode === 'hide';
+  });
+  });
 
 const DESKTOP_FONT_SIZE_MAP: Record<string, number> = { '小': 24, '中': 36, '大': 48, '特大': 64 };
 const DESKTOP_MODE_MAP: Record<string, string> = { '滚动列表': 'scroll', '单行': 'single', '双行': 'double' };
@@ -1308,6 +1333,7 @@ watch(() => switchState.desktopLyricAlwaysShowBg, (alwaysShowBg) => {
 
 onUnmounted(() => {
   cleanupDesktopLyricListener?.();
+  cleanupCloseBehaviorListener?.();
 });
 
 

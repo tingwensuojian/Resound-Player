@@ -501,7 +501,7 @@ function minimizeWindow() { document.title = 'cmd:minimize:' + Date.now(); }
 function maximizeWindow() {
   document.title = (isMaximized.value ? 'cmd:restore:' : 'cmd:maximize:') + Date.now();
 }
-function closeWindow() { window.close(); }
+function closeWindow() { window.appEnv.closeWindow(); }
 
 // 监听最大化状态变更（通过 preload 设置的 data-win-maximized + MutationObserver）
 onMounted(() => {

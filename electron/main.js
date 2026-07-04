@@ -382,6 +382,7 @@ function setupChineseMenu() {
  * Create the main window with all service ports passed to preload.
  */
 async function createMainWindow(ports) {
+  writeMainLog('[createMainWindow] entered');
   const preloadPath = path.join(__dirname, 'preload.js');
 
   // Serialize port map into additionalArguments for preload
@@ -426,21 +427,25 @@ async function createMainWindow(ports) {
     win.show();
     if (process.platform === 'darwin') win.setAlwaysOnTop(false);
   });
- // 拦截关闭按钮（仅 Windows）：最小化到任务栏而非销毁
- if (process.platform !== 'darwin') {
+   // 拦截关闭按钮（仅 Windows）：隐藏到托盘而非销毁
+  writeMainLog('[createMainWindow] registering close handler');
+  if (process.platform !== 'darwin') {
    win.on('close', (event) => {
-     if (!app.isQuitting()) {
+     console.error('[close-handler] FIRED');
+     writeMainLog('[close] mode=' + closeBehaviorConfig.mode + ' isQuitting=' + isQuitting);
+     if (!isQuitting) {
+       writeMainLog('[close] preventing default, mode=' + closeBehaviorConfig.mode);
        event.preventDefault();
-       win.minimize();
+       if (closeBehaviorConfig.mode === 'quit') {
+         isQuitting = true;
+         win.close();
+       } else {
+         win.hide();
+       }
      }
    });
- }
-  if (process.platform === 'darwin') {
-    win.on('focus', () => win.setAlwaysOnTop(false));
   }
-
-  // 向渲染进程广播窗口最大化状态变更（供右上角自定义按钮切换图标）
-  win.on('maximize', () => {
+win.on('maximize', () => {
     win.webContents.send('win-state-change', true);
   });
   win.on('unmaximize', () => {
@@ -778,6 +783,7 @@ async function bootstrap() {
   console.log('[main] API 就绪，创建主窗口...');
   setupChineseMenu();
   loadDesktopLyricConfig();
+  loadCloseBehaviorConfig();
   loadTrayLyricConfig(); // 加载持久化的托盘歌词配置
   await createMainWindow(ports);
   writeMainLog('[bootstrap] main window created');
@@ -814,7 +820,11 @@ function handleActivateWindow() {
   const existing = BrowserWindow.getAllWindows().filter(function(w) { return !w.isDestroyed(); });
   if (existing.length > 0) {
     const w = existing[0];
-    if (w.isMinimized()) w.restore();
+    if (!w.isVisible()) {
+      w.show();
+    } else if (w.isMinimized()) {
+      w.restore();
+    }
     w.show();
     w.focus();
     if (process.platform === 'win32' || process.platform === 'darwin') {
@@ -839,7 +849,11 @@ function showMainWindowFromTray() {
   var existing = BrowserWindow.getAllWindows().filter(function(w) { return !w.isDestroyed(); });
   if (existing.length > 0) {
     var w = existing[0];
-    if (w.isMinimized()) w.restore();
+    if (!w.isVisible()) {
+      w.show();
+    } else if (w.isMinimized()) {
+      w.restore();
+    }
     if (process.platform === 'win32') {
       w.show();
       try { app.focus(); } catch(e) {}
@@ -892,10 +906,13 @@ app.whenReady().then(() => {
 app.on('activate', handleActivateWindow);
 
 app.on('window-all-closed', () => {
+  writeMainLog('[lifecycle] window-all-closed fired, platform=' + process.platform);
   if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('before-quit', () => {
+  writeMainLog('[lifecycle] before-quit fired, isQuitting was=' + isQuitting);
+  isQuitting = true;
   killAllServices(serviceChildren);
 });
 
@@ -921,11 +938,19 @@ ipcMain.handle('window-is-maximized', (event) => {
 
 ipcMain.handle('window-close', (event) => {
   const bw = BrowserWindow.fromWebContents(event.sender);
+  writeMainLog('[ipc] window-close called, bw=' + (!!bw) + ' destroyed=' + (bw ? bw.isDestroyed() : 'N/A'));
   if (!bw || bw.isDestroyed()) return;
-  if (process.platform === 'darwin') {
-    bw.close();
+  writeMainLog('[ipc] window-close isQuitting=' + isQuitting + ' mode=' + closeBehaviorConfig.mode);
+  if (!isQuitting && closeBehaviorConfig.mode === 'hide') {
+    writeMainLog('[ipc] window-close HIDING');
+    bw.hide();
   } else {
-    bw.minimize();
+    writeMainLog('[ipc] window-close QUITTING');
+    isQuitting = true;
+    bw.destroy();
+    if (mainTray) { try { mainTray.destroy(); } catch {} mainTray = null; }
+    if (lyricTray) { try { lyricTray.destroy(); } catch {} lyricTray = null; }
+    app.quit();
   }
 });
 
@@ -1055,9 +1080,12 @@ let desktopLyricConfig = {
   winX: null, winY: null, winWidth: 800, winHeight: 200,
 };
 const DESKTOP_LYRIC_CONFIG_FILE = path.join(app.getPath('userData'), 'desktop-lyric-config.json');
+const CLOSE_BEHAVIOR_FILE = path.join(app.getPath('userData'), 'close-behavior.json');
 let _desktopLyricResizeTimer = null;
+let closeBehaviorConfig = { mode: 'hide' };
 
 // ── 系统托盘 ──
+let isQuitting = false;
 let mainTray = null;
 let lyricTray = null;
 
@@ -1086,6 +1114,11 @@ function buildTrayMenu(win) {
   };
 
   const items = [
+    {
+      label: '打开主界面',
+      click: () => showMainWindowFromTray(),
+    },
+    { type: 'separator' },
     {
       label: truncate(trayCurrentTrackName || traySongName, 30) || '未播放',
       enabled: false,
@@ -1189,7 +1222,10 @@ function buildTrayMenu(win) {
     { type: 'separator' },
     {
       label: '退出',
-      click: () => app.quit(),
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      },
     },
   );
 
@@ -1600,6 +1636,40 @@ function saveDesktopLyricConfig() {
     fs.writeFileSync(DESKTOP_LYRIC_CONFIG_FILE, JSON.stringify(desktopLyricConfig), 'utf-8');
   } catch {}
 }
+
+// —— 关闭行为配置 ——
+function loadCloseBehaviorConfig() {
+  try {
+    if (fs.existsSync(CLOSE_BEHAVIOR_FILE)) {
+      closeBehaviorConfig = { ...closeBehaviorConfig, ...JSON.parse(fs.readFileSync(CLOSE_BEHAVIOR_FILE, 'utf-8')) };
+    }
+  } catch (e) {
+    console.error('[close-behavior] load failed:', e);
+  }
+}
+
+function saveCloseBehaviorConfig() {
+  try {
+    const dir = path.dirname(CLOSE_BEHAVIOR_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CLOSE_BEHAVIOR_FILE, JSON.stringify(closeBehaviorConfig), 'utf-8');
+  } catch (e) {
+    console.error('[close-behavior] save failed:', e);
+  }
+}
+
+function getCloseBehaviorConfig() {
+  return { ...closeBehaviorConfig };
+}
+
+function setCloseBehaviorConfig(config) {
+  closeBehaviorConfig = { ...closeBehaviorConfig, ...config };
+  saveCloseBehaviorConfig();
+  BrowserWindow.getAllWindows().forEach((w) => {
+    if (!w.isDestroyed()) w.webContents.send('close-behavior:config-changed', { ...closeBehaviorConfig });
+  });
+}
+
 
 function generateDesktopLyricHtml() {
   const cfg = desktopLyricConfig;
@@ -2435,6 +2505,12 @@ ipcMain.on('desktop-lyric:action', (_event, action) => {
 // ── 系统托盘歌词 IPC ──
 
 ipcMain.handle('tray-lyric:get-config', () => ({ ...getTrayLyricConfig() }));
+
+// —— 关闭行为设置 IPC ——
+ipcMain.handle('close-behavior:get-config', () => getCloseBehaviorConfig());
+ipcMain.handle('close-behavior:set-config', (_event, config) => {
+  setCloseBehaviorConfig(config);
+});
 
 ipcMain.handle('tray-lyric:set-config', (_event, config) => {
   const updated = setTrayLyricConfig(config);
