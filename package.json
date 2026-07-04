@@ -92,7 +92,7 @@
     "appId": "com.resound.player",
     "productName": "Resound-Player",
     "directories": {
-      "output": "dist-build-v2"
+      "output": "dist-build"
     },
     "files": [
       "build/**/*",
@@ -160,8 +160,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "unicode": true,
-      "artifactName": "Resound-Player-Setup-${version}.${ext}",
-      "script": "build/nsis-custom/installer.nsi"
+      "artifactName": "Resound-Player-Setup-${version}.${ext}"
     },
     "mac": {
       "icon": "build/icon.icns",
