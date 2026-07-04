@@ -1,4 +1,4 @@
-# Resound-Player — Docker 镜像使用指南
+﻿# Resound-Player — Docker 镜像使用指南
 
 ## 镜像信息
 
@@ -19,11 +19,11 @@
 ```bash
 docker run -d \
   --name resound-player \
-  -p 80:80 \
+  -p 38760:80 \
   tingwensuojian/resound-player-server:{{VERSION}}
 ```
 
-打开浏览器访问 `http://localhost`。
+打开浏览器访问 `http://localhost:38760`。
 
 ## 架构
 
@@ -61,7 +61,7 @@ docker run -d \
 ```bash
 docker run -d \
   --name resound-player \
-  -p 80:80 \
+  -p 38760:80 \
   -e UNBLOCK_SOURCES="kugou,qq,migu" \
   -e ENABLE_FLAC=false \
   tingwensuojian/resound-player-server:latest

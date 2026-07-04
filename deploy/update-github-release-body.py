@@ -55,7 +55,7 @@ lines.append("| Resound-Player-" + version + ".exe | **U \u76d8\u643a\u5e26\u300
 lines.append("")
 lines.append("### Docker")
 lines.append("```")
-lines.append("docker run -d -p 80:80 tingwensuojian/resound-player-server:" + version)
+lines.append("docker run -d -p 38760:80 tingwensuojian/resound-player-server:" + version)
 lines.append("```")
 lines.append("")
 lines.append("## \u6821\u9a8c\u8bf4\u660e")

@@ -55,8 +55,3 @@ jobs:
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
           VERSION: ${{ steps.meta.outputs.version }}
         run: python3 deploy/update-docker-hub-description.py
-      - name: Fix GitHub Release body (UTF-8 encoding fix)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 deploy/update-github-release-body.py
-
