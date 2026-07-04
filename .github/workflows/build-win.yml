@@ -52,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $Tag = "${env:GITHUB_REF_NAME}"
+          $Tag = "${{ env.GITHUB_REF_NAME }}"
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $Tag = "${{ inputs.release_tag }}"
           }
@@ -67,10 +67,7 @@ jobs:
               $_ -replace '^[0-9a-f]+ ', '- '
             } | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
           }
-          "`n---`n`n## 瀹夎璇存槑`n`n### macOS`n1. 涓嬭浇瀵瑰簲鏋舵瀯鐨?.dmg 鏂囦欢锛圓pple Silicon 閫?arm64锛孖ntel 閫?x64锛塦n2. 鎵撳紑鍚庢嫋鍏?Applications 鏂囦欢澶筦n3. 棣栨鎵撳紑鑻ユ彁绀烘棤娉曢獙璇佸紑鍙戣€咃紝闇€鍓嶅線 绯荤粺璁剧疆 > 闅愮涓庡畨鍏ㄦ€?> 浠嶈鎵撳紑`n`n### Windows`n1. 涓嬭浇 Resound-Player-Setup-v$Version.exe`n2. 鍙屽嚮杩愯瀹夎`n`n### Docker`n```" | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
-          "docker run -d -p 80:80 tingwensuojian/resound-player-server:${Version}" | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
-          '```' | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
-          "`n## 鏍￠獙璇存槑`n`nSHA256 鏍￠獙鍊艰 Release 闄勪欢涓殑 .blockmap 鏂囦欢銆? | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
+          "`n---`n`n## 瀹夎璇存槑`n`n### macOS`n1. 涓嬭浇瀵瑰簲鏋舵瀯鐨?.dmg 鏂囦欢锛圓pple Silicon 閫?arm64锛孖ntel 閫?x64锛塦n2. 鎵撳紑鍚庢嫋鍏?Applications 鏂囦欢澶筦n3. 棣栨鎵撳紑鑻ユ彁绀烘棤娉曢獙璇佸紑鍙戣€咃紝闇€鍓嶅線 绯荤粺璁剧疆 > 闅愮涓庡畨鍏ㄦ€?> 浠嶈鎵撳紑`n`n### Windows`n1. 涓嬭浇 Resound-Player-Setup-v$Version.exe`n2. 鍙屽嚮杩愯瀹夎`n`n### Docker`n```````ndocker run -d -p 80:80 tingwensuojian/resound-player-server:${Version}`n```````n`n## 鏍￠獙璇存槑`n`nSHA256 鏍￠獙鍊艰 Release 闄勪欢涓殑 .blockmap 鏂囦欢銆? | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
 
           gh release view $Tag *> $null
           if ($LASTEXITCODE -eq 0) {
