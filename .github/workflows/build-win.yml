@@ -64,7 +64,7 @@ jobs:
           $NL = New-Object System.Collections.ArrayList
           $null = $NL.Add("# Resound-Player v$Version")
           $null = $NL.Add("")
-          $null = $NL.Add("## 更新内容")
+          $null = $NL.Add("## " + [char]0x66F4 + "" + [char]0x65B0 + "" + [char]0x5185 + "" + [char]0x5BB9 + "")
           $PrevTag = git tag --sort=-version:refname | Select-Object -First 2 | Select-Object -Last 1
           if ($PrevTag) {
             git log "$PrevTag..$Tag" --no-merges --oneline --reverse | ForEach-Object {
@@ -74,25 +74,25 @@ jobs:
           $null = $NL.Add("")
           $null = $NL.Add("---")
           $null = $NL.Add("")
-          $null = $NL.Add("## 安装说明")
+          $null = $NL.Add("## " + [char]0x5B89 + "" + [char]0x88C5 + "" + [char]0x8BF4 + "" + [char]0x660E + "")
           $null = $NL.Add("")
           $null = $NL.Add("### macOS")
-          $null = $NL.Add("1. 下载对应架构的 .dmg 文件（Apple Silicon 选 arm64，Intel 选 x64）")
-          $null = $NL.Add("2. 打开后拖入 Applications 文件夹")
-          $null = $NL.Add("3. 首次打开若提示无法验证开发者，需前往 系统设置 > 隐私与安全性 > 仍要打开")
+          $null = $NL.Add("1. " + [char]0x4E0B + "" + [char]0x8F7D + "" + [char]0x5BF9 + "" + [char]0x5E94 + "" + [char]0x67B6 + "" + [char]0x6784 + "" + [char]0x7684 + " .dmg " + [char]0x6587 + "" + [char]0x4EF6 + "" + [char]0xFF08 + "Apple Silicon " + [char]0x9009 + " arm64" + [char]0xFF0C + "Intel " + [char]0x9009 + " x64" + [char]0xFF09 + "")
+          $null = $NL.Add("2. " + [char]0x6253 + "" + [char]0x5F00 + "" + [char]0x540E + "" + [char]0x62D6 + "" + [char]0x5165 + " Applications " + [char]0x6587 + "" + [char]0x4EF6 + "" + [char]0x5939 + "")
+          $null = $NL.Add("3. " + [char]0x9996 + "" + [char]0x6B21 + "" + [char]0x6253 + "" + [char]0x5F00 + "" + [char]0x82E5 + "" + [char]0x63D0 + "" + [char]0x793A + "" + [char]0x65E0 + "" + [char]0x6CD5 + "" + [char]0x9A8C + "" + [char]0x8BC1 + "" + [char]0x5F00 + "" + [char]0x53D1 + "" + [char]0x8005 + "" + [char]0xFF0C + "" + [char]0x9700 + "" + [char]0x524D + "" + [char]0x5F80 + " " + [char]0x7CFB + "" + [char]0x7EDF + "" + [char]0x8BBE + "" + [char]0x7F6E + " > " + [char]0x9690 + "" + [char]0x79C1 + "" + [char]0x4E0E + "" + [char]0x5B89 + "" + [char]0x5168 + "" + [char]0x6027 + " > " + [char]0x4ECD + "" + [char]0x8981 + "" + [char]0x6253 + "" + [char]0x5F00 + "")
           $null = $NL.Add("")
           $null = $NL.Add("### Windows")
-          $null = $NL.Add("1. 下载 Resound-Player-Setup-v$Version.exe")
-          $null = $NL.Add("2. 双击运行安装")
+          $null = $NL.Add("1. " + [char]0x4E0B + "" + [char]0x8F7D + " Resound-Player-Setup-v$Version.exe")
+          $null = $NL.Add("2. " + [char]0x53CC + "" + [char]0x51FB + "" + [char]0x8FD0 + "" + [char]0x884C + "" + [char]0x5B89 + "" + [char]0x88C5 + "")
           $null = $NL.Add("")
           $null = $NL.Add("### Docker")
           $null = $NL.Add('```')
           $null = $NL.Add("docker run -d -p 80:80 tingwensuojian/resound-player-server:${Version}")
           $null = $NL.Add('```')
           $null = $NL.Add("")
-          $null = $NL.Add("## 校验说明")
+          $null = $NL.Add("## " + [char]0x6821 + "" + [char]0x9A8C + "" + [char]0x8BF4 + "" + [char]0x660E + "")
           $null = $NL.Add("")
-          $null = $NL.Add("SHA256 校验值见 Release 附件中的 .blockmap 文件。")
+          $null = $NL.Add("SHA256 " + [char]0x6821 + "" + [char]0x9A8C + "" + [char]0x503C + "" + [char]0x89C1 + " Release " + [char]0x9644 + "" + [char]0x4EF6 + "" + [char]0x4E2D + "" + [char]0x7684 + " .blockmap " + [char]0x6587 + "" + [char]0x4EF6 + "" + [char]0x3002 + "")
           $NotesBody = $NL -join "`n"
 
           # Build JSON payload with .NET
