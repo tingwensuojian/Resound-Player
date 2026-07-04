@@ -1,4 +1,4 @@
-﻿"""Update GitHub Release body with proper UTF-8 content."""
+"""Update GitHub Release body with proper UTF-8 content."""
 import json, os, subprocess, urllib.request
 
 tag = os.environ.get("GITHUB_REF_NAME", "")
