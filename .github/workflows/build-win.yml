@@ -187,7 +187,8 @@ jobs:
               name = "v${Version}"
               body = "Resound-Player v${Version}"
             } | ConvertTo-Json
-            $CreateResp = curl.exe -s -X POST "$ApiBase/releases" -H "Authorization: $Auth" -H "Content-Type: application/json" -d $Payload | ConvertFrom-Json`n            $RelId = $CreateResp.id
+            $CreateResp = curl.exe -s -X POST "$ApiBase/releases" -H "Authorization: $Auth" -H "Content-Type: application/json" -d $Payload | ConvertFrom-Json
+            $RelId = $CreateResp.id
           }
 
           # Upload assets using Gitee API
