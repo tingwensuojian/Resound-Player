@@ -63,13 +63,13 @@ jobs:
           # Generate release notes from commits
           $PrevTag = git tag --sort=-version:refname | Select-Object -First 2 | Select-Object -Last 1
           $NotesFile = [System.IO.Path]::GetTempFileName()
-          "# Resound-Player v$Version`n`n## 更新内容`n" | Out-File -FilePath $NotesFile -Encoding UTF8
+          "# Resound-Player v$Version`n`n## 更新内容`n" | Out-File -FilePath $NotesFile -Encoding UTF8BOM
           if ($PrevTag) {
             git log "$PrevTag..$Tag" --no-merges --oneline --reverse | ForEach-Object {
               $_ -replace '^[0-9a-f]+ ', '- '
-            } | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
+            } | Out-File -FilePath $NotesFile -Encoding UTF8BOM -Append
           }
-          "`n---`n`n## 安装说明`n`n### macOS`n1. 下载对应架构的 .dmg 文件（Apple Silicon 选 arm64，Intel 选 x64）`n2. 打开后拖入 Applications 文件夹`n3. 首次打开若提示无法验证开发者，需前往 系统设置 > 隐私与安全性 > 仍要打开`n`n### Windows`n1. 下载 Resound-Player-Setup-v$Version.exe`n2. 双击运行安装`n`n### Docker`n```````ndocker run -d -p 80:80 tingwensuojian/resound-player-server:${Version}`n```````n`n## 校验说明`n`nSHA256 校验值见 Release 附件中的 .blockmap 文件。" | Out-File -FilePath $NotesFile -Encoding UTF8 -Append
+          "`n---`n`n## 安装说明`n`n### macOS`n1. 下载对应架构的 .dmg 文件（Apple Silicon 选 arm64，Intel 选 x64）`n2. 打开后拖入 Applications 文件夹`n3. 首次打开若提示无法验证开发者，需前往 系统设置 > 隐私与安全性 > 仍要打开`n`n### Windows`n1. 下载 Resound-Player-Setup-v$Version.exe`n2. 双击运行安装`n`n### Docker`n```````ndocker run -d -p 80:80 tingwensuojian/resound-player-server:${Version}`n```````n`n## 校验说明`n`nSHA256 校验值见 Release 附件中的 .blockmap 文件。" | Out-File -FilePath $NotesFile -Encoding UTF8BOM -Append
 
           gh release view $Tag *> $null
           if ($LASTEXITCODE -eq 0) {
