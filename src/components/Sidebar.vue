@@ -8,6 +8,7 @@
     <AnimatedAppear tag="div" variant="sidebar" rhythm="shell" class-name="sidebar-shell">
       <AnimatedAppear tag="div" variant="content" rhythm="head" class-name="profile" :class="{ compact: isCollapsed }">
         <AnimatedAppear tag="div" variant="control" rhythm="actions" class-name="avatar" @click="toggleCollapsed">
+          <div v-if="updateDownloaded && isCollapsed" class="update-badge collapsed" @click.stop="onUpdateBadgeClick" title="新版本可安装"></div>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="48" height="48">
             <defs>
               <linearGradient id="logoGradSidebar" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -24,6 +25,10 @@
         </AnimatedAppear>
         <div class="user" :class="{ collapsedText: isCollapsed }">
           <AnimatedAppear tag="div" variant="text" rhythm="body" class-name="name">Resound</AnimatedAppear>
+          <div v-if="updateDownloaded && !isCollapsed" class="update-badge expanded" @click.stop="onUpdateBadgeClick">
+            <span class="badge-dot"></span>
+            <span class="badge-label">可更新</span>
+          </div>
         </div>
       </AnimatedAppear>
 
@@ -59,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { BarChart3, BookAudio, Clapperboard, Compass, Disc3, FolderOpen, FolderTree, History, Home, ListMusic, Mic2, Search, Settings, Trophy, User } from 'lucide-vue-next';
 import AnimatedAppear from './AnimatedAppear.vue';
 import { platform } from '../utils/platform';
@@ -79,6 +84,7 @@ const emit = defineEmits<{
   (e: 'update:collapsed', v: boolean): void;
   (e: 'select', key: string): void;
   (e: 'close'): void;
+  (e: 'open-settings', tab: string): void;
 }>();
 
 const sidebarRef = ref<HTMLElement | null>(null);
@@ -104,7 +110,42 @@ onMounted(() => {
       isCollapsed.value = next;
     }
   }
+
+  // 自动更新监听（桌面端）
+  if (platform.isDesktop && (window as any).appEnv?.autoUpdater?.onStatus) {
+    unsubUpdater = (window as any).appEnv.autoUpdater.onStatus((status: any) => {
+      if (status.status === 'downloaded') {
+        updateDownloaded.value = true;
+        if (status.info?.version) updateVersion.value = status.info.version;
+      }
+    });
+    // 初始化时检查当前状态（可能已下载完成）
+    (window as any).appEnv.autoUpdater.getStatus().then((s: any) => {
+      if (s.status === 'downloaded') {
+        updateDownloaded.value = true;
+        if (s.info?.version) updateVersion.value = s.info.version;
+      }
+    });
+  }
 });
+
+let unsubUpdater: (() => void) | null = null;
+
+onBeforeUnmount(() => {
+  if (unsubUpdater) {
+    unsubUpdater();
+    unsubUpdater = null;
+  }
+});
+
+const updateDownloaded = ref(false);
+const updateVersion = ref('');
+
+function onUpdateBadgeClick() {
+  if (platform.isDesktop && (window as any).appEnv?.autoUpdater) {
+    emit('open-settings', 'about');
+  }
+}
 
 function toggleCollapsed() {
   if (props.overlay) {
@@ -206,9 +247,10 @@ const items = [
 }
 
 .user {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap;
   transition: opacity 0.22s ease, max-width 0.22s ease, margin 0.22s ease;
   max-width: 120px;
   opacity: 1;
@@ -229,7 +271,60 @@ const items = [
   margin: 0 !important;
 }
 
+/* ?? ?????? ?? */
+.update-badge.collapsed {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent, #22c55e);
+  border: 2px solid var(--bg-surface, #1a1a2e);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  z-index: 2;
+  cursor: pointer;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+.update-badge.expanded {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.update-badge.expanded:hover {
+  background: color-mix(in srgb, var(--accent, #22c55e) 25%, transparent);
+}
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent, #22c55e);
+  flex-shrink: 0;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+.badge-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent, #22c55e);
+  line-height: 1;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 .avatar {
+  position: relative;
   width: 48px;
   height: 48px;
   border-radius: 14px;

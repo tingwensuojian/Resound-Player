@@ -11,6 +11,7 @@
       @update:collapsed="sidebarCollapsed = $event"
       @select="onSelectMenu"
       @close="sidebarOpen = false"
+      @open-settings="(t) => openSettings(t)"
     />
 
     <transition name="overlay-fade">

@@ -78,6 +78,8 @@ function getAutoUpdater() {
       log("update-available", info);
       _state = { ..._state, status: Status.AVAILABLE, info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes }, progress: null, error: null };
       broadcast();
+      // 自动下载更新（发现新版本后后台静默下载）
+      downloadUpdate();
     });
 
     autoUpdater.on("update-not-available", (info) => {
@@ -146,6 +148,8 @@ export function initUpdater(mainWindow) {
   const updater = getAutoUpdater();
   log("initUpdater", { version: updater.currentVersion?.format() });
   ensureUpdateConfigFile();
+  // 自动检测版本更新（启动后后台自动执行）
+  checkForUpdates();
 }
 
 export function checkForUpdates() {
@@ -257,3 +261,4 @@ export function registerUpdaterIpc() {
     return getUpdateStatus();
   });
 }
+
