@@ -1,119 +1,79 @@
 # Resound-Player — Docker 镜像使用指南
 
-## 镜像列表
+## 镜像信息
 
-| 镜像名 | 用途 |
-|--------|------|
-| `934029151/resound-player-frontend` | Nginx + Vue 3 SPA 前端（端口 80） |
-| `934029151/resound-player-api` | NeteaseCloudMusicApiEnhanced 后端 API（端口 38761） |
-| `934029151/resound-player-unblock` | 音源替换服务（端口 38762/38763） |
+| 字段 | 值 |
+|------|-----|
+| 镜像名 | `tingwensuojian/resound-player-server` |
+| 版本 | `{{VERSION}}` |
+| 架构 | All-in-One（Nginx + Netease API + Unblock Proxy + Unblock Match） |
 
 ## 快速开始
 
 ### 前置条件
 
-- Docker 24+ / Docker Compose v2+
+- Docker 24+
 
-### 1. 一键部署（推荐）
-
-创建 `docker-compose.yml`：
-
-```yaml
-services:
-  nginx:
-    image: 934029151/resound-player-frontend:latest
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - netease-api
-      - unblock
-    restart: unless-stopped
-
-  netease-api:
-    image: 934029151/resound-player-api:latest
-    ports:
-      - "38761:38761"
-    environment:
-      PORT: "38761"
-      NODE_ENV: "production"
-    restart: unless-stopped
-
-  unblock:
-    image: 934029151/resound-player-unblock:latest
-    expose:
-      - "38762"
-      - "38763"
-    environment:
-      ENABLE_FLAC: "true"
-      PORT: "38763"
-      UNBLOCK_SOURCES: "bodian,kugou,migu,qq,bilibili"
-    restart: unless-stopped
-```
-
-启动：
+### 一键部署
 
 ```bash
-docker compose up -d
+docker run -d \
+  --name resound-player \
+  -p 80:80 \
+  tingwensuojian/resound-player-server:{{VERSION}}
 ```
 
 打开浏览器访问 `http://localhost`。
 
-### 2. 单独运行前端
-
-```bash
-docker run -d -p 80:80 934029151/resound-player-frontend:latest
-```
-
-访问 `http://localhost`，但需要配合 API 和 unblock 服务才能使用全部功能。
-
 ## 架构
 
+单容器内包含全部服务：
+
 ```
-浏览器 ──→ Nginx:80 ──→ /api/* → Netease API:38761
-                    │
-                    ├─ /unblock-api/* → Match Server:38763 ─→ Unblock Proxy:38762
-                    │
-                    ├─ /dl-proxy?url=... → Match Server:38763（代理音频）
-                    │
-                    └─ /* → SPA index.html（前端路由回退）
+┌─────────────────────────────────────┐
+│         resound-player-server       │
+│                                     │
+│  Nginx:80 ──→ /api/* → API:38761   │
+│              /unblock/* → Match:38763 → Proxy:38762
+│              /dl-proxy?url=... → Match:38763
+│              /* → SPA index.html    │
+└─────────────────────────────────────┘
 ```
 
-- **Nginx** 提供 SPA 静态文件服务、API 反向代理、以及 `/dl-proxy` 音频代理
-- **Netease API** 提供网易云音乐数据接口
-- **Unblock Match Server** 匹配替代音源
-- **Unblock Proxy** 转发并替换音频源
+- **Nginx** — SPA 静态文件服务、API 反向代理、`/dl-proxy` 音频代理
+- **Netease API** — 网易云音乐数据接口（端口 38761）
+- **Unblock Match Server** — 匹配替代音源（端口 38763）
+- **Unblock Proxy** — 转发并替换音频源（端口 38762）
 
 ## 环境变量
 
-### netease-api
+镜像支持以下环境变量：
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `PORT` | `38761` | API 服务端口 |
+| `PORT` | `38761` | Netease API 服务端口 |
 | `NODE_ENV` | `production` | 运行环境 |
-
-### unblock
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
 | `ENABLE_FLAC` | `true` | 启用 FLAC 无损音源匹配 |
-| `PORT` | `38763` | Match Server 端口 |
 | `UNBLOCK_SOURCES` | `bodian,kugou,migu,qq,bilibili` | 音源优先级列表 |
+
+### 自定义配置示例
+
+```bash
+docker run -d \
+  --name resound-player \
+  -p 80:80 \
+  -e UNBLOCK_SOURCES="kugou,qq,migu" \
+  -e ENABLE_FLAC=false \
+  tingwensuojian/resound-player-server:latest
+```
 
 ## 数据持久化
 
-当前镜像设计为无状态运行，所有配置通过环境变量注入。会话认证依赖浏览器 Cookie，无需额外持久化。
+镜像设计为无状态运行，所有配置通过环境变量注入。会话认证依赖浏览器 Cookie，无需额外持久化。
 
 ## HTTPS 配置
 
-参考项目 `deploy/` 目录下的 `nginx.conf` 和 `setup-ssl.sh`：
-
-1. 使用 Let's Encrypt 获取证书
-2. 将证书挂载到 Nginx 容器
-3. 在 Nginx 配置中启用 SSL
-
-详细步骤见：[HTTPS 配置说明](https://github.com/your-repo/resound-player-deploy)
+建议在容器前使用反向代理（如 Nginx Proxy Manager、Caddy、Traefik）终止 SSL，或参考项目 `deploy/` 目录下的 Let's Encrypt 配置示例。
 
 ## 已知限制
 
@@ -124,8 +84,9 @@ docker run -d -p 80:80 934029151/resound-player-frontend:latest
 ## 项目信息
 
 - 技术栈：Vue 3 + Vite + Nginx + Node.js
-- 源码：[GitHub 仓库](https://github.com/your-repo/resound-player)
+- 源码：[GitHub 仓库](https://github.com/tingwensuojian/Resound-Player)
 
 ## Tags
 
 - `latest` — 最新稳定版本
+- `v*` — 语义化版本标签
