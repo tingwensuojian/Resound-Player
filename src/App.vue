@@ -252,9 +252,11 @@ const userStore = useUserStore();
 import { recordLocalHistoryEntry } from './utils/localHistory';
 import { useNavigationHistory } from './composables/useNavigationHistory';
 import { useLoginModalStore } from './stores/loginModal';
+import { useShortcutKeydown } from './composables/useShortcutKeydown';
 const loginModalStore = useLoginModalStore();
 
 const navHistory = useNavigationHistory();
+useShortcutKeydown();
 
 const activePage = ref('');  // 初始为空，登录验证完成后再切到首页
 const activePlaylistId = ref(0);

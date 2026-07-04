@@ -201,7 +201,7 @@ function resetGains() {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.25);
 }
 .eq-panel {
   background:
@@ -242,7 +242,7 @@ function resetGains() {
   width: 28px;
   height: 28px;
   border: none;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.25);
   color: var(--text-soft);
   cursor: pointer;
   display: grid;
@@ -320,7 +320,7 @@ function resetGains() {
   cursor: pointer;
   margin: 0;
   padding: 0;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.25);
 }
 .eq-slider:disabled {
   opacity: 0.3;

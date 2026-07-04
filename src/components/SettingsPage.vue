@@ -179,6 +179,10 @@
       </div>
     </AnimatedAppear>
 
+    <section v-if="activeTab === 'shortcuts'" class="setting-group">
+      <ShortcutSetting />
+    </section>
+
     <template v-if="activeTab === 'about'">
       <AnimatedAppear
         tag="section"
@@ -481,7 +485,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { marked } from 'marked';
 
-type SettingsTabKey = 'playback' | 'appearance' | 'local' | 'account' | 'about';
+type SettingsTabKey = 'playback' | 'appearance' | 'local' | 'account' | 'shortcuts' | 'about';
 
 const props = withDefaults(
   defineProps<{
@@ -510,6 +514,7 @@ import { useLyricsSettingsStore } from '../stores/lyricsSettings';
 const lyricsSettings = useLyricsSettingsStore();
 import { useLocalMusicStore } from '../stores/localMusic';
 import { platform } from '../utils/platform';
+import ShortcutSetting from '../views/setting/ShortcutSetting.vue'
 
 type SettingItem = {
   key: string;
@@ -534,11 +539,13 @@ const allTabs = [
   { key: 'appearance', label: '外观' },
   { key: 'local', label: '本地音乐' },
   { key: 'account', label: '账号' },
+  { key: 'shortcuts', label: '快捷键' },
   { key: 'about', label: '关于' },
 ] as const;
 
 function isTabAvailable(tab: SettingsTabKey) {
   if (tab === 'local') return platform.isDesktop;
+  if (tab === 'shortcuts') return platform.isDesktop;
   return true;
 }
 

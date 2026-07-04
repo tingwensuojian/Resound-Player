@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   Heart,
   ListMusic,
@@ -213,6 +213,25 @@ function togglePlaylist() {
 onBeforeUnmount(() => {
   resizeMiniWindow(MINI_BAR_HEIGHT);
 });
+
+// 迷你窗口内按 ⌃⌘M（Ctrl+Cmd+M）退出迷你模式
+let _miniModeKeydownCleanup: (() => void) | null = null
+
+onMounted(() => {
+  const handler = (e: KeyboardEvent) => {
+    if (e.metaKey && e.ctrlKey && (e.code === 'KeyM')) {
+      e.preventDefault()
+      uiStore.exitMiniMode()
+    }
+  }
+  window.addEventListener('keydown', handler)
+  _miniModeKeydownCleanup = () => window.removeEventListener('keydown', handler)
+})
+
+onBeforeUnmount(() => {
+  _miniModeKeydownCleanup?.()
+})
+
 
 function playByIndex(idx: number) {
   playerStore.playByIndex(idx);

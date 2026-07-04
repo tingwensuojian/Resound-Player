@@ -71,11 +71,21 @@ interface Window {
     window?: {
       setBackgroundColor?: (color: string) => void
     }
-    /** Electron 内置 unblock 匹配桥 */
-    unblockBridge?: {
-      matchSong: (id: number, sources?: string[]) => Promise<{ url: string | null; source: string | null; br: number; size: number; errors?: string[] }>
-      isReady: () => Promise<boolean>
+   /** Electron 内置 unblock 匹配桥 */
+   unblockBridge?: {
+     matchSong: (id: number, sources?: string[]) => Promise<{ url: string | null; source: string | null; br: number; size: number; errors?: string[] }>
+     isReady: () => Promise<boolean>
+   }
+    /** 快捷键设置 IPC */
+    shortcutApi?: {
+      getConfig: () => Promise<{ shortcuts: any[]; globalEnabled: boolean; mediaKeysEnabled: boolean }>
+      saveConfig: (config: any) => Promise<void>
+      resetDefaults: () => Promise<void>
+      setGlobalEnabled: (enabled: boolean) => Promise<void>
+      setMediaKeysEnabled: (enabled: boolean) => Promise<void>
+      onShortcutAction: (cb: (actionId: string) => void) => () => void
+      onConfigChanged: (cb: (config: any) => void) => () => void
     }
-    [key: string]: any
-  }
+   [key: string]: any
+ }
 }

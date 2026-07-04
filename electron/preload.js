@@ -34,7 +34,7 @@ contextBridge.exposeInMainWorld('appEnv', {
     setItem: (data) => ipcRenderer.invoke('cache:set', data),
     clear: () => ipcRenderer.invoke('cache:clear'),
   },
-  // ── 内置 unblock 匹配�?──
+  // ── 内置 unblock 匹配�?──
   unblockBridge: {
     matchSong: (id, sources) => {
       const safeId = Number(id) || 0;
@@ -71,7 +71,7 @@ contextBridge.exposeInMainWorld('appEnv', {
       return () => ipcRenderer.removeListener('desktop-lyric:config-changed', handler);
     },
   },
-    // ── 任务栏播�?API ──
+    // ── 任务栏播�?API ──
   taskbarWidget: {
     getConfig: () => ipcRenderer.invoke('taskbar-widget:get-config'),
     setConfig: (cfg) => ipcRenderer.invoke('taskbar-widget:set-config', cfg),
@@ -161,6 +161,24 @@ contextBridge.exposeInMainWorld('appEnv', {
       return () => ipcRenderer.removeListener('close-behavior:config-changed', handler);
     },
   },
+  // ── 快捷键设置 ──
+  shortcutApi: {
+    getConfig: () => ipcRenderer.invoke('shortcut:get-config'),
+    saveConfig: (config) => ipcRenderer.invoke('shortcut:save-config', config),
+    resetDefaults: () => ipcRenderer.invoke('shortcut:reset-defaults'),
+    setGlobalEnabled: (enabled) => ipcRenderer.invoke('shortcut:set-global-enabled', enabled),
+    setMediaKeysEnabled: (enabled) => ipcRenderer.invoke('shortcut:set-media-keys-enabled', enabled),
+    onShortcutAction: (cb) => {
+      const handler = (_e, actionId) => cb(actionId);
+      ipcRenderer.on('shortcut:action', handler);
+      return () => ipcRenderer.removeListener('shortcut:action', handler);
+    },
+    onConfigChanged: (cb) => {
+      const handler = (_e, config) => cb(config);
+      ipcRenderer.on('shortcut:config-changed', handler);
+      return () => ipcRenderer.removeListener('shortcut:config-changed', handler);
+    },
+  },
 });
 
 // ── 本地音乐 IPC ──
@@ -216,11 +234,11 @@ contextBridge.exposeInMainWorld('localApi', {
   getStats: () => ipcRenderer.invoke('local:get-stats'),
 });
 
-// ── 窗口控制：通过主进�?page-title-updated 事件实现 ──
+// ── 窗口控制：通过主进�?page-title-updated 事件实现 ──
 // 最小化/最大化通过 document.title 触发 page-title-updated 事件
-// 关闭使用原生 window.close()（Electron 会将其转�?BrowserWindow.close()�?
+// 关闭使用原生 window.close()（Electron 会将其转�?BrowserWindow.close()�?
 
-// 主进程广播最大化状�?�?data-win-maximized 渲染进程通过 MutationObserver 获取
+// 主进程广播最大化状�?�?data-win-maximized 渲染进程通过 MutationObserver 获取
 ipcRenderer.on('win-state-change', (_event, maximized) => {
   if (maximized) {
     document.documentElement.dataset.winMaximized = '';
@@ -237,7 +255,7 @@ ipcRenderer.on('win-fullscreen-change', (_event, fullscreen) => {
   }
 });
 
-// ── 系统托盘动作 �?自定�?DOM 事件 ──
+// ── 系统托盘动作 �?自定�?DOM 事件 ──
 // 渲染进程通过 document.addEventListener('tray-action', handler) 监听
 ipcRenderer.on('tray:play-pause', () => {
   console.log('[preload] tray:play-pause -> postMessage'); window.postMessage({ source: '__tray__', action: 'togglePlay' }, '*');
@@ -253,12 +271,12 @@ ipcRenderer.on('tray-action', (_event, action) => {
   console.log('[preload] tray-action -> postMessage:', action); window.postMessage({ source: '__tray__', action }, '*');
 });
 
-// ── 迷你模式状态变�?�?自定�?DOM 事件 ──
+// ── 迷你模式状态变�?�?自定�?DOM 事件 ──
 ipcRenderer.on('mini-mode:state-change', (_event, isMini) => {
   document.dispatchEvent(new CustomEvent('mini-mode-state', { detail: isMini, bubbles: true }));
 });
 
-// 标记桌面端及平台，供 CSS 选择器控制平台专�?UI 显隐
+// 标记桌面端及平台，供 CSS 选择器控制平台专�?UI 显隐
 document.addEventListener('DOMContentLoaded', () => {
   document.documentElement.classList.add('resound-desktop');
   document.documentElement.dataset.platform = process.platform;

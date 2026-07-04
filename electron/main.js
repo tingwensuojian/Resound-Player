@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, ipcMain, protocol, screen, Tray, nativeImage } from 'electron';
+import { getShortcutManager } from './main/shortcutManager.js';
 import { init as initTaskbarWidget, registerIpc as registerTaskbarWidgetIpc, enable as enableTaskbarWidget, disable as disableTaskbarWidget, setEnabled as setTaskbarWidgetEnabled, getConfig as getTaskbarWidgetConfig, updatePlaybackSnapshot as updateTaskbarWidgetSnapshot } from './services/taskbarWidgetService.js';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -107,8 +108,8 @@ function buildAppMenu() {
     {
       label: '视图',
       submenu: [
-        { role: 'reload', label: '重新加载' },
-        { role: 'forceReload', label: '强制重新加载' },
+        { role: 'reload', label: '重新加载', accelerator: '' },
+        { role: 'forceReload', label: '强制重新加载', accelerator: '' },
         { role: 'toggleDevTools', label: '开发者工具' },
         { type: 'separator' },
         { role: 'resetZoom', label: '重置缩放' },
@@ -336,8 +337,8 @@ function setupChineseMenu() {
     {
       label: '视图',
       submenu: [
-        { role: 'reload', label: '重新加载' },
-        { role: 'forceReload', label: '强制重新加载' },
+        { role: 'reload', label: '重新加载', accelerator: '' },
+        { role: 'forceReload', label: '强制重新加载', accelerator: '' },
         { role: 'toggleDevTools', label: '开发者工具' },
         { type: 'separator' },
         { role: 'resetZoom', label: '重置缩放' },
@@ -785,8 +786,15 @@ async function bootstrap() {
   loadDesktopLyricConfig();
   loadCloseBehaviorConfig();
   loadTrayLyricConfig(); // 加载持久化的托盘歌词配置
+  // ── 初始化快捷键管理器的 IPC handlers（需在 createMainWindow 前注册）
+  const shortcutMgr = getShortcutManager();
+  await shortcutMgr.init(app.getPath('userData'));
+
   await createMainWindow(ports);
   writeMainLog('[bootstrap] main window created');
+
+  // ── 注册全局快捷键（需要 win 引用）
+  shortcutMgr.registerAll(win);
 
   // ── 初始化任务栏播控（主窗口已创建，任务栏按钮稳定） ──
   initTaskbarWidget();

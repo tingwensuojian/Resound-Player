@@ -241,12 +241,14 @@ export const useUiStore = defineStore('ui', () => {
   function enterMiniMode() {
     if (getWindowRole() === 'main' && !state.isMiniMode) {
       window.appEnv?.miniMode?.enter(state.miniAlwaysOnTop);
+      state.isMiniMode = true;
     }
   }
 
   function exitMiniMode() {
     if (state.isMiniMode || getWindowRole() === 'mini') {
       window.appEnv?.miniMode?.exit();
+      state.isMiniMode = false;
     }
   }
 
