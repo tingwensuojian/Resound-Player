@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
+console.log('[preload] INIT: script loaded, ipcRenderer available:', !!ipcRenderer);
 
 // Parse the --service-ports argument injected by main.js
 const portsArg = process.argv.find((s) => s.startsWith('--service-ports='));
@@ -223,17 +224,17 @@ ipcRenderer.on('win-fullscreen-change', (_event, fullscreen) => {
 // ── 系统托盘动作 �?自定�?DOM 事件 ──
 // 渲染进程通过 document.addEventListener('tray-action', handler) 监听
 ipcRenderer.on('tray:play-pause', () => {
-  document.dispatchEvent(new CustomEvent('tray-action', { detail: 'togglePlay' }));
+  console.log('[preload] tray:play-pause -> postMessage'); window.postMessage({ source: '__tray__', action: 'togglePlay' }, '*');
 });
 ipcRenderer.on('tray:next', () => {
-  document.dispatchEvent(new CustomEvent('tray-action', { detail: 'next' }));
+  console.log('[preload] tray:next -> postMessage'); window.postMessage({ source: '__tray__', action: 'next' }, '*');
 });
 ipcRenderer.on('tray:prev', () => {
-  document.dispatchEvent(new CustomEvent('tray-action', { detail: 'prev' }));
+  console.log('[preload] tray:prev -> postMessage'); window.postMessage({ source: '__tray__', action: 'prev' }, '*');
 });
 // Generic tray action dispatcher (toggleLike, openSettings, toggleDesktopLyric, mode changes, etc.)
 ipcRenderer.on('tray-action', (_event, action) => {
-  document.dispatchEvent(new CustomEvent('tray-action', { detail: action }));
+  console.log('[preload] tray-action -> postMessage:', action); window.postMessage({ source: '__tray__', action }, '*');
 });
 
 // ── 迷你模式状态变�?�?自定�?DOM 事件 ──

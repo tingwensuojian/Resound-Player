@@ -886,11 +886,39 @@ function handleTrayAction(e: CustomEvent) {
     window.dispatchEvent(new CustomEvent('open-tray-settings'));
   }
 }
+
+// postMessage: cross-context-safe tray action
+function handleTrayMessage(e: MessageEvent) {
+  console.log('[playerbar] postMessage received:', e.data);
+  if (e.data?.source !== '__tray__') return;
+  console.log('[playerbar] tray action:', e.data.action);
+  const action = e.data.action;
+  if (action === 'togglePlay') playerStore.togglePlay();
+  else if (action === 'next') playerStore.next();
+  else if (action === 'prev') playerStore.prev();
+  else if (action === 'toggleDesktopLyric') {
+    if (platform.isDesktop && window.appEnv?.desktopLyric) {
+      window.appEnv.desktopLyric.getConfig().then((cfg: any) => {
+        const newEnabled = !cfg.enabled;
+        window.appEnv.desktopLyric.setConfig({ enabled: newEnabled });
+      }).catch(() => {});
+    }
+  }
+  else if (action === 'cycleMode') playerStore.setPlayMode('loop');
+  else if (action === 'singleMode') playerStore.setPlayMode('single');
+  else if (action === 'shuffleMode') playerStore.setPlayMode('shuffle');
+  else if (action === 'toggleLike') toggleCurrentLike();
+  else if (action === 'openSettings') {
+    window.dispatchEvent(new CustomEvent('open-tray-settings'));
+  }
+}
 onMounted(() => {
   document.addEventListener('tray-action', handleTrayAction as EventListener);
+  window.addEventListener('message', handleTrayMessage);
 });
 onUnmounted(() => {
   document.removeEventListener('tray-action', handleTrayAction as EventListener);
+  window.removeEventListener('message', handleTrayMessage);
 });
 
 function onVolume(e: Event) {

@@ -1073,10 +1073,16 @@ let trayDesktopLyricShow = false;
 function buildTrayMenu(win) {
   const trayCfg = getTrayLyricConfig();
   const truncate = (s, max) => s && s.length > max ? s.slice(0, max - 1) + '…' : (s || '');
-  // 点击时获取有效窗口，避免捕获已销毁的引用
-  const getWin = () => {
+  // ???????????????????????
+  // 获取第一个有效窗口（用于重建菜单）
+  const getWindow = () => {
     const all = BrowserWindow.getAllWindows();
     return all.find(w => w && !w.isDestroyed()) || null;
+  };
+  const trySend = (channel, ...args) => {
+    BrowserWindow.getAllWindows().forEach(w => {
+      if (w && !w.isDestroyed()) { try { w.webContents.send(channel, ...args); } catch {} }
+    });
   };
 
   const items = [
@@ -1087,28 +1093,28 @@ function buildTrayMenu(win) {
     { type: 'separator' },
     {
       label: trayIsLiked ? '取消喜欢' : '喜欢',
-      click: () => getWin()?.webContents.send('tray-action', 'toggleLike'),
+      click: () => { console.log('[tray] MENU CLICK: toggleLike'); showMainWindowFromTray(); trySend('tray-action', 'toggleLike'); },
     },
     {
       label: `播放模式`,
       submenu: [
-        { label: '列表循环', type: 'radio', checked: true, click: () => getWin()?.webContents.send('tray-action', 'cycleMode') },
-        { label: '单曲循环', type: 'radio', click: () => getWin()?.webContents.send('tray-action', 'singleMode') },
-        { label: '随机播放', type: 'radio', click: () => getWin()?.webContents.send('tray-action', 'shuffleMode') },
+        { label: '列表循环', type: 'radio', checked: true, click: () => trySend('tray-action', 'cycleMode') },
+        { label: '单曲循环', type: 'radio', click: () => trySend('tray-action', 'singleMode') },
+        { label: '随机播放', type: 'radio', click: () => trySend('tray-action', 'shuffleMode') },
       ],
     },
     { type: 'separator' },
     {
       label: '上一首',
-      click: () => getWin()?.webContents.send('tray:prev'),
+      click: () => { console.log('[tray] MENU CLICK: prev'); trySend('tray:prev'); },
     },
     {
       label: trayCurrentPlaying ? '暂停' : '播放',
-      click: () => getWin()?.webContents.send('tray:play-pause'),
+      click: () => { console.log('[tray] MENU CLICK: play-pause'); trySend('tray:play-pause'); },
     },
     {
       label: '下一首',
-      click: () => getWin()?.webContents.send('tray:next'),
+      click: () => { console.log('[tray] MENU CLICK: next'); trySend('tray:next'); },
     },
     { type: 'separator' },
     {
@@ -1124,7 +1130,7 @@ function buildTrayMenu(win) {
         trayDesktopLyricShow = newEnabled;
         desktopLyricConfig.enabled = newEnabled;
         saveDesktopLyricConfig();
-        setTrayMenu(getWin());
+        setTrayMenu(getWindow());
         if (newEnabled) {
           createDesktopLyricWin();
         } else {
@@ -1148,7 +1154,7 @@ function buildTrayMenu(win) {
             BrowserWindow.getAllWindows().forEach((w2) => {
               if (!w2.isDestroyed()) w2.webContents.send('tray-lyric:config-changed', { ...getTrayLyricConfig() });
             });
-            setTrayMenu(getWin());
+            setTrayMenu(getWindow());
           },
         }]
       : [{
@@ -1165,7 +1171,7 @@ function buildTrayMenu(win) {
             BrowserWindow.getAllWindows().forEach((w) => {
               if (!w.isDestroyed()) w.webContents.send('taskbar-widget:config-changed', { ...getTaskbarWidgetConfig() });
             });
-            setTrayMenu(getWin());
+            setTrayMenu(getWindow());
           },
         }]),
 
