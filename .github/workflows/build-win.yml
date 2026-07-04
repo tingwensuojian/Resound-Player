@@ -1,4 +1,4 @@
-﻿name: Build Windows Installer
+name: Build Windows Installer
 
 on:
   workflow_dispatch:
@@ -148,3 +148,61 @@ jobs:
 
           Write-Host "Uploading Windows EXE to release $Tag..."
           gh release upload $Tag dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
+
+      - name: Upload to Gitee Release
+        if: |
+          startsWith(github.ref, 'refs/tags/') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        shell: pwsh
+        run: |
+          $Tag = "${env:GITHUB_REF_NAME}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $Tag = "${{ inputs.release_tag }}"
+          }
+          $Version = $Tag -replace '^v', ''
+
+          Write-Host "Uploading to Gitee Release ${Tag}..."
+
+          # Create/update Gitee release
+          $Auth = "Bearer ${env:GITEE_TOKEN}"
+          $ApiBase = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player"
+
+          # Check if release exists
+          $RelId = $null
+          try {
+            $Existing = curl.exe -s "$ApiBase/releases/tags/${Tag}" -H "Authorization: $Auth" | ConvertFrom-Json
+            $RelId = $Existing.id
+          } catch {}
+
+          if ($RelId) {
+            # Update existing release
+            $Body = @{ body = "" } | ConvertTo-Json
+            curl.exe -s -X PATCH "$ApiBase/releases/${RelId}" -H "Authorization: $Auth" -H "Content-Type: application/json" -d $Body | Out-Null
+          } else {
+            # Create new release
+            $Payload = @{
+              tag_name = $Tag
+              name = "v${Version}"
+              body = "Resound-Player v${Version}"
+            } | ConvertTo-Json
+            curl.exe -s -X POST "$ApiBase/releases" -H "Authorization: $Auth" -H "Content-Type: application/json" -d $Payload | Out-Null
+          }
+
+          # Upload assets using Gitee API
+          Get-ChildItem dist-build/*.exe, dist-build/*.blockmap, dist-build/latest.yml | ForEach-Object {
+            $FileName = $_.Name
+            $FilePath = $_.FullName
+            Write-Host "  Uploading ${FileName}..."
+            $ProgressPreference = "SilentlyContinue"
+            try {
+              $null = curl.exe -s -X POST "$ApiBase/releases/${RelId}/attach_files" `
+                -H "Authorization: $Auth" `
+                -F "file=@${FilePath}"
+            } catch {
+              Write-Host "  Failed to upload ${FileName}: $_"
+            }
+          }
+          Write-Host "Gitee upload complete"
+
