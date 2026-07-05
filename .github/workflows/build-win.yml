@@ -123,33 +123,33 @@ jobs:
           $NotesFile = [System.IO.Path]::GetTempFileName() + ".md"
           [System.IO.File]::WriteAllText($NotesFile, $NotesBody, [System.Text.UTF8Encoding]::new($false))
 
-          # Debug: show gh version
-          Write-Host "gh version:"
+          # Debug: show gh version and auth status
+          Write-Host "=== gh debug ==="
           gh --version
+          gh auth status
+          Write-Host "=== check existing release ==="
+          gh release view $Tag 2>&1
+          Write-Host "exit: $($LASTEXITCODE)"
 
-          # Create or update release via gh CLI
-          Write-Host "Checking if release $Tag exists..."
-          gh release view $Tag 2>&1 | Out-Null
-          Write-Host "  exit code: $LASTEXITCODE"
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Updating existing release $Tag..."
             gh release edit $Tag --notes-file "$NotesFile"
-            Write-Host "  edit exit code: $LASTEXITCODE"
-            if ($LASTEXITCODE -ne 0) { throw "Failed to edit release" }
+            Write-Host "  edit exit: $($LASTEXITCODE)"
+            if ($LASTEXITCODE -ne 0) { throw "edit failed" }
           } else {
             Write-Host "Creating new release $Tag..."
-            Write-Host "  target: ${env:GITHUB_SHA}"
-            gh release create $Tag --target "${env:GITHUB_SHA}" --title "Resound-Player v$Version" --notes-file "$NotesFile"
-            Write-Host "  create exit code: $LASTEXITCODE"
-            if ($LASTEXITCODE -ne 0) { throw "Failed to create release" }
+            Write-Host "  target SHA: $($env:GITHUB_SHA)"
+            gh release create $Tag --target "$($env:GITHUB_SHA)" --title "Resound-Player v$Version" --notes-file "$NotesFile"
+            Write-Host "  create exit: $($LASTEXITCODE)"
+            if ($LASTEXITCODE -ne 0) { throw "create failed" }
           }
 
           Remove-Item $NotesFile -Force
 
           Write-Host "Uploading Windows EXE to release $Tag..."
           gh release upload $Tag dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
-          Write-Host "  upload exit code: $LASTEXITCODE"
-          if ($LASTEXITCODE -ne 0) { throw "Failed to upload assets" }
+          Write-Host "  upload exit: $($LASTEXITCODE)"
+          if ($LASTEXITCODE -ne 0) { throw "upload failed" }
           Write-Host "Upload to Release complete
 
       - name: Sync to Gitee Release (via release2gitee)
