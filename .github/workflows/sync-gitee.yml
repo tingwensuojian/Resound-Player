@@ -1,4 +1,4 @@
-name: Sync to Gitee
+﻿name: Sync to Gitee
 
 on:
   push:
@@ -16,5 +16,5 @@ jobs:
           fetch-depth: 0
       - run: |
           git remote add gitee https://tingwensuojian:${{ secrets.GITEE_TOKEN }}@gitee.com/tingwensuojian/Resound-Player.git
-          git push -f gitee main
+          git push -f gitee HEAD:main
           git push -f gitee --tags
