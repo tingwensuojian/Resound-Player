@@ -149,63 +149,29 @@ jobs:
           Write-Host "Uploading Windows EXE to release $Tag..."
           gh release upload $Tag dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
 
-      - name: Upload to Gitee Release
+      - name: Sync to Gitee Release (via release2gitee)
         if: |
           startsWith(github.ref, 'refs/tags/') ||
           (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $Tag = "${env:GITHUB_REF_NAME}"
-          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            $Tag = "${{ inputs.release_tag }}"
-          }
-          $Version = $Tag -replace '^v', ''
-
-          Write-Host "Uploading to Gitee Release ${Tag}..."
-
-          # Create/update Gitee release
-          $Auth = "Bearer ${env:GITEE_TOKEN}"
-          $ApiBase = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player"
-
-          # Check if release exists
-          $RelId = $null
-          try {
-            $Existing = curl.exe -s "$ApiBase/releases/tags/${Tag}" -H "Authorization: $Auth" -H "Accept: application/json" | ConvertFrom-Json
-            $RelId = $Existing.id
-          } catch {}
-
-          if ($RelId) {
-            # Update existing release
-            $Body = @{ body = "" } | ConvertTo-Json
-            curl.exe -s -X PATCH "$ApiBase/releases/${RelId}" -H "Authorization: $Auth" -H "Content-Type: application/json" -d $Body | Out-Null
-          } else {
-            # Create new release
-            $Payload = @{
-              tag_name = $Tag
-              name = "v${Version}"
-              body = "Resound-Player v${Version}"
-            } | ConvertTo-Json
-            $CreateResp = curl.exe -s -X POST "$ApiBase/releases" -H "Authorization: $Auth" -H "Accept: application/json" -H "Content-Type: application/json" -d $Payload | ConvertFrom-Json
-            $RelId = $CreateResp.id
-            Write-Host "  Create resp id: $RelId"
-          }
-
-          # Upload assets using Gitee API
-          Get-ChildItem dist-build/*.exe, dist-build/*.blockmap, dist-build/latest.yml | ForEach-Object {
-            $FileName = $_.Name
-            $FilePath = $_.FullName
-            Write-Host "  Uploading ${FileName}..."
-            $ProgressPreference = "SilentlyContinue"
-            try {
-              $null = curl.exe -s -X POST "$ApiBase/releases/${RelId}/attach_files" `
-                -H "Authorization: $Auth" `
-                -H "Accept: application/json" `
-                -F "file=@${FilePath}"
-            } catch {
-              Write-Host "  Failed to upload ${FileName}: $_"
-            }
-          }
-          Write-Host "Gitee upload complete"
-
+          $R2G_VERSION = "v1.2.1"
+          $R2G_URL = "https://github.com/hepengju/release2gitee/releases/download/${R2G_VERSION}/release2gitee-x86_64-pc-windows-msvc.zip"
+          Write-Host "Downloading release2gitee ${R2G_VERSION}..."
+          curl.exe -sL "$R2G_URL" -o release2gitee.zip
+          Expand-Archive -Path "release2gitee.zip" -DestinationPath "." -Force
+          Remove-Item release2gitee.zip -Force
+          Write-Host "Syncing releases to Gitee..."
+          $env:GITHUB_OWNER = "tingwensuojian"
+          $env:GITHUB_REPO = "Resound-Player"
+          $env:GITEE_OWNER = "tingwensuojian"
+          $env:GITEE_REPO = "Resound-Player"
+          $env:release2gitee__github_latest_release_count = "5"
+          $env:release2gitee__gitee_retain_release_attach_files_count = "3"
+          $env:release2gitee__release_body_url_replace = "false"
+          $env:release2gitee__latest_json_url_replace = "false"
+          $env:release2gitee__gitee_branch = "master"
+          .\release2gitee.exe
