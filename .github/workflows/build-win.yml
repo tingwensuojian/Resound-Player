@@ -172,7 +172,7 @@ jobs:
           # Check if release exists
           $RelId = $null
           try {
-            $Existing = curl.exe -s "$ApiBase/releases/tags/${Tag}" -H "Authorization: $Auth" | ConvertFrom-Json
+            $Existing = curl.exe -s "$ApiBase/releases/tags/${Tag}" -H "Authorization: $Auth" -H "Accept: application/json" | ConvertFrom-Json
             $RelId = $Existing.id
           } catch {}
 
@@ -187,7 +187,7 @@ jobs:
               name = "v${Version}"
               body = "Resound-Player v${Version}"
             } | ConvertTo-Json
-            $CreateResp = curl.exe -s -X POST "$ApiBase/releases" -H "Authorization: $Auth" -H "Content-Type: application/json" -d $Payload | ConvertFrom-Json
+            $CreateResp = curl.exe -s -X POST "$ApiBase/releases" -H "Authorization: $Auth" -H "Accept: application/json" -H "Content-Type: application/json" -d $Payload | ConvertFrom-Json
             $RelId = $CreateResp.id
           }
 
@@ -200,6 +200,7 @@ jobs:
             try {
               $null = curl.exe -s -X POST "$ApiBase/releases/${RelId}/attach_files" `
                 -H "Authorization: $Auth" `
+                -H "Accept: application/json" `
                 -F "file=@${FilePath}"
             } catch {
               Write-Host "  Failed to upload ${FileName}: $_"
