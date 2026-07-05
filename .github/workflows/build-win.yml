@@ -105,3 +105,61 @@ jobs:
           $env:release2gitee__release_body_url_replace = "false"
           $env:release2gitee__latest_json_url_replace = "false"
           .\release2gitee.exe
+
+      - name: Upload missing assets to Gitee (retry with longer timeout)
+        if: |
+          startsWith(github.ref, 'refs/tags/') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        shell: pwsh
+        run: |
+          # Determine the tag
+          $TAG = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.release_tag }}" -ne "") {
+            $TAG = "${{ inputs.release_tag }}"
+          }
+          Write-Host "Looking up Gitee release for tag: $TAG"
+          
+          # Find Gitee release ID
+          $authHeaders = @{ "Authorization" = "token $env:GITEE_TOKEN"; "Accept" = "application/json" }
+          $releasesUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases?per_page=20"
+          $releases = Invoke-RestMethod -Uri $releasesUrl -Headers $authHeaders -Method Get
+          $giteeRelease = $releases | Where-Object { $_.tag_name -eq $TAG } | Select-Object -First 1
+          if (-not $giteeRelease) {
+            Write-Host "Gitee release $TAG not found, skipping"
+            exit 0
+          }
+          $releaseId = $giteeRelease.id
+          Write-Host "Gitee release ID: $releaseId"
+          
+          # Already uploaded asset names
+          $uploadedNames = $giteeRelease.assets | ForEach-Object { $_.name }
+          Write-Host "Already uploaded: $($uploadedNames -join ', ')"
+          
+          # Build file list from dist-build
+          $filesToUpload = @()
+          $patterns = @("*Setup*.exe", "*.exe", "*.blockmap", "latest.yml")
+          foreach ($pattern in $patterns) {
+            Get-ChildItem "dist-build/$pattern" -ErrorAction SilentlyContinue | ForEach-Object {
+              $filesToUpload += @{ Path = $_.FullName; Name = $_.Name }
+            }
+          }
+          
+          foreach ($file in $filesToUpload) {
+            if ($uploadedNames -contains $file.Name) {
+              Write-Host "Already uploaded, skip: $($file.Name)"
+              continue
+            }
+            $uploadUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases/$releaseId/attach_files"
+            Write-Host "Uploading $($file.Name)..."
+            curl.exe -s --connect-timeout 30 --max-time 600 -X POST "$uploadUrl" `
+              -H "Authorization: token $env:GITEE_TOKEN" `
+              -F "file=@$($file.Path)" `
+              -w "`nHTTP_CODE:%{http_code}"
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Uploaded: $($file.Name)"
+            } else {
+              Write-Host "Upload returned non-zero exit: $LASTEXITCODE for $($file.Name)"
+            }
+          }
