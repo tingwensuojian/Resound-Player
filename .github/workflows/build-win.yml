@@ -70,23 +70,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          set -x
-          echo "=== GITHUB ENV ==="
-          echo "REF_NAME=${GITHUB_REF_NAME}"
-          echo "SHA=${GITHUB_SHA}"
-          echo "REF=${GITHUB_REF}"
-          echo "=== GH CHECK ==="
-          gh --version
-          echo "=== GH AUTH ==="
-          gh auth status
-          echo "=== TRY CREATE ==="
-          gh release view "${GITHUB_REF_NAME}" 2>&1
-          echo "view exit: $?"
-          gh release create "${GITHUB_REF_NAME}" --target "${GITHUB_SHA}" --title "Resound-Player ${GITHUB_REF_NAME}" 2>&1
-          echo "create exit: $?"
-          echo "=== TRY UPLOAD ==="
-          gh release upload "${GITHUB_REF_NAME}" dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber 2>&1
-          echo "upload exit: $?"
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.release_tag }}"
+          fi
+          gh release view "${TAG}" >/dev/null 2>&1 || \
+            gh release create "${TAG}" \
+              --target "${GITHUB_SHA}" \
+              --title "Resound-Player ${TAG}"
+          echo "Uploading Windows installer to release ${TAG}..."
+          gh release upload "${TAG}" dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
       - name: Sync to Gitee Release (via release2gitee)
         if: |
           startsWith(github.ref, 'refs/tags/') ||
