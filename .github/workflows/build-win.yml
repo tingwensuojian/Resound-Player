@@ -124,32 +124,30 @@ jobs:
           [System.IO.File]::WriteAllText($NotesFile, $NotesBody, [System.Text.UTF8Encoding]::new($false))
 
           # Debug: show gh version and auth status
-          Write-Host "=== gh debug ==="
-          gh --version
-          gh auth status
-          Write-Host "=== check existing release ==="
-          gh release view $Tag 2>&1
-          Write-Host "exit: $($LASTEXITCODE)"
+          # === Create/update GitHub Release via Invoke-RestMethod ===
+          $ApiUri = "https://api.github.com/repos/tingwensuojian/Resound-Player/releases"
+          $ApiHeaders = @{ Authorization = "token $env:GH_TOKEN"; Accept = "application/json" }
 
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Updating existing release $Tag..."
-            gh release edit $Tag --notes-file "$NotesFile"
-            Write-Host "  edit exit: $($LASTEXITCODE)"
-            if ($LASTEXITCODE -ne 0) { throw "edit failed" }
-          } else {
-            Write-Host "Creating new release $Tag..."
-            Write-Host "  target SHA: $($env:GITHUB_SHA)"
-            gh release create $Tag --target "$($env:GITHUB_SHA)" --title "Resound-Player v$Version" --notes-file "$NotesFile"
-            Write-Host "  create exit: $($LASTEXITCODE)"
-            if ($LASTEXITCODE -ne 0) { throw "create failed" }
+          # Check if release exists
+          Write-Host "Checking existing release $Tag..."
+          try {
+            $existing = Invoke-RestMethod -Uri "$ApiUri/tags/$Tag" -Headers $ApiHeaders -Method Get
+            Write-Host "Release exists, updating..."
+            $patchBody = @{ body = $NotesBody } | ConvertTo-Json
+            Invoke-RestMethod -Uri "$ApiUri/$($existing.id)" -Headers $ApiHeaders -Method Patch -Body $patchBody -ContentType "application/json"
+            Write-Host "Release updated."
+          } catch {
+            Write-Host "Release does not exist, creating..."
+            $createBody = @{ tag_name = $Tag; target_commitish = "$env:GITHUB_SHA"; name = "Resound-Player v$Version"; body = $NotesBody } | ConvertTo-Json
+            $newRel = Invoke-RestMethod -Uri $ApiUri -Headers $ApiHeaders -Method Post -Body $createBody -ContentType "application/json"
+            Write-Host "Release created: $($newRel.html_url)"
           }
 
-          Remove-Item $NotesFile -Force
-
+          # Upload assets via gh CLI (release should now exist)
           Write-Host "Uploading Windows EXE to release $Tag..."
           gh release upload $Tag dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
-          Write-Host "  upload exit: $($LASTEXITCODE)"
-          if ($LASTEXITCODE -ne 0) { throw "upload failed" }
+          Write-Host "  gh exit code: $LASTEXITCODE"
+          if ($LASTEXITCODE -ne 0) { throw "Upload failed" }
           Write-Host "Upload to Release complete
 
       - name: Sync to Gitee Release (via release2gitee)
