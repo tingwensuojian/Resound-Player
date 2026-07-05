@@ -86,7 +86,7 @@ jobs:
           echo "create exit: $?"
           echo "=== TRY UPLOAD ==="
           gh release upload "${GITHUB_REF_NAME}" dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber 2>&1
-          echo "upload exit: $?
+          echo "upload exit: $?"
       - name: Sync to Gitee Release (via release2gitee)
         if: |
           startsWith(github.ref, 'refs/tags/') ||
@@ -111,5 +111,4 @@ jobs:
           $env:release2gitee__gitee_retain_release_attach_files_count = "3"
           $env:release2gitee__release_body_url_replace = "false"
           $env:release2gitee__latest_json_url_replace = "false"
-          $env:release2gitee__gitee_branch = "master"
           .\release2gitee.exe
