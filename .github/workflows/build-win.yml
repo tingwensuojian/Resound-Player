@@ -139,12 +139,17 @@ jobs:
           
           # Build file list from dist-build
           $filesToUpload = @()
-          $patterns = @("*Setup*.exe", "*.exe", "*.blockmap", "latest.yml")
-          foreach ($pattern in $patterns) {
-            Get-ChildItem "dist-build/$pattern" -ErrorAction SilentlyContinue | ForEach-Object {
-              $filesToUpload += @{ Path = $_.FullName; Name = $_.Name }
-            }
+          Get-ChildItem "dist-build/*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+            $filesToUpload += @{ Path = $_.FullName; Name = $_.Name }
           }
+          Get-ChildItem "dist-build/*.blockmap" -ErrorAction SilentlyContinue | ForEach-Object {
+            $filesToUpload += @{ Path = $_.FullName; Name = $_.Name }
+          }
+          if (Test-Path "dist-build/latest.yml") {
+            $filesToUpload += @{ Path = (Resolve-Path "dist-build/latest.yml"); Name = "latest.yml" }
+          }
+          # Deduplicate by Name
+          $filesToUpload = $filesToUpload | Sort-Object Name -Unique
           
           foreach ($file in $filesToUpload) {
             if ($uploadedNames -contains $file.Name) {
@@ -153,7 +158,7 @@ jobs:
             }
             $uploadUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases/$releaseId/attach_files"
             Write-Host "Uploading $($file.Name)..."
-            curl.exe -s --connect-timeout 30 --max-time 600 -X POST "$uploadUrl" `
+            curl.exe -s --connect-timeout 30 --max-time 1200 -X POST "$uploadUrl" `
               -H "Authorization: token $env:GITEE_TOKEN" `
               -F "file=@$($file.Path)" `
               -w "`nHTTP_CODE:%{http_code}"
