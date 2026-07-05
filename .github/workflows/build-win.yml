@@ -137,21 +137,21 @@ jobs:
           $uploadedNames = $giteeRelease.assets | ForEach-Object { $_.name }
           Write-Host "Already uploaded: $($uploadedNames -join ', ')"
           
-          # Build file list from dist-build
+          # Build prioritized file list: Setup.exe first, then blockmap, latest.yml
           $filesToUpload = @()
-          Get-ChildItem "dist-build/*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
-            $filesToUpload += @{ Path = $_.FullName; Name = $_.Name }
+          if (Test-Path "dist-build/Resound-Player-Setup-*.exe") {
+            $fp = Resolve-Path "dist-build/Resound-Player-Setup-*.exe"
+            $filesToUpload += @{ Path = $fp; Name = (Get-Item $fp).Name }
           }
           Get-ChildItem "dist-build/*.blockmap" -ErrorAction SilentlyContinue | ForEach-Object {
-            $filesToUpload += @{ Path = $_.FullName; Name = $_.Name }
+            if ($_.Name -notin $filesToUpload.Name) { $filesToUpload += @{ Path = $_.FullName; Name = $_.Name } }
           }
           if (Test-Path "dist-build/latest.yml") {
-            $filesToUpload += @{ Path = (Resolve-Path "dist-build/latest.yml"); Name = "latest.yml" }
+            $fp = Resolve-Path "dist-build/latest.yml"
+            if ("latest.yml" -notin $filesToUpload.Name) { $filesToUpload += @{ Path = $fp; Name = "latest.yml" } }
           }
-          # Deduplicate by Name
-          $filesToUpload = $filesToUpload | Sort-Object Name -Unique
           
-          # Upload missing assets sequentially (no max-time limit, curl waits as long as needed)
+          # Upload missing assets sequentially
           $uploadUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases/$releaseId/attach_files"
           foreach ($file in $filesToUpload) {
             if ($uploadedNames -contains $file.Name) {
