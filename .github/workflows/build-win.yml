@@ -151,20 +151,21 @@ jobs:
           # Deduplicate by Name
           $filesToUpload = $filesToUpload | Sort-Object Name -Unique
           
+          # Upload missing assets sequentially (no max-time limit, curl waits as long as needed)
+          $uploadUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases/$releaseId/attach_files"
           foreach ($file in $filesToUpload) {
             if ($uploadedNames -contains $file.Name) {
               Write-Host "Already uploaded, skip: $($file.Name)"
               continue
             }
-            $uploadUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases/$releaseId/attach_files"
             Write-Host "Uploading $($file.Name)..."
-            curl.exe -s --connect-timeout 30 --max-time 1200 -X POST "$uploadUrl" `
+            curl.exe -s --connect-timeout 30 -X POST "$uploadUrl" `
               -H "Authorization: token $env:GITEE_TOKEN" `
               -F "file=@$($file.Path)" `
               -w "`nHTTP_CODE:%{http_code}"
             if ($LASTEXITCODE -eq 0) {
               Write-Host "Uploaded: $($file.Name)"
             } else {
-              Write-Host "Upload returned non-zero exit: $LASTEXITCODE for $($file.Name)"
+              Write-Host "Failed: $($file.Name) (exit: $LASTEXITCODE)"
             }
           }
