@@ -189,6 +189,7 @@ jobs:
             } | ConvertTo-Json
             $CreateResp = curl.exe -s -X POST "$ApiBase/releases" -H "Authorization: $Auth" -H "Accept: application/json" -H "Content-Type: application/json" -d $Payload | ConvertFrom-Json
             $RelId = $CreateResp.id
+            Write-Host "  Create resp id: $RelId"
           }
 
           # Upload assets using Gitee API
