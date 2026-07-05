@@ -1,7 +1,6 @@
 ﻿import { createRequire } from "node:module";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { spawn } from "child_process";
-import https from "node:https";
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
@@ -16,9 +15,6 @@ function log(...parts) {
 let _mainWindowRef = null;
 let _statusCallbacks = new Set();
 let _autoUpdater = null;
-let _updaterBusy = false;
-let _giteeBusy = false;
-
 
 // ── Status helpers ──
 
@@ -156,12 +152,7 @@ export function initUpdater(mainWindow) {
   checkForUpdates();
 }
 
-export async function checkForUpdates() {
-  if (_updaterBusy) {
-    log("checkForUpdates skipped: already busy");
-    return;
-  }
-  _updaterBusy = true;
+export function checkForUpdates() {
   log("checkForUpdates triggered by user");
   if (!app.isPackaged) {
     log("dev mode, skipping update check");
@@ -172,23 +163,21 @@ export async function checkForUpdates() {
   const updater = getAutoUpdater();
   const TIMEOUT_MS = 15000;
   const timer = setTimeout(() => {
-    log("checkForUpdates timed out -- falling back to Gitee...");
-    _runGiteeFallback();
+    log("checkForUpdates timed out after " + TIMEOUT_MS + "ms");
+    _state = { ..._state, status: Status.ERROR, error: "\u68c0\u67e5\u8d85\u65f6\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u8fde\u63a5" };
+    broadcast();
   }, TIMEOUT_MS);
   updater.checkForUpdates().then(() => {
     clearTimeout(timer);
-    _updaterBusy = false;
   }).catch((err) => {
     clearTimeout(timer);
-    log("checkForUpdates failed -- falling back to Gitee", err);
-    _runGiteeFallback();
+    log("checkForUpdates failed", err);
+    _state = { ..._state, status: Status.ERROR, error: err.message };
+    broadcast();
   });
 }
+
 export function downloadUpdate() {
-  if (_updaterBusy && _state.status === Status.DOWNLOADING) {
-    log("downloadUpdate skipped: Gitee download already in progress");
-    return;
-  }
   log("downloadUpdate triggered by user");
   const updater = getAutoUpdater();
   _state = { ..._state, status: Status.DOWNLOADING, phase: 'download' };
@@ -239,109 +228,6 @@ export function installUpdate() {
 
   // Fallback to Squirrel
   updater.quitAndInstall(true, true);
-}
-
-function _runGiteeFallback() {
-  if (_giteeBusy) {
-    log("_runGiteeFallback skipped: Gitee already running");
-    return;
-  }
-  _giteeBusy = true;
-  doGiteeCheck().finally(() => {
-    _giteeBusy = false;
-    _updaterBusy = false;
-  });
-}
-
-
-// ?? Gitee fallback helpers ??
-
-const GITEE_OWNER = "tingwensuojian";
-const GITEE_REPO = "Resound-Player";
-const GITEE_DL = "https://gitee.com/" + GITEE_OWNER + "/" + GITEE_REPO + "/releases/download";
-
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { "User-Agent": "Resound-Player/1.0" } }, (res) => {
-      let data = "";
-      res.on("data", chunk => data += chunk);
-      res.on("end", () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          try { resolve(JSON.parse(data)); }
-          catch (e) { reject(new Error("Parse fail: " + data.slice(0, 100))); }
-        } else {
-          reject(new Error("Gitee API " + res.statusCode));
-        }
-      });
-    }).on("error", reject);
-  });
-}
-
-async function checkGiteeRelease() {
-  const url = "https://gitee.com/api/v5/repos/" + GITEE_OWNER + "/" + GITEE_REPO + "/releases/latest";
-  log("Gitee: checking", url);
-  const rel = await httpsGet(url);
-  const ver = rel.tag_name.replace(/^v/, "");
-  const cur = app.getVersion();
-  log("Gitee: found v" + ver + ", current v" + cur);
-  const cmp = ver.localeCompare(cur, undefined, { numeric: true });
-  if (cmp <= 0) return null;
-  const isMac = process.platform === "darwin";
-  const fname = isMac
-    ? "Resound-Player-Mac-" + (process.arch === "arm64" ? "arm64" : "x64") + "-" + ver + ".dmg"
-    : "Resound-Player Setup " + ver + ".exe";
-  return { version: ver, tag: rel.tag_name, downloadUrl: GITEE_DL + "/" + rel.tag_name + "/" + fname, releaseDate: rel.created_at, releaseNotes: rel.body || "" };
-}
-
-function giteeDownload(url, dest) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    let lastPct = 0, start = Date.now(), dl = 0;
-    https.get(url, { headers: { "User-Agent": "Resound-Player/1.0" } }, (res) => {
-      const total = parseInt(res.headers["content-length"] || "0", 10);
-      res.on("data", d => {
-        dl += d.length; file.write(d);
-        if (total > 0) {
-          const pct = Math.round(dl / total * 1000) / 10;
-          if (pct !== lastPct) {
-            lastPct = pct;
-            _state = { ..._state, status: Status.DOWNLOADING, progress: { percent: pct, bytesPerSecond: Math.round(dl / ((Date.now() - start) / 1000 || 1)), total, transferred: dl }, error: null, phase: "download" };
-            broadcast();
-          }
-        }
-      });
-      res.on("end", () => { file.end(); resolve(dest); });
-    }).on("error", e => { file.close(); try { fs.unlinkSync(dest); } catch {} reject(e); });
-  });
-}
-
-async function doGiteeCheck() {
-  try {
-    const info = await checkGiteeRelease();
-    if (info) {
-      log("Gitee: update available v" + info.version);
-      _state = { ..._state, status: Status.AVAILABLE, info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes }, progress: null, error: null };
-      broadcast();
-      log("Gitee: auto-downloading...");
-      _state = { ..._state, status: Status.DOWNLOADING, phase: "download" };
-      broadcast();
-      const tmp = path.join(app.getPath("temp"), "resound-gitee-update");
-      if (!fs.existsSync(tmp)) fs.mkdirSync(tmp, { recursive: true });
-      const dest = path.join(tmp, path.basename(info.downloadUrl));
-      await giteeDownload(info.downloadUrl, dest);
-      log("Gitee: download complete", dest);
-      _state = { ..._state, status: Status.DOWNLOADED, info: { version: info.version, releaseDate: info.releaseDate, releaseNotes: info.releaseNotes }, progress: { percent: 100, bytesPerSecond: 0, total: 0, transferred: 0 }, downloadedFilePath: dest };
-      broadcast();
-    } else {
-      log("Gitee: no newer version");
-      _state = { ..._state, status: Status.NOT_AVAILABLE, info: null, progress: null, error: null };
-      broadcast();
-    }
-  } catch (err) {
-    log("Gitee fallback failed", err);
-    _state = { ..._state, status: Status.ERROR, error: err.message };
-    broadcast();
-  }
 }
 
 export function getUpdateStatus() {

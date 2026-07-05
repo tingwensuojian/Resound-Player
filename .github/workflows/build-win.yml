@@ -1,4 +1,4 @@
-name: Build Windows Installer
+﻿name: Build Windows Installer
 
 on:
   workflow_dispatch:
@@ -68,104 +68,83 @@ jobs:
           (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.release_tag }}"
-          fi
-          gh release view "${TAG}" >/dev/null 2>&1 || \
-            gh release create "${TAG}" \
-              --target "${GITHUB_SHA}" \
-              --title "Resound-Player ${TAG}"
-          echo "Uploading Windows installer to release ${TAG}..."
-          gh release upload "${TAG}" dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
-      - name: Sync to Gitee Release (via release2gitee)
-        if: |
-          startsWith(github.ref, 'refs/tags/') ||
-          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $R2G_VERSION = "v1.2.1"
-          $R2G_URL = "https://github.com/hepengju/release2gitee/releases/download/${R2G_VERSION}/release2gitee-x86_64-pc-windows-msvc.zip"
-          Write-Host "Downloading release2gitee ${R2G_VERSION}..."
-          curl.exe -sL "$R2G_URL" -o release2gitee.zip
-          Expand-Archive -Path "release2gitee.zip" -DestinationPath "." -Force
-          Remove-Item release2gitee.zip -Force
-          Write-Host "Syncing releases to Gitee..."
-          $env:GITHUB_OWNER = "tingwensuojian"
-          $env:GITHUB_REPO = "Resound-Player"
-          $env:GITEE_OWNER = "tingwensuojian"
-          $env:GITEE_REPO = "Resound-Player"
-          $env:release2gitee__github_latest_release_count = "5"
-          $env:release2gitee__gitee_retain_release_attach_files_count = "1"
-          $env:release2gitee__release_body_url_replace = "false"
-          $env:release2gitee__latest_json_url_replace = "false"
-          .\release2gitee.exe
+          $Tag = "${env:GITHUB_REF_NAME}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $Tag = "${{ inputs.release_tag }}"
+          }
+          $Version = $Tag -replace '^v', ''
 
-      - name: Upload missing assets to Gitee (retry with longer timeout)
-        if: |
-          startsWith(github.ref, 'refs/tags/') ||
-          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-        shell: pwsh
-        run: |
-          # Determine the tag
-          $TAG = "${{ github.ref_name }}"
-          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.release_tag }}" -ne "") {
-            $TAG = "${{ inputs.release_tag }}"
+          # Build notes text in memory (avoids file encoding issues on Windows)
+          $NL = New-Object System.Collections.ArrayList
+          $null = $NL.Add("# Resound-Player v$Version")
+          $null = $NL.Add("")
+          $null = $NL.Add("## " + [char]0x66F4 + "" + [char]0x65B0 + "" + [char]0x5185 + "" + [char]0x5BB9 + "")
+          $PrevTag = git tag --sort=-version:refname | Select-Object -First 2 | Select-Object -Last 1
+          if ($PrevTag) {
+            git log "$PrevTag..$Tag" --no-merges --oneline --reverse | ForEach-Object {
+              $_ -replace '^[0-9a-f]+ ', '- '
+            } | ForEach-Object { $null = $NL.Add($_) }
           }
-          Write-Host "Looking up Gitee release for tag: $TAG"
-          
-          # Find Gitee release ID
-          $authHeaders = @{ "Authorization" = "token $env:GITEE_TOKEN"; "Accept" = "application/json" }
-          $releasesUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases?per_page=20"
-          $releases = Invoke-RestMethod -Uri $releasesUrl -Headers $authHeaders -Method Get
-          $giteeRelease = $releases | Where-Object { $_.tag_name -eq $TAG } | Select-Object -First 1
-          if (-not $giteeRelease) {
-            Write-Host "Gitee release $TAG not found, skipping"
-            exit 0
+          $null = $NL.Add("")
+          $null = $NL.Add("---")
+          $null = $NL.Add("")
+          $null = $NL.Add("## " + [char]0x4E0B + "" + [char]0x8F7D + "" + [char]0x8BF4 + "" + [char]0x660E + "")
+          $null = $NL.Add("")
+          $null = $NL.Add("### macOS")
+          $null = $NL.Add("")
+          $null = $NL.Add("| " + [char]0x6587 + [char]0x4EF6 + " | " + [char]0x9002 + [char]0x7528 + [char]0x573A + [char]0x666F + " | " + [char]0x8BF4 + [char]0x660E + " |")
+          $null = $NL.Add("|---|----|---|")
+          $null = $NL.Add("| Resound-Player-Mac-x64-" + $Version + ".dmg | **Intel " + [char]0x82AF + [char]0x7247 + "** | DMG " + [char]0x5B89 + [char]0x88C5 + [char]0x5305 + [char]0xFF0C + [char]0x62D6 + [char]0x5165 + " Applications " + [char]0x5373 + [char]0x53EF + " |")
+          $null = $NL.Add("| Resound-Player-Mac-arm64-" + $Version + ".dmg | **Apple " + [char]0x82AF + [char]0x7247 + "** | DMG " + [char]0x5B89 + [char]0x88C5 + [char]0x5305 + [char]0xFF0C + [char]0x62D6 + [char]0x5165 + " Applications " + [char]0x5373 + [char]0x53EF + " |")
+          $null = $NL.Add("")
+          # Read macOS tips from file
+          $MacTipsLines = Get-Content "deploy/release-macos-tips.md" -Encoding UTF8
+          foreach ($l in $MacTipsLines) { $null = $NL.Add($l) }
+          $null = $NL.Add("")
+          $null = $NL.Add("### Windows")
+          $null = $NL.Add("| " + [char]0x6587 + [char]0x4EF6 + " | " + [char]0x9002 + [char]0x7528 + [char]0x573A + [char]0x666F + " | " + [char]0x8BF4 + [char]0x660E + " |")
+          $null = $NL.Add("|---|----|---|")
+          $null = $NL.Add("| Resound-Player Setup " + $Version + ".exe | **" + [char]0x65E5 + [char]0x5E38 + [char]0x4F7F + [char]0x7528 + [char]0xFF08 + [char]0x63A8 + [char]0x8350 + [char]0xFF09 + "** | NSIS " + [char]0x5B89 + [char]0x88C5 + [char]0x5305 + [char]0xFF0C + [char]0x5B89 + [char]0x88C5 + [char]0x540E + [char]0x542F + [char]0x52A8 + [char]0x5373 + [char]0x65F6 + [char]0xFF0C + [char]0x4EFB + [char]0x52A1 + [char]0x680F + [char]0x56FE + [char]0x6807 + [char]0x6B63 + [char]0x786E + [char]0x663E + [char]0x793A + " |")
+          $null = $NL.Add("| Resound-Player-" + $Version + ".exe | **U " + [char]0x76D8 + [char]0x643A + [char]0x5E26 + [char]0x3001 + [char]0x4E34 + [char]0x65F6 + [char]0x4F7F + [char]0x7528 + "** | " + [char]0x4FBF + [char]0x643A + [char]0x7248 + [char]0xFF0C + [char]0x514D + [char]0x5B89 + [char]0x88C5 + [char]0x76F4 + [char]0x63A5 + [char]0x8FD0 + [char]0x884C + " |")
+          $null = $NL.Add("")
+          $null = $NL.Add("### Docker")
+          $null = $NL.Add('```')
+          $null = $NL.Add("docker run -d -p 38760:80 tingwensuojian/resound-player-server:${Version}")
+          $null = $NL.Add('```')
+          $null = $NL.Add("")
+          $null = $NL.Add("## " + [char]0x6821 + "" + [char]0x9A8C + "" + [char]0x8BF4 + "" + [char]0x660E + "")
+          $null = $NL.Add("")
+          $null = $NL.Add("SHA256 " + [char]0x6821 + "" + [char]0x9A8C + "" + [char]0x503C + "" + [char]0x89C1 + " Release " + [char]0x9644 + "" + [char]0x4EF6 + "" + [char]0x4E2D + "" + [char]0x7684 + " .blockmap " + [char]0x6587 + "" + [char]0x4EF6 + "" + [char]0x3002 + "")
+          $NotesBody = $NL -join "`n"
+
+          # Build JSON payload with .NET
+          $Payload = @{ body = $NotesBody } | ConvertTo-Json -Depth 10
+          $JsonFile = [System.IO.Path]::GetTempFileName() + '.json'
+          [System.IO.File]::WriteAllText($JsonFile, $Payload, [System.Text.UTF8Encoding]::new($false))
+
+          # Create or update release via curl API (sends raw bytes, no encoding conversion)
+          $RelInfo = gh api "/repos/{owner}/{repo}/releases/tags/$Tag" --jq '.id' 2>$null
+          if ($RelInfo) {
+            curl.exe -s -X PATCH "https://api.github.com/repos/tingwensuojian/Resound-Player/releases/$RelInfo" `
+              -H "Authorization: token $env:GH_TOKEN" `
+              -H "Content-Type: application/json" `
+              -d "@$JsonFile" | Out-Null
+          } else {
+            $PayloadFull = @{
+              tag_name = $Tag
+              target_commitish = $env:GITHUB_SHA
+              name = "Resound-Player v$Version"
+              body = $NotesBody
+            } | ConvertTo-Json -Depth 10
+            [System.IO.File]::WriteAllText($JsonFile, $PayloadFull, [System.Text.UTF8Encoding]::new($false))
+            curl.exe -s -X POST "https://api.github.com/repos/tingwensuojian/Resound-Player/releases" `
+              -H "Authorization: token $env:GH_TOKEN" `
+              -H "Content-Type: application/json" `
+              -d "@$JsonFile" | Out-Null
           }
-          $releaseId = $giteeRelease.id
-          Write-Host "Gitee release ID: $releaseId"
-          
-          # Already uploaded asset names
-          $uploadedNames = $giteeRelease.assets | ForEach-Object { $_.name }
-          Write-Host "Already uploaded: $($uploadedNames -join ', ')"
-          
-          # Build prioritized file list: Setup.exe first, then blockmap, latest.yml
-          $filesToUpload = @()
-          if (Test-Path "dist-build/Resound-Player-Setup-*.exe") {
-            $fp = Resolve-Path "dist-build/Resound-Player-Setup-*.exe"
-            $filesToUpload += @{ Path = $fp; Name = (Get-Item $fp).Name }
-          }
-          Get-ChildItem "dist-build/*.blockmap" -ErrorAction SilentlyContinue | ForEach-Object {
-            if ($_.Name -notin $filesToUpload.Name) { $filesToUpload += @{ Path = $_.FullName; Name = $_.Name } }
-          }
-          if (Test-Path "dist-build/latest.yml") {
-            $fp = Resolve-Path "dist-build/latest.yml"
-            if ("latest.yml" -notin $filesToUpload.Name) { $filesToUpload += @{ Path = $fp; Name = "latest.yml" } }
-          }
-          
-          # Upload missing assets sequentially
-          $uploadUrl = "https://gitee.com/api/v5/repos/tingwensuojian/Resound-Player/releases/$releaseId/attach_files"
-          foreach ($file in $filesToUpload) {
-            if ($uploadedNames -contains $file.Name) {
-              Write-Host "Already uploaded, skip: $($file.Name)"
-              continue
-            }
-            Write-Host "Uploading $($file.Name)..."
-            curl.exe -s --connect-timeout 30 -X POST "$uploadUrl" `
-              -H "Authorization: token $env:GITEE_TOKEN" `
-              -F "file=@$($file.Path)" `
-              -w "`nHTTP_CODE:%{http_code}"
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "Uploaded: $($file.Name)"
-            } else {
-              Write-Host "Failed: $($file.Name) (exit: $LASTEXITCODE)"
-            }
-          }
+          Remove-Item $JsonFile -Force
+
+          Write-Host "Uploading Windows EXE to release $Tag..."
+          gh release upload $Tag dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
