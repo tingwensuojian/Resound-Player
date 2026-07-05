@@ -101,7 +101,7 @@ jobs:
           $env:GITEE_OWNER = "tingwensuojian"
           $env:GITEE_REPO = "Resound-Player"
           $env:release2gitee__github_latest_release_count = "5"
-          $env:release2gitee__gitee_retain_release_attach_files_count = "3"
+          $env:release2gitee__gitee_retain_release_attach_files_count = "1"
           $env:release2gitee__release_body_url_replace = "false"
           $env:release2gitee__latest_json_url_replace = "false"
           .\release2gitee.exe
