@@ -19,7 +19,13 @@
   --an-rhythm-actions: 4;
   --an-rhythm-list: 5;
   --an-rhythm-overlay: 6;
+
+  /* 规范兼容别名：Duration tokens */
+  --duration-normal: var(--an-duration-base);
+  --duration-fast: var(--an-duration-fast);
+  --duration-slow: var(--an-duration-slow);
 }
+
 
 /* 唱片旋转 */
 @keyframes playerCoverRotate {
@@ -521,4 +527,24 @@ img.entity-cover.cover-image,
 @keyframes an-bg-hue {
   0% { --hue1: 30deg; --hue2: 180deg; }
   100% { --hue1: 390deg; --hue2: 540deg; }
+}
+
+
+/* --- 统一入场动画别名（兼容 AGENTS.md §5.1 规范类名） --- */
+/* 新增组件应优先使用下方类名，而非 .an-* 私有类 */
+.fade-in {
+  animation: anFadeUp var(--an-duration-base) var(--an-ease) both;
+}
+
+.fade-in-up {
+  animation: anFadeUp var(--an-duration-base) var(--an-ease) both;
+}
+
+.fade-in-scale {
+  animation: anScaleIn var(--an-duration-fast) var(--an-ease) both;
+  transform-origin: center center;
+}
+
+.slide-in-right {
+  animation: anSlideLeft var(--an-duration-base) var(--an-ease) both;
 }

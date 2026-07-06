@@ -52,6 +52,8 @@
   --glass-highlight: none;
   --glass-reflection: none;
 
+  --bg-hover: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
+
   --button-surface-bg: var(--bg-muted);
   --button-surface-border: color-mix(in srgb, var(--border) 88%, transparent);
   --button-surface-shadow: none;
@@ -75,6 +77,7 @@
   --radius-lg: 14px;
   --radius-md: 12px;
   --radius-sm: 10px;
+  --radius-full: 9999px;
 
   /* Shadow tokens for elevation */
   --shadow-sticky: 0 8px 20px rgba(15, 23, 42, 0.10);
@@ -88,12 +91,6 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  --layout-page-gap: var(--space-4);
-  --layout-section-gap: var(--space-3);
-  --layout-card-padding: var(--space-4);
-  --layout-card-gap: var(--space-2);
-  --layout-control-gap: var(--space-2);
-  --layout-inline-gap: var(--space-1);
 
   /* Typography scale — 参考 Nocturne Audio 排版体系 */
   --text-display: 48px;
@@ -143,32 +140,6 @@
   --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
 }
 
-.page-stack {
-  display: grid;
-  gap: var(--layout-page-gap);
-}
-
-.page-stack--compact {
-  gap: var(--layout-section-gap);
-}
-
-.page-stack--loose {
-  gap: var(--space-5);
-}
-
-.inline-cluster {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--layout-inline-gap);
-}
-
-.cluster {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--layout-control-gap);
-}
-
 :root[data-theme='dark'] {
   --bg-app: radial-gradient(1400px 900px at 14% 10%, #1a1716 0%, #141210 38%, #100e0d 72%, #0d0c0b 100%);
   --bg-surface: rgba(30, 27, 25, 0.50);
@@ -201,6 +172,8 @@
   --glass-shadow: none;
   --glass-highlight: none;
   --glass-reflection: none;
+
+  --bg-hover: color-mix(in srgb, var(--accent) 14%, var(--bg-surface));
 
   --button-surface-bg: var(--bg-muted);
   --button-surface-border: color-mix(in srgb, var(--border) 90%, transparent);
@@ -302,6 +275,7 @@ textarea,
   --layout-page-gap: var(--space-2);
   --layout-section-gap: var(--space-2);
   --layout-card-gap: var(--space-2);
+  --layout-card-padding: var(--space-4);
   --layout-inline-gap: var(--space-2);
   --layout-stack-gap: var(--space-2);
   --layout-tight-gap: var(--space-1);

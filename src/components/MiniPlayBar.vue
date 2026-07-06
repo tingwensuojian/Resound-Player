@@ -382,7 +382,7 @@ function onFullscreen() {
 }
 
 .ctrl-btn:hover {
-  background: var(--bg-hover);
+  background: transparent;
 }
 
 .ctrl-btn.main {
@@ -417,7 +417,7 @@ function onFullscreen() {
 }
 
 .fn-btn:hover {
-  background: var(--bg-hover);
+  background: transparent;
   color: var(--text-main);
 }
 
@@ -519,7 +519,7 @@ function onFullscreen() {
 }
 
 .mini-pl-item:hover {
-  background: var(--bg-hover);
+  background: transparent;
 }
 
 .mini-pl-item--current {

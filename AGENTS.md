@@ -361,10 +361,10 @@ end_of_line = lf
 
 | Token | 值 | 典型用途 |
 |-------|-----|---------|
-| `--radius-sm` | 6px | 小控件、标签 |
-| `--radius-md` | 8px | 按钮、输入框 |
+| `--radius-sm` | 10px | 小控件、标签、按钮 |
+| `--radius-md` | 12px | 输入框、中等面板 |
 | `--radius-lg` | 14px | 卡片、面板 |
-| `--radius-xl` | 18px | 大面板、模态框 |
+| `--radius-xl` | 16px | 大面板、模态框 |
 | `--radius-full` | 9999px | 圆形头像、胶囊按钮 |
 
 间距使用 `--space-*` token，禁止硬编码 `px` 值。`gap`、`padding`、`margin` 统一走 token 体系。
@@ -426,31 +426,57 @@ end_of_line = lf
 
 ### 5.1 全局入场动画
 
-项目已沉淀统一的入场动画体系，位于 `src/styles/animations.css`：
+项目已沉淀统一的入场动画体系，位于 `src/styles/animations.css`。
 
-- `.fade-in` — 淡入
-- `.fade-in-up` — 从下方淡入
-- `.fade-in-scale` — 缩放淡入
-- `.slide-in-right` — 从右侧滑入
+**新增组件应优先使用以下规范类名**（它们是现有 `.an-*` 类的别名，无视觉差异）：
 
-使用要求：
+| 规范类名 | 效果 | 底层实现 |
+|---------|------|---------|
+| `.fade-in` | 从下方淡入 | `anFadeUp` keyframe + `--duration-normal` |
+| `.fade-in-up` | 从下方淡入（同上） | `anFadeUp` keyframe + `--duration-normal` |
+| `.fade-in-scale` | 缩放淡入 | `anScaleIn` keyframe + `--duration-fast` |
+| `.slide-in-right` | 从右侧滑入 | `anSlideLeft` keyframe + `--duration-normal` |
 
-- 新增页面/组件入场时优先使用上述公共类
-- 禁止在 scoped 样式中重复定义 `@keyframes` 入场动画
-- 动画时长统一使用 `--duration-normal: 0.3s` 或 `--duration-fast: 0.15s`
+**底层 `.an-*` 类仍可用**（已在组件中广泛使用），新组件优先使用上方规范类名：
+
+| 现有底层类 | 用途 | 使用次数 |
+|-----------|------|---------|
+| `.an-enter` | 通用入场（fade-up） | 4 个组件 |
+| `.an-enter-card` | 卡片入场（较慢 fade-up） | 3 个组件 |
+| `.an-enter-text` | 文本入场（stagger） | 1 个组件 |
+| `.an-enter-control` | 控件入场（scale-in） | 1 个组件 |
+| `.an-enter-media` | 媒体入场（pop-up） | 1 个组件 |
+| `.an-enter-modal` | 弹窗入场 | 1 个组件 |
+| `.an-enter-nav` | 导航入场（slide） | 1 个组件 |
+| `.an-sidebar-enter` | 侧栏入场 | 1 个组件 |
+| `.an-stagger` / `.an-stagger-media` | 列表交错入场 | 各 1 个组件 |
+
+**时长 token：**
+
+| Token | 值 | 说明 |
+|-------|-----|------|
+| `--duration-normal` | `var(--an-duration-base)` = **380ms** | 标准入场动画时长 |
+| `--duration-fast` | `var(--an-duration-fast)` = **320ms** | 快速动画（控件 scale-in） |
+| `--duration-slow` | `var(--an-duration-slow)` = **460ms** | 慢速动画（卡片、媒体入场） |
 
 ### 5.2 过渡动画
 
-- 页面切换过渡：`0.3s ease`
-- 弹窗/抽屉过渡：`0.25s ease`
-- 按钮状态过渡：`0.15s ease`
-- 颜色/背景过渡：`0.2s ease`
+以下为 theme.css 中实际使用的 transition 时长参考：
+
+| 场景 | 时长 |
+|------|------|
+| 页面切换过渡 | `0.3s ease` |
+| 交互元素（hover 上浮、阴影） | `220ms var(--an-ease)` |
+| 弹窗/浮层过渡 | `0.25s ease` |
+| 按钮状态过渡 | `0.18s ease` |
+| 颜色/背景过渡 | `0.2s ease` |
+| 颜色文字过渡 | `220ms ease` |
 
 ### 5.3 动画性能
 
 - 优先使用 `transform` 和 `opacity` 做动画，避免动画 `width`、`height`、`top`、`left`
 - 需要 GPU 加速的动画使用 `will-change: transform`（但不要滥用）
-- 列表项动画使用 stagger（交错）效果，每项延迟 `0.03s ~ 0.05s`
+- 列表项动画使用 stagger（交错）效果，每项延迟对应 `--an-stagger-step: 48ms`
 
 ## 6. 收藏按钮规范
 

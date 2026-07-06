@@ -120,5 +120,5 @@ h4 { margin: 0 0 8px; font-size: 13px; font-weight: 500; color: var(--text-secon
   cursor: pointer;
   font-size: 12px;
 }
-.demo-btn:hover { background: var(--bg-hover, #3a3a5e); }
+.demo-btn:hover { background: #3a3a5e; }
 </style>
