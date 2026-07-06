@@ -621,11 +621,11 @@ onBeforeUnmount(() => {
   height: 46px;
   border-radius: 16px;
   border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
-  box-shadow: 0 14px 32px color-mix(in srgb, var(--accent-soft) 55%, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.08);
 }
 .search-wrap.expanded:focus-within {
   border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
-  box-shadow: 0 16px 36px color-mix(in srgb, var(--accent-soft) 72%, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
 }
 .search-trigger {
   width: 36px;
