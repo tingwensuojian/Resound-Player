@@ -654,13 +654,13 @@ a,
 .song-item--playing .latest-name,
 .song-item--playing .latest-artist {
   transition:
-    color 220ms ease,
-    text-shadow 220ms ease,
-    opacity 220ms ease,
+    color 220ms var(--an-ease),
+    text-shadow 220ms var(--an-ease),
+    opacity 220ms var(--an-ease),
     transform 220ms var(--an-ease),
-    background-color 220ms ease,
-    box-shadow 220ms ease,
-    border-color 220ms ease;
+    background-color 220ms var(--an-ease),
+    box-shadow 220ms var(--an-ease),
+    border-color 220ms var(--an-ease);
 }
 
 .song-item--playing {
@@ -917,7 +917,7 @@ button,
 input,
 select,
 textarea {
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+  transition: background-color 220ms var(--an-ease), border-color 220ms var(--an-ease), box-shadow 220ms var(--an-ease), color 220ms var(--an-ease);
 }
 
 button:focus-visible,
@@ -1099,7 +1099,7 @@ button,
 input[type='button'],
 input[type='submit'],
 input[type='reset'] {
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.16s ease;
+  transition: background 220ms var(--an-ease), border-color 220ms var(--an-ease), color 220ms var(--an-ease), box-shadow 220ms var(--an-ease), transform 220ms var(--an-ease);
 }
 
 button:hover,
@@ -1295,7 +1295,7 @@ textarea:disabled {
 /* --- 可点击卡片（hover 上浮）--- */
 .card-clickable {
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 220ms var(--an-ease), box-shadow 220ms var(--an-ease);
 }
 .card-clickable:hover {
   transform: translateY(-2px);
