@@ -341,6 +341,7 @@ end_of_line = lf
 --text-body-sm: 14px / 400 / 22px                   /* 紧凑正文 */
 
 /* Label — 标签 / 按钮 / 辅助文字 */
+--text-label-lg: 16px / 500 / 22px / 0.01em         /* 大号标签（insight label、section header） */
 --text-label-md: 14px / 500 / 20px / 0.01em         /* 导航、按钮 */
 --text-label-sm: 12px / 600 / 16px / 0.05em         /* 辅助标签 */
 --text-label-xs: 11px / 600 / 14px / 0.05em         /* 极小标签（tooltip、角标） */

@@ -941,7 +941,7 @@ function onDocClick(e: MouseEvent) {
 
 .top-row__name {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--text-body-md);
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-main);

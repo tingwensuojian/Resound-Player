@@ -80,7 +80,7 @@ function openDetail(item: any) { if (item) emit('open-detail', item); }
 .card-head--wrap{flex-wrap:wrap}.content-meta span{color:var(--text-sub)}
 .title{margin:0;font-size:24px;font-weight:800}
 .hero-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
-.section-summary{display:inline-flex;align-items:center;min-height:40px;color:var(--text-sub);font-size:14px}
+.section-summary{display:inline-flex;align-items:center;min-height:40px;color:var(--text-sub);font-size:var(--text-body-sm)}
 .grouped-sections{display:grid;gap:var(--space-6)}
 .pill-btn,.content-card{border:1px solid color-mix(in srgb, var(--border) 78%, transparent);transition:transform 180ms ease-out,border-color 180ms ease-out,box-shadow 180ms ease-out,background 180ms ease-out}
 .pill-btn{height:40px;padding:0 var(--space-3);border-radius:999px;background:var(--bg-muted)}

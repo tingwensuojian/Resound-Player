@@ -519,7 +519,7 @@ watch(
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
   border: none;
-  font-size: 12px;
+  font-size: var(--text-label-sm);
   cursor: pointer;
   display: grid;
   place-items: center;

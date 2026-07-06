@@ -1984,7 +1984,7 @@ async function handleAction(key: string) {
 }
 
 .changelog-date {
-  font-size: 11px;
+  font-size: var(--text-label-xs);
   color: var(--text-soft);
   margin-left: 8px;
   font-weight: 400;
@@ -2043,7 +2043,7 @@ async function handleAction(key: string) {
   width: 100%;
   border-collapse: collapse;
   margin: 8px 0;
-  font-size: 12px;
+  font-size: var(--text-label-sm);
 }
 .changelog-desc td {
   border: 1px solid var(--border);

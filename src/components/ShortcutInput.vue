@@ -152,7 +152,7 @@ function clear(): void {
   border-radius: var(--radius-md);
   background: var(--bg-muted);
   color: var(--text-main);
-  font-size: 16px;
+  font-size: var(--text-body-md);
   font-family: -apple-system, 'SF Pro Text', 'PingFang SC', sans-serif;
   text-align: center;
   outline: none;

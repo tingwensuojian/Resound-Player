@@ -312,7 +312,7 @@ const items = [
 }
 
 .badge-label {
-  font-size: 11px;
+  font-size: var(--text-label-xs);
   font-weight: 600;
   color: var(--accent, #22c55e);
   line-height: 1;

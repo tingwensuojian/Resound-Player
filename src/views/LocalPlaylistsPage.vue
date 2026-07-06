@@ -257,7 +257,7 @@ function openPlaylist(id: string) {
   border: none;
   background: rgba(0,0,0,0.4);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--text-label-xs);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -277,7 +277,7 @@ function openPlaylist(id: string) {
   border: none;
   background: rgba(0,0,0,0.4);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--text-label-md);
   cursor: pointer;
   display: flex;
   align-items: center;

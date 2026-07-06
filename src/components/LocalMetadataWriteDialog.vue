@@ -319,7 +319,7 @@ watch(form, async () => {
 .match-title-block h3 {
   margin: 0;
   color: var(--text-main);
-  font-size: 16px;
+  font-size: var(--text-body-md);
   font-weight: 700;
 }
 .match-title-block p {
@@ -337,7 +337,7 @@ watch(form, async () => {
   border: none;
   background: transparent;
   color: var(--text-soft);
-  font-size: 24px;
+  font-size: var(--text-headline-md);
   line-height: 1;
   cursor: pointer;
 }
@@ -369,7 +369,7 @@ watch(form, async () => {
 }
 .edit-field span {
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: var(--text-label-sm);
   font-weight: 600;
 }
 .edit-field input,
@@ -395,10 +395,10 @@ watch(form, async () => {
 .preview-list { display: grid; gap: 8px; }
 .preview-item { display: grid; gap: 3px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--bg-muted, rgba(255,255,255,0.06)) 88%, transparent); border: 1px solid var(--border-soft, rgba(255,255,255,0.1)); }
 .preview-item strong { color: var(--text-main); font-size: 13px; }
-.preview-item span { color: var(--text-soft); font-size: 12px; line-break: anywhere; }
+.preview-item span { color: var(--text-soft); font-size: var(--text-label-sm); line-break: anywhere; }
 .summary { margin: 0; padding: 11px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent, #c39c76) 10%, var(--bg-muted, transparent)); color: var(--text-soft); font-size: 13px; }
 .summary.success { color: #7dd3a7; }
-.empty-text { margin: 0; color: var(--text-soft); font-size: 12px; }
+.empty-text { margin: 0; color: var(--text-soft); font-size: var(--text-label-sm); }
 .status.error { color: #ffb4b4; }
 .status {
   margin: 0;
@@ -415,7 +415,7 @@ watch(form, async () => {
 }
 .hint {
   color: var(--text-soft);
-  font-size: 12px;
+  font-size: var(--text-label-sm);
   line-height: 1.45;
 }
 .primary {

@@ -213,7 +213,7 @@ function playTrack(track: any) {
   border-radius: var(--radius-sm);
 }
 .dir-path { font-size: var(--text-body-sm); color: var(--text-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.dir-remove { background: none; border: none; cursor: pointer; color: var(--text-soft); padding: 0 0 0 var(--space-2); font-size: 12px; }
+.dir-remove { background: none; border: none; cursor: pointer; color: var(--text-soft); padding: 0 0 0 var(--space-2); font-size: var(--text-label-sm); }
 .dir-remove:hover { color: var(--danger); }
 
 .local-scanning { padding: var(--space-3); background: var(--accent-soft); border-radius: var(--radius-sm); color: var(--accent); font-size: var(--text-label-sm); }

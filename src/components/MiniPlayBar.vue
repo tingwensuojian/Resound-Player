@@ -337,7 +337,7 @@ function onFullscreen() {
 }
 
 .song-title {
-  font-size: 12px;
+  font-size: var(--text-label-sm);
   font-weight: 500;
   line-height: 1.25;
   white-space: nowrap;
@@ -347,7 +347,7 @@ function onFullscreen() {
 }
 
 .song-artist {
-  font-size: 11px;
+  font-size: var(--text-label-xs);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -535,7 +535,7 @@ function onFullscreen() {
   flex-shrink: 0;
   width: 18px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--text-label-xs);
   color: var(--text-soft);
 }
 
@@ -598,7 +598,7 @@ function onFullscreen() {
 }
 
 .mini-pl-title {
-  font-size: 12px;
+  font-size: var(--text-label-sm);
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;

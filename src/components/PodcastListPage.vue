@@ -332,7 +332,7 @@ function openDetail(item: any) { if (item) emit('open-detail', item); }
 .section-switch__item:hover{transform:translateY(-1px)}
 .category-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:max-content;gap:var(--space-2);padding-bottom:var(--space-1);-webkit-overflow-scrolling:touch}
 .category-tabs::-webkit-scrollbar{display:none}
-.category-tabs__item{display:inline-flex;align-items:center;height:36px;padding:0 var(--space-3);border:1px solid color-mix(in srgb, var(--border) 78%, transparent);border-radius:999px;background:color-mix(in srgb, var(--bg-surface) 94%, transparent);color:var(--text-sub);font-size:14px;white-space:nowrap;cursor:pointer;transition:transform 0.18s ease,border-color 0.18s ease,color 0.18s ease,background 0.18s ease}
+.category-tabs__item{display:inline-flex;align-items:center;height:36px;padding:0 var(--space-3);border:1px solid color-mix(in srgb, var(--border) 78%, transparent);border-radius:999px;background:color-mix(in srgb, var(--bg-surface) 94%, transparent);color:var(--text-sub);font-size:var(--text-body-sm);white-space:nowrap;cursor:pointer;transition:transform 0.18s ease,border-color 0.18s ease,color 0.18s ease,background 0.18s ease}
 .category-tabs__item:hover{transform:translateY(-1px);border-color:color-mix(in srgb, var(--accent) 24%, var(--border));color:var(--accent)}
 .grouped-sections{display:grid;gap:var(--space-6)}
 .category-section{display:grid;gap:var(--space-3)}
@@ -340,7 +340,7 @@ function openDetail(item: any) { if (item) emit('open-detail', item); }
 .category-title{margin:0;font-size:24px;font-weight:700;line-height:1.2;position:relative;padding-left:var(--space-3)}
 .category-title::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:4px;height:28px;border-radius:999px;background:var(--text-main)}
 .category-scroll-tip{color:var(--text-sub);font-size:13px;white-space:nowrap}
-.category-empty{margin:0;padding:var(--space-3) 0;color:var(--text-sub);font-size:14px}
+.category-empty{margin:0;padding:var(--space-3) 0;color:var(--text-sub);font-size:var(--text-body-sm)}
 .category-loading-more{margin:0;padding:var(--space-2) 0;color:var(--text-sub);font-size:13px;text-align:center}
 .pill-btn,.content-card{border:1px solid color-mix(in srgb, var(--border) 78%, transparent);transition:transform 180ms ease-out,border-color 180ms ease-out,box-shadow 180ms ease-out,background 180ms ease-out}
 .pill-btn{height:40px;padding:0 var(--space-3);border-radius:999px;background:var(--bg-muted)}

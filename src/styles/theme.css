@@ -110,6 +110,11 @@
   --text-body-md: 16px;
   --text-body-md-weight: 400;
   --text-body-md-line: 24px;
+  /* Large label for insight labels, section headers, year numbers */
+  --text-label-lg: 16px;
+  --text-label-lg-weight: 500;
+  --text-label-lg-line: 22px;
+  --text-label-lg-letter: 0.01em;
   --text-label-md: 14px;
   --text-label-md-weight: 500;
   --text-label-md-line: 20px;

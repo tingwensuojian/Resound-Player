@@ -1076,7 +1076,7 @@ function onSeek(e: Event) {
   .cover { width: 48px; height: 48px; border-radius: 10px; }
   .meta { max-width: 160px; }
   .title { font-size: 13px; }
-  .artist { font-size: 11px; }
+  .artist { font-size: var(--text-label-xs); }
 }
 
 /* ── 触摸设备：进度条增大触摸区域 ── */

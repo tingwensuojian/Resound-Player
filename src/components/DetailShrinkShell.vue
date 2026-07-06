@@ -174,13 +174,13 @@ defineProps<{
   height: 30px !important;
   min-width: 72px !important;
   padding: 0 12px !important;
-  font-size: 12px !important;
+  font-size: var(--text-label-sm) !important;
 }
 
 .detail-shrink-shell.small :deep(.tab-search-input) {
   height: 28px !important;
   width: 140px !important;
-  font-size: 12px !important;
+  font-size: var(--text-label-sm) !important;
   padding: 0 28px 0 12px !important;
 }
 
@@ -235,7 +235,7 @@ defineProps<{
   .detail-shrink-shell.small .hero-title :deep(h1),
   .detail-shrink-shell.small .hero-title :deep(h2),
   .detail-shrink-shell.small .hero-title :deep(.title) {
-    font-size: 18px;
+    font-size: var(--text-body-lg);
     margin-bottom: 2px;
   }
 
@@ -244,13 +244,13 @@ defineProps<{
     height: 26px !important;
     min-width: 64px !important;
     padding: 0 10px !important;
-    font-size: 11px !important;
+    font-size: var(--text-label-xs) !important;
   }
 
   .detail-shrink-shell.small :deep(.tab-search-input) {
     height: 24px !important;
     width: 120px !important;
-    font-size: 11px !important;
+    font-size: var(--text-label-xs) !important;
   }
 
   .detail-shrink-shell.small .detail-tabs {
