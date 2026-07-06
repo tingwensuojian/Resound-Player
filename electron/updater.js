@@ -193,9 +193,9 @@ export function installUpdate() {
   log("installUpdate - calling quitAndInstall");
   const updater = getAutoUpdater();
 
-  // Manual install: bypass Squirrel code signature validation
+  // Manual install: bypass Squirrel code signature validation (macOS only)
   const downloadedFile = _state.downloadedFilePath;
-  if (downloadedFile && fs.existsSync(downloadedFile)) {
+  if (process.platform === "darwin" && downloadedFile && fs.existsSync(downloadedFile)) {
     log("Manual install from", downloadedFile);
     const appPath = app.getAppPath();
     const resolvedAppBundle = path.resolve(path.join(appPath, "..", "..", ".."));
