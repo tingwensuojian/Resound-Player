@@ -514,10 +514,10 @@ watch(
 }
 
 .tag.active {
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 90%, #fff), color-mix(in srgb, var(--accent) 74%, #000));
-  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
-  color: #fff;
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 24%, rgba(15, 23, 42, 0.18));
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-solid)) !important;
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border)) !important;
+  color: var(--accent) !important;
+  font-weight: 700 !important;
 }
 
 .hq-section h3 { margin: 0 0 var(--space-2); font-size: var(--text-body-md); }

@@ -242,13 +242,13 @@ function openDetail(item: any) { if (item) emit('open-detail', item); }
 .title{margin:0;font-size:24px;font-weight:800}
 .hero-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
 .section-switch{display:inline-flex;align-items:center;gap:var(--space-1);padding:4px 4px 0;border:1px solid color-mix(in srgb, var(--accent) 30%, var(--border));border-radius:16px;background:color-mix(in srgb, var(--bg-surface) 94%, transparent)}
-.section-switch__item{height:32px;padding:0 var(--space-4);border:0;border-radius:12px;background:transparent;color:var(--text-sub);font-weight:600;cursor:pointer;transition:background 0.18s ease,color 0.18s ease,transform 0.18s ease}
-.section-switch__item--active{background:color-mix(in srgb, var(--accent) 14%, var(--bg-surface));color:var(--accent)}
-.section-switch__item:hover{transform:translateY(-1px)}
+.section-switch__item{height:32px;padding:0 var(--space-4);color:var(--text-sub);font-weight:600;cursor:pointer;transition:background 0.18s ease,color 0.18s ease,transform 0.18s ease}.section-switch__item--active{background:color-mix(in srgb, var(--accent) 14%, var(--bg-solid)) !important;color:var(--accent) !important}
+
+
 .grouped-sections{display:grid;gap:var(--space-6)}
 .pill-btn,.content-card{border:1px solid color-mix(in srgb, var(--border) 78%, transparent);transition:transform 180ms ease-out,border-color 180ms ease-out,box-shadow 180ms ease-out,background 180ms ease-out}
 .pill-btn{height:40px;padding:0 var(--space-3);border-radius:999px;background:var(--bg-muted)}
-.content-card:hover,.pill-btn:hover{transform:translateY(-1px);border-color:color-mix(in srgb, var(--accent) 24%, var(--border));box-shadow:0 12px 24px rgba(15,23,42,.08)}
+.content-card:hover,.pill-btn:hover{transform:translateY(-1px);border-color:color-mix(in srgb, var(--accent) 24%, var(--border))}
 .content-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-4);overflow-anchor:none}
 .category-loading-more{margin:0;padding:var(--space-3) 0;color:var(--text-sub);font-size:var(--text-body-sm);text-align:center}
 .content-card{display:grid;gap:var(--space-3);padding:var(--space-2);border-radius:var(--radius-xl,24px);text-align:left}

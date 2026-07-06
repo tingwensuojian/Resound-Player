@@ -291,7 +291,7 @@ onBeforeUnmount(() => {
 .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .title { margin: 0; font-size: 20px; font-weight: 700; }
 .refresh-btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease; }
-.refresh-btn:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 34%, #d1d5db); box-shadow: 0 10px 18px color-mix(in srgb, var(--accent) 10%, transparent); }
+.refresh-btn:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 34%, #d1d5db); }
 .refresh-btn:active { transform: translateY(0) scale(0.99); }
 .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
@@ -326,14 +326,12 @@ onBeforeUnmount(() => {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--accent) 38%, var(--border-soft));
   background: color-mix(in srgb, var(--accent-soft) 35%, var(--bg-muted));
-  box-shadow: 0 10px 18px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .chip.active {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 58%, var(--border-soft));
-  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent) !important;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border)) !important;
+  background: var(--accent-soft) !important;
 }
 
 .chip:disabled {

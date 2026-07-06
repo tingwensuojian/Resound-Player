@@ -482,6 +482,8 @@ html body #app .layout footer.bar[data-v-efc867c7] {
 
 .menu-item.active,
 .tab-btn.active,
+.chip.active,
+.chip[aria-selected='true'],
 .tag.active,
 .tag[aria-selected='true'] {
   background: var(--glass-reflection), var(--accent-soft) !important;
@@ -794,7 +796,6 @@ a,
   .playlist-gradient-card:hover,
   .album-gradient-card:hover,
   .cloud-item:hover {
-    box-shadow: 0 14px 30px color-mix(in srgb, var(--accent) 12%, rgba(15, 23, 42, 0.14));
   }
 
   .button-surface:hover,

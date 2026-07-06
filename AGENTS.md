@@ -376,6 +376,33 @@ end_of_line = lf
 - 组件样式优先使用 CSS 变量，而非硬编码颜色值
 - scoped 样式中禁止定义全局会影响其他组件的选择器
 
+### 3.6 按钮/标签激活态规范
+
+项目中所有按钮、标签、分段选择项（`.tab-btn.active`、`.tag.active`、`.chip.active`、`.section-switch__item--active` 等）的激活态必须保持视觉一致，遵循以下标准：
+
+```css
+/* 激活态标准样式 */
+.selector.active {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-solid));
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  color: var(--accent);
+  font-weight: 700;
+}
+```
+
+实现要求：
+
+1. **优先使用全局 active 选择器组** -- `theme.css` 中已为 `.tab-btn.active`、`.tag.active`、`.chip.active` 等统一提供了 `!important` 规则
+2. **scoped 覆盖必须带 `!important`** -- 如果组件需要与全局不同的激活态样式，scoped 中必须使用 `!important` 来盖过全局基样式的 `!important`
+3. **禁止渐变背景** -- 激活态不使用 `linear-gradient` 或全色填充，统一使用 14% accent 混合 `--bg-solid`
+4. **禁止彩色阴影** -- 激活态不使用 `box-shadow` 渲染色光晕
+5. **字重 700** -- 激活态文字使用 `font-weight: 700` 以区分未选中状态
+
+兼容性说明：
+
+- 如果全局 `.tag.active` 的 `--accent-soft` 背景（默认 18% 透明度）与 14% mix 视觉差异明显，在 scoped 中用 `!important` 覆盖
+- `--button-surface-bg`、`--bg-solid` 等全局基样式都带有 `!important`，因此 scoped 覆盖必须同样使用 `!important`
+
 ## 4. 详情页公共样式规范
 
 ### 4.1 详情页头部组件

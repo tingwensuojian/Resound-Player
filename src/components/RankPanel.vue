@@ -695,7 +695,7 @@ watch(toplistData, (val) => {
   transform-origin: center center;
   will-change: transform;
 }
-.curated-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px color-mix(in srgb, var(--text-main) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
+.curated-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 @media (hover: hover) and (pointer: fine) {
   .curated-card:hover .curated-cover,
   .curated-card:focus-visible .curated-cover {
@@ -708,14 +708,14 @@ watch(toplistData, (val) => {
 .language-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 14px; }
 .language-card { position: relative; min-height: 128px; padding: 10px; cursor: pointer; display: grid; gap: 8px; text-align: left; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
 .language-card { --hover-play-button-size: 34px; --hover-play-button-offset: 9px; }
-.language-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px color-mix(in srgb, var(--text-main) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
+.language-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 .language-cover { width: 100%; aspect-ratio: 1 / 1; border-radius: 10px; object-fit: cover; display: block; }
 .language-flag { position: absolute; top: 14px; right: 14px; width: 32px; height: 23px; border-radius: 5px; object-fit: cover; display: block; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.22); }
 
 .genre-section { gap: var(--space-2); }
 .genre-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); }
 .genre-card { --hover-play-button-size: 34px; --hover-play-button-offset: 9px; position: relative; padding: 10px; cursor: pointer; display: grid; gap: 8px; text-align: left; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
-.genre-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px color-mix(in srgb, var(--text-main) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
+.genre-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 .genre-cover { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px; display: block; }
 .genre-meta { min-width: 0; display: grid; gap: 4px; }
 .genre-card .rank-hover-play { right: 18px; bottom: 68px; z-index: 2; }
@@ -725,7 +725,7 @@ watch(toplistData, (val) => {
 .car-section { gap: var(--space-2); }
 .car-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--space-2); }
 .car-card { --hover-play-button-size: 30px; --hover-play-button-offset: 8px; padding: 10px; cursor: pointer; display: block; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
-.car-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px color-mix(in srgb, var(--text-main) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
+.car-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 .car-cover { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 10px; display: block; }
 
 .global-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
@@ -835,7 +835,7 @@ watch(toplistData, (val) => {
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.featured-card:hover { transform: translateY(-2px); box-shadow: 0 12px 24px color-mix(in srgb, var(--text-main) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
+.featured-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 .featured-meta { min-width: 0; display: grid; gap: var(--space-1); align-content: center; padding-right: 44px; }
 .featured-name { margin: 0; color: var(--text-main); font-size: var(--text-label-md); line-height: 1.3; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .featured-update { color: var(--text-soft); font-size: var(--text-label-sm); }
@@ -846,7 +846,7 @@ watch(toplistData, (val) => {
 .trend.steady { color: #065f46; background: #d1fae5; border-color: #a7f3d0; }
 .grid-wrap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
 .rank-card { position: relative; display: grid; grid-template-columns: 96px 1fr; padding: var(--space-2); gap: var(--space-2); text-align: left; cursor: pointer; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.rank-card:hover { transform: translateY(-2px); box-shadow: 0 10px 18px color-mix(in srgb, var(--accent) 16%, rgba(15, 23, 42, 0.1)); }
+.rank-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 22%, var(--border)); }
 .rank-cover { width: 96px; height: 96px; border-radius: 10px; object-fit: cover; }
 .rank-main { min-width: 0; display: grid; gap: var(--space-1); }
 .rank-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }

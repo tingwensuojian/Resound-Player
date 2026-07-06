@@ -84,7 +84,7 @@ function openDetail(item: any) { if (item) emit('open-detail', item); }
 .grouped-sections{display:grid;gap:var(--space-6)}
 .pill-btn,.content-card{border:1px solid color-mix(in srgb, var(--border) 78%, transparent);transition:transform 180ms ease-out,border-color 180ms ease-out,box-shadow 180ms ease-out,background 180ms ease-out}
 .pill-btn{height:40px;padding:0 var(--space-3);border-radius:999px;background:var(--bg-muted)}
-.content-card:hover,.pill-btn:hover{transform:translateY(-1px);border-color:color-mix(in srgb, var(--accent) 24%, var(--border));box-shadow:0 12px 24px rgba(15,23,42,.08)}
+.content-card:hover,.pill-btn:hover{transform:translateY(-1px);border-color:color-mix(in srgb, var(--accent) 24%, var(--border))}
 .content-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-4)}
 .content-card{display:grid;gap:var(--space-3);padding:var(--space-2);border-radius:var(--radius-xl,24px);text-align:left}
 :deep(.content-media-shell){width:100%;aspect-ratio:1/1;border-radius:20px}:deep(.content-cover-motion-shell){width:100%;height:100%;border-radius:20px;overflow:hidden}:deep(.content-cover){width:100%;height:100%;object-fit:cover}

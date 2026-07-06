@@ -207,11 +207,7 @@ async function toggleSaved() {
   pointer-events: none;
 }
 
-.bookmark-icon-button:hover {
-  transform: translateY(-1px) scale(1.02);
-  border-color: color-mix(in srgb, var(--bookmark-accent) 34%, var(--button-surface-hover-border));
-  box-shadow: var(--button-surface-hover-shadow), 0 14px 28px color-mix(in srgb, var(--bookmark-accent) 16%, transparent);
-}
+.bookmark-icon-button:hover { transform: translateY(-1px) scale(1.02); border-color: color-mix(in srgb, var(--bookmark-accent) 34%, var(--button-surface-hover-border)); }
 
 .bookmark-icon-button.loading {
   opacity: 0.72;
