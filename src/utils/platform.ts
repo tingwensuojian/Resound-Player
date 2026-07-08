@@ -38,6 +38,7 @@ export interface LocalApi {
   getAll(): Promise<any[]>
   trackCount(): Promise<number>
   openFolder?(folderPath: string): Promise<{ success: boolean; error?: string }>
+  openCoverCache?(): Promise<{ success: boolean; error?: string }>
   listScanDirs?(): Promise<string[]>
   saveScanDir?(dirPath: string): Promise<{ success: boolean }>
   removeScanDir?(dirPath: string): Promise<{ success: boolean }>
@@ -75,6 +76,7 @@ export interface LocalApi {
   // 本地歌曲统计
   getRecent(limit?: number): Promise<any[]>
   getStats(): Promise<{ totalTracks: number; totalArtists: number; totalAlbums: number; totalDuration: number; totalSize: number }>
+  getStreamingPort?(): Promise<number>
 }
 
 export const platform = {
@@ -173,7 +175,61 @@ export const platform = {
   },
 
   /** 是否支持本地歌曲功能 */
+
+  /** 流媒体服务端口（子进程 HTTP 服务，用于 NAS 音频零拷贝播放） */
+  _streamingPort: 0,
+  _streamingPortInitPromise: null as Promise<number> | null,
+
+  /** 获取流媒体服务端口，含自动初始化和重试逻辑 */
+  async getStreamingPort(): Promise<number> {
+    // 已获取成功，直接返回
+    if (this._streamingPort > 0) return this._streamingPort
+    // 正在初始化中，等待已有 Promise
+    if (this._streamingPortInitPromise) return this._streamingPortInitPromise
+    // 不支持本地 API
+    if (!this.localApi) return 0
+    // 开始初始化，带重试
+    this._streamingPortInitPromise = this._doGetStreamingPort()
+    const port = await this._streamingPortInitPromise
+    return port
+  },
+
+  /** 内部重试逻辑：最多 3 次，间隔 200ms */
+  async _doGetStreamingPort(): Promise<number> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const port = await this.localApi!.getStreamingPort?.() || 0
+        if (port > 0) {
+          this._streamingPort = port
+          return port
+        }
+      } catch {}
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 200))
+      }
+    }
+    console.warn('[platform] streaming server not available after 3 retries')
+    return 0
+  },
+
+  /** ??????? URL?HTTP ???NAS ????????? */
+  getStreamingUrl(path: string): string {
+    if (this._streamingPort > 0) {
+      return `http://127.0.0.1:${this._streamingPort}/stream?path=${encodeURIComponent(path)}`
+    }
+    // fallback: use local:// protocol (zero-copy)
+    return `local:///${path.replace(/\\/g, '/')}`
+  },
+
   get hasLocalMusicSupport(): boolean {
     return this.isDesktop && Boolean((window as any).localApi)
   },
+}
+
+// 模块加载时自动初始化流媒体服务端口
+if (typeof window !== 'undefined' && (window as any).localApi) {
+  // 延迟到微任务中执行，不阻塞模块加载
+  Promise.resolve().then(() => {
+    platform.getStreamingPort().catch(() => {})
+  })
 }

@@ -56,7 +56,8 @@ export interface IridescenceConfig {
 
 type Program = any;
 // Color is dynamically imported from 'ogl'; declare var for type compatibility
-declare var Color: any;
+// Runtime reference to Color from ogl import
+let _Color: any = null;
 
 export function useIridescence(
   containerRef: Ref<HTMLElement | null>,
@@ -72,9 +73,9 @@ export function useIridescence(
   function applyConfig() {
     if (!program) return;
     const { color1, color2, color3, speed, amplitude } = config.value;
-    program.uniforms.uColor1.value = new (Color as any)(color1[0], color1[1], color1[2]);
-    program.uniforms.uColor2.value = new (Color as any)(color2[0], color2[1], color2[2]);
-    program.uniforms.uColor3.value = new (Color as any)(color3[0], color3[1], color3[2]);
+    program.uniforms.uColor1.value = new _Color(color1[0], color1[1], color1[2]);
+    program.uniforms.uColor2.value = new _Color(color2[0], color2[1], color2[2]);
+    program.uniforms.uColor3.value = new _Color(color3[0], color3[1], color3[2]);
     program.uniforms.uAmplitude.value = amplitude;
     program.uniforms.uSpeed.value = speed;
   }
@@ -87,6 +88,7 @@ export function useIridescence(
     }
     
     const { Renderer, Program, Mesh, Triangle, Color } = await import('ogl');
+    _Color = Color;
     const ctn = containerRef.value!;
     if (!ctn || started) { return; }
 

@@ -13,6 +13,7 @@ export type RuntimeState = {
   playMode: 'loop' | 'single' | 'shuffle';
   playbackRate: number;
   loading: boolean;
+  buffered: number;
   currentSource: string;
   currentQualityBr: number;
   currentQualityLabel: string;
@@ -37,6 +38,7 @@ export function createInitialRuntimeState(): RuntimeState {
     playMode: 'loop',
     playbackRate: 1,
     loading: false,
+    buffered: 0,
     currentSource: 'official',
     currentQualityBr: 0,
     currentQualityLabel: '',
@@ -48,10 +50,17 @@ export function createInitialRuntimeState(): RuntimeState {
   };
 }
 
-/** Strip non-cloneable properties (Vue proxies, functions, etc.) for IPC-safe transfer. */
+let _lastSanitizedInput: PlaybackTrack | null = null;
+let _lastSanitizedOutput: PlaybackTrack | null = null;
+
+/** Strip non-cloneable properties (Vue proxies, functions, etc.) for IPC-safe transfer.
+ *  Memoized: returns cached result when the same object reference is passed (track identity unchanged). */
 function sanitizeTrackForIPC(t: PlaybackTrack | null): PlaybackTrack | null {
   if (!t) return null;
-  return {
+  // Cache hit: same object reference, track hasn't changed
+  if (t === _lastSanitizedInput) return _lastSanitizedOutput;
+
+  const result: PlaybackTrack = {
     id: t.id as any,
     name: String(t.name || ''),
     ar: Array.isArray(t.ar) ? t.ar.map((a) => ({ id: a?.id, artistId: a?.artistId, name: String(a?.name || '') })) : [],
@@ -70,12 +79,51 @@ function sanitizeTrackForIPC(t: PlaybackTrack | null): PlaybackTrack | null {
     uid: t.uid,
     path: t.path ? String(t.path) : undefined,
   };
+  _lastSanitizedInput = t;
+  _lastSanitizedOutput = result;
+  return result;
+}
+
+/** Memoized playlist sanitization: reuses cached result when the same array reference is passed.
+ *  The playlist array rarely changes during playback of a single track. */
+let _lastPlaylistInput: PlaybackTrack[] = [];
+let _lastPlaylistOutput: PlaybackTrack[] = [];
+
+function toSanitizedPlaylist(playlist: PlaybackTrack[]): PlaybackTrack[] {
+  if (!Array.isArray(playlist)) return [];
+  if (playlist === _lastPlaylistInput) return _lastPlaylistOutput;
+  _lastPlaylistInput = playlist;
+  _lastPlaylistOutput = playlist.map(sanitizeTrackForIPC).filter(Boolean) as PlaybackTrack[];
+  return _lastPlaylistOutput;
+}
+
+/** Memoized lyrics sanitization: only rebuilds when the lyrics array reference changes. */
+let _lastLyricsInput: any[] = [];
+let _lastLyricsOutput: any[] = [];
+
+function toSanitizedLyrics(lyrics: any): any[] {
+  if (!Array.isArray(lyrics)) return [];
+  if (lyrics === _lastLyricsInput) return _lastLyricsOutput;
+  _lastLyricsInput = lyrics;
+  _lastLyricsOutput = lyrics.map(l => ({
+    time: Number(l?.time || 0),
+    text: String(l?.text || ''),
+    words: Array.isArray(l?.words)
+      ? l.words.map(w => ({
+          text: String(w?.text || ''),
+          startTime: Number(w?.startTime || 0),
+          duration: Number(w?.duration || 0),
+          space: Boolean(w?.space),
+        }))
+      : [],
+  }));
+  return _lastLyricsOutput;
 }
 
 export function toPlaybackSnapshot(state: RuntimeState): PlaybackSnapshot {
   return {
     currentTrack: sanitizeTrackForIPC(state.currentTrack),
-    playlist: Array.isArray(state.playlist) ? state.playlist.map(sanitizeTrackForIPC).filter(Boolean) as PlaybackTrack[] : [],
+    playlist: toSanitizedPlaylist(state.playlist),
     currentIndex: state.currentIndex,
     miniLyricText: state.miniLyricText,
     isPlaying: state.isPlaying,
@@ -86,6 +134,7 @@ export function toPlaybackSnapshot(state: RuntimeState): PlaybackSnapshot {
     playMode: state.playMode,
     playbackRate: state.playbackRate,
     loading: state.loading,
+    buffered: state.buffered,
     currentSource: state.currentSource,
     currentQualityBr: state.currentQualityBr,
     currentQualityLabel: state.currentQualityLabel,
@@ -93,20 +142,7 @@ export function toPlaybackSnapshot(state: RuntimeState): PlaybackSnapshot {
     qualityDowngradeInfo: state.qualityDowngradeInfo,
     lastError: state.lastError,
     isFm: state.isFm,
-        fullLyrics: Array.isArray(state.fullLyrics)
-      ? state.fullLyrics.map(l => ({
-          time: Number(l?.time || 0),
-          text: String(l?.text || ''),
-          words: Array.isArray(l?.words)
-            ? l.words.map(w => ({
-                text: String(w?.text || ''),
-                startTime: Number(w?.startTime || 0),
-                duration: Number(w?.duration || 0),
-                space: Boolean(w?.space),
-              }))
-            : [],
-        }))
-      : [],
+        fullLyrics: toSanitizedLyrics(state.fullLyrics),
   };
 }
 

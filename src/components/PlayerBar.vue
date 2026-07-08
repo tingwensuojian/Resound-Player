@@ -42,7 +42,8 @@
           <SkipBack :size="16" />
         </AnimatedAppear>
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="1" class-name="ctrl main" @click="playerStore.togglePlay()" aria-label="播放或暂停">
-          <Pause v-if="playerStore.state.isPlaying" :size="18" />
+          <Loader2 v-if="isLoadingLocalTrack" :size="18" class="spin" />
+          <Pause v-else-if="playerStore.state.isPlaying" :size="18" />
           <Play v-else :size="18" />
         </AnimatedAppear>
         <AnimatedAppear tag="button" variant="control" rhythm="actions" :index="2" class-name="ctrl" @click="playerStore.next()" aria-label="下一首">
@@ -241,6 +242,7 @@ import {
   SkipBack,
   SkipForward,
   Sparkles,
+  Loader2,
   Volume,
   Volume1,
   Volume2,
@@ -263,6 +265,11 @@ import LocalCoverPlaceholder from './ui/LocalCoverPlaceholder.vue';
 import LocalMetadataStatusBadge from './ui/LocalMetadataStatusBadge.vue';
 import { useLocalMusicStore } from '../stores/localMusic'
 import { useLyrics } from '../composables/useLyrics';
+
+const isLoadingLocalTrack = computed(() =>
+  playerStore.state.loading &&
+  playerStore.state.currentTrack?.source === 'local'
+)
 import { useLoginModalStore } from '../stores/loginModal';
 const loginModalStore = useLoginModalStore();
 const localMusicStore = useLocalMusicStore()
@@ -809,7 +816,10 @@ watch(() => playerStore.state.isPlaying, (playing) => {
 });
 
 // ── 桌面歌词：发送完整 LRC 时间轴 + 播放进度 ──
+// lrcArray 仅在歌词或曲目变化时重建，避免 timeupdate 时重复 IPC
 let desktopLastTrackKey = '';
+let desktopLastLrcArray: any[] = [];
+let desktopLastLyricLines: any = null;
 watch([() => lyricLines.value, currentPlaybackKey, () => playerStore.state.isPlaying, () => playerStore.state.currentTime], () => {
   if (!platform.isDesktop || !window.appEnv?.desktopLyric) return;
   const track = playerStore.state.currentTrack;
@@ -822,11 +832,14 @@ watch([() => lyricLines.value, currentPlaybackKey, () => playerStore.state.isPla
   }
   const lines = lyricLines.value;
   const key = getTrackPlaybackKey(track);
-  if (!lines.length && key === desktopLastTrackKey) return;
-  desktopLastTrackKey = key;
-  const lrcArray = lines.length ? lines.map((l) => ({ t: l.time, text: l.text, translation: l.translation, romalrc: l.romalrc })) : [];
+  // 只在曲目切换或歌词引用变化时重建 lrcArray（避免 timeupdate 时重复 IPC 和对象创建）
+  if (key !== desktopLastTrackKey || lines !== desktopLastLyricLines) {
+    desktopLastTrackKey = key;
+    desktopLastLyricLines = lines;
+    desktopLastLrcArray = lines.length ? lines.map((l) => ({ t: l.time, text: l.text, translation: l.translation, romalrc: l.romalrc })) : [];
+  }
   window.appEnv.desktopLyric.updateData({
-    lrcArray,
+    lrcArray: desktopLastLrcArray,
     currentTime: playerStore.state.currentTime,
     trackName: track.name || '',
     artist: track.ar?.map((a: { name: string }) => a.name).join('/') || '',
@@ -1080,6 +1093,13 @@ function onSeek(e: Event) {
 }
 
 /* ── 触摸设备：进度条增大触摸区域 ── */
+/* Loading spinner for local track playback */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin { animation: spin 1s linear infinite; }
+
 @media (pointer: coarse) {
   .progress {
     height: 44px;

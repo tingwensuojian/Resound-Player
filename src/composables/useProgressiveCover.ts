@@ -92,7 +92,8 @@ export function useProgressiveCover(
 
   // ── 预加载第 1 层：LQIP ──
   watch(lqipUrl, (url) => {
-    if (!url) { lqipLoaded.value = true; return }
+    // For data: URLs (local covers), skip progressive tiers
+    if (!url || url.startsWith('data:')) { lqipLoaded.value = true; return }
     const img = new Image()
     img.onload = () => { lqipLoaded.value = true }
     img.onerror = () => { lqipLoaded.value = true }
@@ -101,7 +102,7 @@ export function useProgressiveCover(
 
   // ── 预加载第 2 层：缩略图 ──
   watch(thumbUrl, (url) => {
-    if (!url) { thumbLoaded.value = true; showFinal.value = true; return }
+    if (!url || url.startsWith('data:')) { thumbLoaded.value = true; showFinal.value = true; return }
     const img = new Image()
     img.onload = () => {
       thumbLoaded.value = true
@@ -120,6 +121,8 @@ export function useProgressiveCover(
       targetLoaded.value = true
       return
     }
+    // For data: URLs (local covers), skip progressive
+    if (url.startsWith('data:')) { targetLoaded.value = true; showFinal.value = true; return }
     const img = new Image()
     img.onload = () => {
       targetLoaded.value = true

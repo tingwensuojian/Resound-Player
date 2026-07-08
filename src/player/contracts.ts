@@ -70,6 +70,7 @@ export type PlaybackSnapshot = {
   playMode: 'loop' | 'single' | 'shuffle';
   playbackRate: number;
   loading: boolean;
+  buffered: number;
   currentSource: string;
   currentQualityBr: number;
   currentQualityLabel: string;

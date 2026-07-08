@@ -1,4 +1,5 @@
 import { nextTick, watch, onUnmounted, type Ref } from 'vue';
+import * as THREE from 'three';
 import { shouldSkipWebGLEffect } from '../utils/deviceDetector';
 
 const vertexShader = `
@@ -93,7 +94,6 @@ export function useThreeScene(
       return;
     }
     
-    const THREE = await import('three');
     const ctn = containerRef.value!;
     if (!ctn) return;
 
@@ -108,10 +108,10 @@ export function useThreeScene(
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(ctn.clientWidth, ctn.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     ctn.appendChild(renderer.domElement);
 
-    const geometry = new THREE.IcosahedronGeometry(1.2, 64);
+    const geometry = new THREE.IcosahedronGeometry(1.2, 32);
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },

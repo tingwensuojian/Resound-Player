@@ -608,6 +608,7 @@ const groupsMap: Record<string, SettingGroup[]> = {
       items: [
         { key: 'localAddDir', label: '添加目录', desc: '选择本地音乐文件夹进行扫描', type: 'action', actionText: '选择文件夹' },
         { key: 'localScan', label: '扫描本地音乐', desc: '立即重新扫描所有已添加的目录', type: 'action', actionText: '扫描' },
+        { key: 'localOpenCoverCache', label: '打开缓存文件夹', desc: '查看本地音乐的封面缓存文件', type: 'action', actionText: '打开' },
       ],
     },
   ],
@@ -847,7 +848,7 @@ const currentGroups = computed(() => {
           return false;
         }
         // 本地音乐功能仅桌面端可用
-        if (['localAddDir', 'localScan'].includes(item.key) && !platform.isDesktop) {
+        if (['localAddDir', 'localScan', 'localOpenCoverCache'].includes(item.key) && !platform.isDesktop) {
           return false;
         }
         // 系统托盘功能仅桌面端可用
@@ -1392,6 +1393,16 @@ async function handleAction(key: string) {
     }
     await localMusicStore.addDirectory()
     showLogoutMessage('已添加目录')
+  }
+
+  if (key === 'localOpenCoverCache') {
+    const localMusicStore = useLocalMusicStore()
+    if (!localMusicStore.hasLocalSupport) {
+      showLogoutMessage(platform.isDesktop ? '正在打开…' : '本地音乐功能仅支持桌面端')
+      return
+    }
+    platform.localApi?.openCoverCache?.()
+    return
   }
 
   if (key === 'localScan') {
@@ -2360,3 +2371,6 @@ async function handleAction(key: string) {
   .row { min-height: 44px; }
 }
 </style>
+
+
+

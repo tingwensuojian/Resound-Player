@@ -403,28 +403,57 @@ export function useLyrics() {
   const lyricBoxRef = ref<HTMLElement | null>(null);
   const lyricLineRefs = ref<HTMLElement[]>([]);
 
-  const currentLyricIndex = computed(() => {
+  // Manually-tracked lyric index (ref, not computed):
+  // Updated in RAF loop only when the index actually changes.
+  // This avoids 60 FPS linear scan through lyricLines via Vue reactivity.
+  const currentLyricIndex = ref(-1);
+  let _lastComputedLyricIndex = -1;
+
+  function _computeLyricIndex(time: number): number {
     const lines = lyricLines.value;
     if (!lines.length) return -1;
-    const t = effectiveTime.value;
+    const et = time + playerStore.state.lyricsOffset;
     let idx = -1;
     for (let i = 0; i < lines.length; i += 1) {
-      if (t >= lines[i].time) idx = i;
+      if (et >= lines[i].time) idx = i;
       else break;
     }
     return idx;
-  });
+  }
 
   const tickRunning = { value: false };
+  let _tickLastDisplayTrigger = 0;
+  const DISPLAY_THROTTLE_MS = 100; // displayTime reactive update throttle: 10 FPS max
 
   function startTick() {
     if (tickRunning.value) return;
     tickRunning.value = true;
+    // On start, immediately compute the current index
+    const initT = playerStore.state.audio?.currentTime ?? playerStore.state.currentTime ?? 0;
+    _lastComputedLyricIndex = _computeLyricIndex(initT);
+    currentLyricIndex.value = _lastComputedLyricIndex;
+    displayTime.value = initT;
 
     function tick() {
       if (!tickRunning.value) return;
-      // 主窗口优先读 audio.currentTime；迷你窗口无 audio 时回退到同步后的 store currentTime
-      displayTime.value = playerStore.state.audio?.currentTime ?? playerStore.state.currentTime ?? 0;
+      const t = playerStore.state.audio?.currentTime ?? playerStore.state.currentTime ?? 0;
+
+      // 1) Re-compute lyric index (linear scan) only when it might have changed
+      const newIdx = _computeLyricIndex(t);
+      if (newIdx !== _lastComputedLyricIndex) {
+        _lastComputedLyricIndex = newIdx;
+        currentLyricIndex.value = newIdx; // triggers Vue reactivity (once per lyric line change ~every 2-3s)
+        displayTime.value = t; // also sync displayTime with the index
+        _tickLastDisplayTrigger = performance.now();
+      }
+
+      // 2) Throttle displayTime reactive updates for word-level gradient accuracy
+      //    Components that read displayTime in template get at most 10 FPS updates
+      if (performance.now() - _tickLastDisplayTrigger >= DISPLAY_THROTTLE_MS) {
+        displayTime.value = t;
+        _tickLastDisplayTrigger = performance.now();
+      }
+
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);

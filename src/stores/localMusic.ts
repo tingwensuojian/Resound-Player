@@ -378,9 +378,9 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
             const matchedCover = String((await getLyricMatch(chunk[i]))?.cloudAlbumPicUrl || '').trim()
             if (matchedCover) chunk[i].coverUrl = matchedCover
           }
-          // 每片完成立即递增版本号，触发 UI 逐批刷新
-          state._coverVersion++
         }
+        // 全部批次完成后只递增一次版本号，避免每批都触发多次 computed 重算
+        state._coverVersion++
       } else {
         for (const track of uncached) {
           try {
@@ -395,6 +395,31 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       console.warn('[localMusic] lazyLoadCovers failed:', e)
     } finally {
       _coversLoading = false
+    }
+  }
+
+  // ???????????? NAS ????? SSD ???
+  async function batchCheckLocalCovers() {
+    if (!platform.localApi) return
+    try {
+      const uncached = state.tracks.filter(t => !t.coverUrl)
+      if (!uncached.length) return
+      if (typeof (platform.localApi as any).getCoversBatch === "function") {
+        const CHUNK = 100
+        for (let start = 0; start < uncached.length; start += CHUNK) {
+          const chunk = uncached.slice(start, start + CHUNK)
+          const paths = chunk.map(t => t.path)
+          const covers = await (platform.localApi as any).getCoversBatch(paths)
+          for (let i = 0; i < chunk.length; i++) {
+            const cover = String(covers[i] || "")
+            if (cover) chunk[i].coverUrl = cover
+          }
+        }
+        // 全部批次完成后只递增一次版本号，避免每批都触发多次 computed 重算
+        state._coverVersion++
+      }
+    } catch (e) {
+      console.warn("[localMusic] batchCheckLocalCovers failed:", e)
     }
   }
 
@@ -569,8 +594,8 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
         hasLyrics: Boolean(t.hasLyrics),
       }))
       await restoreDirectoriesFromTracks()
-      // 异步加载封面（不阻塞）
-      lazyLoadCovers()
+      // 批量检测本地缓存封面（零 NAS 穿透）
+      await batchCheckLocalCovers()
       refreshMetadataStatuses(state.tracks)
     } catch (e) {
       console.warn('[localMusic] loadTracks failed:', e)
@@ -609,8 +634,8 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
       }
       // 扫描完成后从 DB 重新加载全部歌曲
       await loadTracks()
-      // 异步加载封面（不阻塞）
-      lazyLoadCovers()
+      // 批量检测本地缓存封面（零 NAS 穿透）
+      await batchCheckLocalCovers()
     } finally {
       state.scanning = false
       platform.localApi.removeScanListeners()
@@ -932,6 +957,7 @@ export const useLocalMusicStore = defineStore('localMusic', () => {
     removeDirectory,
     clearAll,
     lazyLoadCovers,
+    batchCheckLocalCovers,
     lazyLoadPlaylistCovers,
     selectedFolderTracks,
     setSelectedFolder,
