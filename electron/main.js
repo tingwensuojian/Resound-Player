@@ -8,7 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { resolveServicePorts } from './port-manager.js';
 import { startAllServices, waitApiReady, killAllServices } from './serviceManager.js';
 import { LocalMusicDB } from './services/db/LocalMusicDB.js';
-import { NodeMusicScanner } from './services/scanner/NodeMusicScanner.js';
+
+import { CoverCache } from './services/CoverCache.js';
+
 import { registerLocalMusicIpc } from './services/ipc/localMusicIpc.js';
 import { loadTrayLyricConfig, getTrayLyricConfig, setTrayLyricConfig } from './tray-lyric-store.js';
 import { runWavMetadataE2E } from './wav-metadata-e2e.js';
@@ -431,6 +433,14 @@ async function createMainWindow(ports) {
     });
     win.show();
     if (process.platform === 'darwin') win.setAlwaysOnTop(false);
+    // Fallback: open dev tools again after show in case ready-to-show timing missed
+    if (process.env.VITE_DEV_SERVER_URL) {
+      setTimeout(() => {
+        if (!win.webContents.isDevToolsOpened()) {
+          win.webContents.openDevTools({ mode: 'detach' });
+        }
+      }, 2000);
+    }
   });
    // 拦截关闭按钮（仅 Windows）：隐藏到托盘而非销毁
   writeMainLog('[createMainWindow] registering close handler');
@@ -752,26 +762,118 @@ async function bootstrap() {
   }
   writeMainLog('[bootstrap] api ready', { apiPort: ports.api });
 
-  // ── 注册 local:// 协议（本地文件播放）──
-  protocol.registerFileProtocol('local', (request, callback) => {
+  // ?? ?? local:// ????? protocol.handle ?? CORS???
+  // Async protocol handler for local:// scheme
+  // Uses fs.promises for async I/O and supports Range Requests (206 Partial Content)
+  // When streaming server is available, redirect large audio files to avoid main process I/O
+  let streamingServerPort = 0;
+  protocol.handle("local", async (request) => {
     try {
-      let filePath = decodeURIComponent(request.url.replace(/^local:\/\//, ''));
-      if (/^\/[a-zA-Z]:\//.test(filePath)) filePath = filePath.slice(1);
+      let filePath = decodeURIComponent(request.url.replace(/^local:\/\//, ""));
+      if (filePath.startsWith("/")) filePath = filePath.slice(1);
       filePath = path.normalize(filePath);
-      if (!fs.existsSync(filePath)) return callback({ error: -6 });
-      callback({ path: filePath });
+      if (!filePath.match(/^[A-Za-z]:\\/) && !filePath.startsWith('\\\\')) {
+        filePath = '\\\\' + filePath;
+      }
+      // Single async stat call (replaces sync existsSync + statSync)
+      let stat;
+      try { stat = await fs.promises.stat(filePath); }
+      catch { return new Response(null, { status: 404 }); }
+      const ext = path.extname(filePath).toLowerCase();
+      // Redirect large audio files (>5MB) to streaming server when available
+      // This avoids fs.createReadStream blocking the main process event loop
+      const AUDIO_EXTS = [".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac", ".opus", ".ape", ".dsf", ".aiff", ".alac", ".wma"];
+      if (streamingServerPort > 0 && AUDIO_EXTS.includes(ext) && stat.size > 5 * 1024 * 1024) {
+        const redirectUrl = "http://127.0.0.1:" + streamingServerPort + "/stream?path=" + encodeURIComponent(filePath);
+        return Response.redirect(redirectUrl, 307);
+      }
+      const mimeMap = {
+        ".mp3": "audio/mpeg", ".flac": "audio/flac", ".wav": "audio/wav",
+        ".ogg": "audio/ogg", ".m4a": "audio/mp4", ".aac": "audio/aac",
+        ".opus": "audio/opus", ".ape": "audio/ape", ".dsf": "audio/dsf",
+        ".aiff": "audio/aiff", ".alac": "audio/alac", ".wma": "audio/x-ms-wma"
+      };
+      const mime = mimeMap[ext] || "application/octet-stream";
+      // Range Request support
+      const rangeHeader = request.headers.get("range");
+      if (rangeHeader) {
+        const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+        if (match) {
+          const start = match[1] ? parseInt(match[1], 10) : 0;
+          const end = match[2] ? parseInt(match[2], 10) : stat.size - 1;
+          const chunkSize = end - start + 1;
+          const stream = fs.createReadStream(filePath, { start, end });
+          return new Response(stream, {
+            status: 206,
+            headers: {
+              "Content-Type": mime,
+              "Content-Length": String(chunkSize),
+              "Content-Range": "bytes " + start + "-" + end + "/" + stat.size,
+              "Accept-Ranges": "bytes",
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            },
+          });
+        }
+      }
+      // Full content (200) for non-range requests
+      const body = fs.createReadStream(filePath);
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "Content-Type": mime,
+          "Content-Length": String(stat.size),
+          "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        },
+      });
     } catch {
-      callback({ error: -2 });
+      return new Response(null, { status: 500 });
+    }
+  });
+
+  // covercache:// protocol handler for cached cover images
+  protocol.handle("covercache", async (request) => {
+    try {
+      const cacheKey = request.url.replace(/^covercache:\/\//, "");
+      if (!cacheKey) return new Response(null, { status: 400 });
+      const cacheDir = path.join(app.getPath("userData"), "covers");
+      const cacheFile = path.join(cacheDir, cacheKey);
+      let stat;
+      try { stat = await fs.promises.stat(cacheFile); }
+      catch { return new Response(null, { status: 404 }); }
+      const ext = path.extname(cacheKey).toLowerCase();
+      const mimeMap = {
+        ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".png": "image/png", ".webp": "image/webp",
+        ".bmp": "image/bmp", ".gif": "image/gif",
+        ".avif": "image/avif",
+      };
+      const mime = mimeMap[ext] || "image/jpeg";
+      const body = fs.createReadStream(cacheFile);
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "Content-Type": mime,
+          "Content-Length": String(stat.size),
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch {
+      return new Response(null, { status: 500 });
     }
   });
 
   // ── 初始化本地音乐服务 ──
-  let localMusicDb, localMusicScanner;
+  let localMusicDb;
   try {
     localMusicDb = new LocalMusicDB();
     await localMusicDb.init();
-    localMusicScanner = new NodeMusicScanner();
-    registerLocalMusicIpc(localMusicScanner, localMusicDb);
+    const coverCache = new CoverCache();
+
+    registerLocalMusicIpc(localMusicDb, coverCache);
     writeMainLog('[bootstrap] local music ready');
     console.log('[main] 本地音乐服务就绪');
   } catch (err) {
@@ -779,7 +881,34 @@ async function bootstrap() {
     console.warn('[main] 本地音乐服务初始化失败:', err.message);
   }
 
-  ipcMain.handle('unblock:match-song', async (_event, id, sources) => {
+  // ── 启动流媒体服务子进程（独立 HTTP 服务，播放 NAS 音乐时不再经过主进程）──
+  try {
+    const serverWorkerPath = fileURLToPath(new URL("./services/StreamingServer.js", import.meta.url));
+    const { fork } = await import("child_process");
+    const streamingWorker = fork(serverWorkerPath, [], { stdio: "pipe", silent: true });
+    if (streamingWorker.stdout) streamingWorker.stdout.on("data", (d) => process.stdout.write("[StreamingServer] " + d));
+    if (streamingWorker.stderr) streamingWorker.stderr.on("data", (d) => process.stderr.write("[StreamingServer] " + d));
+    streamingWorker.on("message", (msg) => {
+      if (msg.type === "ready") {
+        streamingServerPort = msg.port;
+        writeMainLog("[bootstrap] streaming server ready on port " + streamingServerPort);
+        console.log("[main] 流媒体服务就绪, 端口:", streamingServerPort);
+      }
+    });
+    streamingWorker.on("exit", (code) => {
+      console.warn("[main] 流媒体服务退出, code:", code);
+    });
+    streamingWorker.send({ type: "start", port: 38764 });
+    // IPC handler for renderer to get streaming port
+    ipcMain.handle("local:get-streaming-port", () => streamingServerPort);
+    // Save reference for cleanup
+    global.__streamingServerWorker = streamingWorker;
+  } catch (err) {
+    writeMainLog('[bootstrap] streaming server init failed', err);
+    console.warn('[main] 流媒体服务启动失败:', err.message);
+  }
+
+ipcMain.handle('unblock:match-song', async (_event, id, sources) => {
     return nativeUnblockMatchSong(Number(id || 0), Array.isArray(sources) ? sources : []);
   });
   ipcMain.handle('unblock:is-native-ready', async () => isNativeUnblockMatchReady());
@@ -896,6 +1025,31 @@ if (!gotTheLock) {
   });
 }
 
+
+// 注册展台 protocol (翅错在 app.whenReady 之前)
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "local",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+  {
+    scheme: "covercache",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
+
 app.whenReady().then(() => {
   // 开发模式下显式设置 Dock/任务栏图标
   if (!app.isPackaged) {
@@ -927,6 +1081,11 @@ app.on('before-quit', () => {
   writeMainLog('[lifecycle] before-quit fired, isQuitting was=' + isQuitting);
   isQuitting = true;
   killAllServices(serviceChildren);
+  // cleanup streaming server child process
+  if (global.__streamingServerWorker && !global.__streamingServerWorker.killed) {
+    try { global.__streamingServerWorker.send({ type: 'shutdown' }); } catch (e) {}
+    try { global.__streamingServerWorker.kill(); } catch (e) {}
+  }
 });
 
 // ── 窗口控制 IPC ──

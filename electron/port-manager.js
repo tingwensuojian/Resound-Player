@@ -49,7 +49,7 @@ const DEFAULT_PORTS = {
  *
  * @param {object} [preferred]  Override preferred ports.
  * @param {number} [maxTries=20]  Max offset from each base port.
- * @returns {Promise<{vite:number, api:number, unblockProxy:number, unblockMatch:number}>}
+ * @returns {Promise<{vite:number, api:number, unblockProxy:number, unblockMatch:number, >}
  */
 export async function resolveServicePorts(preferred = {}, maxTries = 20) {
   const bases = { ...DEFAULT_PORTS, ...preferred };
@@ -84,5 +84,5 @@ export async function resolveServicePorts(preferred = {}, maxTries = 20) {
     api: resolved.api,
     unblockProxy: resolved.unblockProxy,
     unblockMatch: resolved.unblockMatch,
-  };
+      };
 }

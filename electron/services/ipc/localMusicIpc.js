@@ -1,11 +1,13 @@
 import { ipcMain, BrowserWindow, shell } from "electron";
+import { fileURLToPath } from "node:url";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import jschardet from "jschardet";
 import iconv from "iconv-lite";
-import { CoverCache } from "../CoverCache.js";
+import * as mm2 from "music-metadata";
 import { MetadataWriteService } from "../metadata/MetadataWriteService.js";
+import { isPathSafe } from "../pathSafety.js";
 function readLyricFile(lrcPath) {
   const raw = fs.readFileSync(lrcPath);
   const detected = jschardet.detect(raw);
@@ -13,33 +15,15 @@ function readLyricFile(lrcPath) {
   const text = iconv.decode(raw, encoding);
   return text.replace(/^\uFEFF/, "");
 }
-
-// ── 路径安全校验 ──
-// 阻止路径穿越和敏感目录访问
-function isPathSafe(requestedPath) {
-  if (typeof requestedPath !== 'string' || !requestedPath.trim()) return false;
-  try {
-    const normalized = path.resolve(requestedPath);
-    const blockedPrefixes = ['/etc', '/var', '/System', '/Library/Preferences', '/Windows/System32', '/usr'].map(p => path.resolve(p));
-    for (const prefix of blockedPrefixes) {
-      if (normalized.startsWith(prefix)) return false;
-    }
-    if (normalized.includes('/../') || normalized.includes('\\..\\')) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
 ipcMain.handle("select-directory", async () => {
   const { dialog } = await import("electron");
   const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
   return result.canceled ? null : result.filePaths[0];
 });
-function registerLocalMusicIpc(scanner, db) {
-  const coverCache = new CoverCache();
+function registerLocalMusicIpc(db, coverCache) {
   const metadataWriteService = new MetadataWriteService(db);
-  ipcMain.handle("local:scan", async (event, dirPath) => {
-    if (!dirPath) return { success: false, error: "扫描路径为空" };
+    ipcMain.handle("local:scan", async (event, dirPath) => {
+    if (!dirPath) return { success: false, error: "\u626b\u63cf\u8def\u5f84\u4e3a\u7a7a" };
     if (typeof db.upsertScanDir === "function") {
       await db.upsertScanDir(dirPath);
     }
@@ -50,10 +34,114 @@ function registerLocalMusicIpc(scanner, db) {
     };
     const dirPrefix = path.normalize(dirPath);
     const cachedMtimes = await db.getAllMtimes();
-    for await (const evt of scanner.scanDir(dirPath, cachedMtimes)) {
-      send(evt);
-      if (evt.type === "batch") await db.upsertTracks(evt.tracks);
+    
+    // Step 1: collect files in main process (fast, no mm.parseFile needed)
+    const SUPPORTED = new Set([".mp3",".flac",".wav",".ogg",".m4a",".aac",".ape",".dsf",".opus",".aiff",".alac"]);
+    const allFiles = [];
+    async function collectFiles(dir) {
+      let entries;
+      try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); }
+      catch { return; }
+      for (const entry of entries) {
+        const fp = path.join(dir, entry.name);
+        if (entry.isDirectory()) await collectFiles(fp);
+        else if (entry.isFile() && SUPPORTED.has(path.extname(entry.name).toLowerCase())) allFiles.push(fp);
+      }
     }
+    send({ type: "progress", current: 0, total: 0, phase: "collecting" });
+    await collectFiles(dirPrefix);
+    if (!allFiles.length) {
+      send({ type: "error", message: "扫描目录不可访问或无音乐文件: " + dirPath });
+      console.warn("[local:scan] 目录无效或无音乐文件:", dirPath);
+      send({ type: "complete", total: 0 });
+      return { success: true, scanned: 0 };
+    }
+    
+    // Step 2: filter by mtime
+    let scanFiles = allFiles;
+    let skippedCount = 0;
+    if (cachedMtimes && cachedMtimes.size > 0) {
+      scanFiles = [];
+      for (const fp of allFiles) {
+        const cachedMtime = cachedMtimes.get(fp);
+        if (cachedMtime !== undefined) {
+          try {
+            const st = await fs.promises.stat(fp);
+            if (st.mtimeMs === cachedMtime) { skippedCount++; continue; }
+          } catch {}
+        }
+        scanFiles.push(fp);
+      }
+    }
+    if (!scanFiles.length) { send({ type: "complete", total: skippedCount }); return { success: true }; }
+    
+    // Step 3: fork ScannerWorker child process
+    const { fork } = await import("child_process");
+    const workerPath = fileURLToPath(new URL("../scanner/ScannerWorker.js", import.meta.url));
+    console.log("[local:scan] forking ScannerWorker:", workerPath, "files:", scanFiles.length);
+    const worker = fork(workerPath, [], { stdio: "pipe", silent: true });
+    
+    // Handle worker stdout for debugging
+    if (worker.stdout) worker.stdout.on("data", (d) => process.stdout.write("[ScannerWorker] " + d));
+    if (worker.stderr) worker.stderr.on("data", (d) => process.stderr.write("[ScannerWorker] " + d));
+    
+    // Step 4: process results from worker
+    let completed = 0;
+    const total = scanFiles.length;
+    
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        worker.kill();
+        reject(new Error("ScannerWorker timeout"));
+      }, 3600000); // 1 hour max
+    
+      worker.on("message", async (msg) => {
+        try {
+          console.log("[local:scan] worker msg:", msg.type, msg.tracks?.length || "");
+          if (msg.type === "batch-result") {
+            if (msg.tracks && msg.tracks.length) {
+              await db.upsertTracks(msg.tracks);
+              // Save covers to local cache
+              if (msg.covers && coverCache) {
+                for (const [fp, cover] of Object.entries(msg.covers)) {
+                  if (cover) { try { await coverCache.saveCover(fp, Buffer.from(cover.data), cover.format); } catch {} }
+                }
+              }
+            }
+          } else if (msg.type === "worker-progress") {
+            completed = msg.current || completed;
+            send({ type: "progress", current: completed, total });
+          } else if (msg.type === "worker-error") {
+            console.warn("[ScannerWorker] error:", msg.path, msg.message);
+          } else if (msg.type === "worker-started") {
+            console.log("[local:scan] worker started, pid:", msg.pid);
+          } else if (msg.type === "batch-done") {
+            console.log("[local:scan] all batches done, sending shutdown to worker");
+            worker.send({ type: "shutdown" });
+          }
+        } catch (e) {
+          console.warn("[ScannerWorker] handler error:", e);
+        }
+      });
+    
+      worker.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    
+      worker.on("exit", (code) => {
+        clearTimeout(timeout);
+        if (code !== 0 && code !== null) {
+          console.warn("[ScannerWorker] exited with code", code);
+        }
+        resolve();
+      });
+    
+      // Send files to worker
+      worker.send({ type: "parse-batch", files: scanFiles });
+    });
+    
+    // Step 5: cleanup removed files
     try {
       const allTracks = await db.getAllTracks();
       const toRemove = [];
@@ -63,11 +151,21 @@ function registerLocalMusicIpc(scanner, db) {
       }
       if (toRemove.length) {
         await db.removeTracks(toRemove);
-        console.log(`[local:scan] \u6E05\u7406\u4E86 ${toRemove.length} \u6761\u5DF2\u5220\u9664\u6587\u4EF6\u8BB0\u5F55`);
+        console.log("[local:scan] cleaned", toRemove.length, "removed file records");
       }
     } catch (e) {
       console.warn("[local:scan] cleanup error:", e);
     }
+    
+    // Step 6: GC orphaned covers
+    try {
+      const allPaths = (await db.getAllTracks()).map(t => t.path).filter(Boolean);
+      await coverCache.gcCovers(new Set(allPaths));
+    } catch (e) {
+      console.warn("[local:scan] cover gc error:", e);
+    }
+    
+    send({ type: "complete", total });
     return { success: true };
   });
   ipcMain.handle("local:clear-all", async () => {
@@ -76,11 +174,15 @@ function registerLocalMusicIpc(scanner, db) {
       const deleted = await db.clearAllTracks();
 
       // 清除封面缓存
-      coverCache.clearCache();
+      await coverCache.clearCache();
       const { app: electronApp } = await import("electron");
       const mosaicDir = path.join(electronApp.getPath("userData"), "mosaic-covers");
       if (fs.existsSync(mosaicDir)) {
         fs.rmSync(mosaicDir, { recursive: true, force: true });
+      }
+      // Clear scan directories too, so stale dirs don't get restored after clear
+      if (typeof db.clearScanDirs === "function") {
+        await db.clearScanDirs();
       }
       console.log("[local:clear-all] \u6E05\u9664\u5B8C\u6210, \u5171\u5220\u9664", deleted, "\u6761");
       return { success: true, deleted };
@@ -96,12 +198,23 @@ function registerLocalMusicIpc(scanner, db) {
       await db.removeScanDir(dirPath);
     }
     console.log("[local:remove-tracks-by-dir] \u5B8C\u6210, \u5220\u9664\u4E86", result, "\u884C");
+    // \u5220\u9664\u76EE\u5F55\u540E\u6E05\u7406\u5B64\u513F\u5C01\u9762\u7F13\u5B58
+    try {
+      const allPaths = (await db.getAllTracks()).map(t => t.path).filter(Boolean);
+      coverCache.gcCovers(new Set(allPaths));
+    } catch (e) {
+      console.warn("[local:remove-tracks-by-dir] cover gc error:", e);
+    }
     return { success: true };
   });
   ipcMain.handle("local:remove-tracks", async (_event, paths) => {
     if (!paths.length) return { success: true, deleted: 0 };
     console.log("[local:remove-tracks] \u6536\u5230\u8BF7\u6C42, \u6570\u91CF:", paths.length);
     await db.removeTracks(paths);
+    // \u5220\u9664\u6B4C\u66F2\u65F6\u540C\u6B65\u6E05\u7406\u5C01\u9762\u7F13\u5B58
+    for (const p of paths) {
+      try { await coverCache.removeCover(p); } catch {}
+    }
     console.log("[local:remove-tracks] \u5B8C\u6210");
     return { success: true };
   });
@@ -119,6 +232,15 @@ function registerLocalMusicIpc(scanner, db) {
     const stat = fs.statSync(folderPath);
     const target = stat.isDirectory() ? folderPath : path.dirname(folderPath);
     const error = await shell.openPath(target);
+    return error ? { success: false, error } : { success: true };
+  });
+  ipcMain.handle("local:open-cover-cache", async () => {
+    const { app } = await import("electron");
+    const cacheDir = path.join(app.getPath("userData"), "covers");
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    const error = await shell.openPath(cacheDir);
     return error ? { success: false, error } : { success: true };
   });
   ipcMain.handle("local:list-scan-dirs", async () => {
@@ -196,13 +318,13 @@ function registerLocalMusicIpc(scanner, db) {
   });
   ipcMain.handle("local:read-file", async (_event, filePath) => {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked read-file path:', filePath); return null; }
-    if (!fs.existsSync(filePath)) return null;
-    return fs.readFileSync(filePath).buffer;
+    try { await fs.promises.stat(filePath); } catch { return null; }
+    return fs.promises.readFile(filePath).then(b => b.buffer);
   });
   ipcMain.handle("local:compute-file-md5", async (_event, filePath) => {
     if (!isPathSafe(filePath)) { console.warn('[ipc] blocked compute-file-md5 path:', filePath); return null; }
-    if (!fs.existsSync(filePath)) return null;
-    const stat = fs.statSync(filePath);
+    try { await fs.promises.stat(filePath); } catch { return null; }
+    const stat = await fs.promises.stat(filePath);
     const fileBuffer = fs.readFileSync(filePath);
     const md5 = crypto.createHash('md5').update(fileBuffer).digest('hex');
     return { md5, size: stat.size };
@@ -290,7 +412,38 @@ function registerLocalMusicIpc(scanner, db) {
     // 更新 DB 中的 customCoverUrl（存储 data URL，而非本地路径，确保渲染进程可直接使用）
     await playlistDb.updatePlaylist(playlistId, { customCoverUrl: coverDataUrl });
     return { success: true, filePath };
+
   });
+
+  // ── 一次性封面缓存回填迁移 ──
+  if (coverCache) {
+    (async () => {
+      try {
+        const { app } = await import("electron");
+        const MIGRATION_MARKER = path.join(app.getPath("userData"), ".cover_cache_migrated_v1");
+        if (fs.existsSync(MIGRATION_MARKER)) return;
+        console.log("[local:cover-migration] starting backfill...");
+        const allTracks = await db.getAllTracks();
+        let migrated = 0;
+        for (const t of allTracks) {
+          if (!t?.path) continue;
+          if (await coverCache.hasCover(t.path)) continue;
+          try {
+            const meta = await mm2.parseFile(t.path, { duration: false, skipPostHeaders: true });
+            const pic = meta.common.picture?.[0];
+            if (pic) {
+              await coverCache.saveCover(t.path, pic.data, pic.format);
+              migrated++;
+            }
+          } catch {}
+        }
+        fs.writeFileSync(MIGRATION_MARKER, "done", "utf-8");
+        console.log("[local:cover-migration] done, migrated " + migrated + " tracks");
+      } catch (e) {
+        console.warn("[local:cover-migration] failed:", e);
+      }
+    })();
+  }
 }
 export {
   registerLocalMusicIpc

@@ -195,6 +195,7 @@ contextBridge.exposeInMainWorld('localApi', {
   getAll: () => ipcRenderer.invoke('local:get-all'),
   trackCount: () => ipcRenderer.invoke('local:track-count'),
   openFolder: (folderPath) => ipcRenderer.invoke('local:open-folder', folderPath),
+  openCoverCache: () => ipcRenderer.invoke('local:open-cover-cache'),
   listScanDirs: () => ipcRenderer.invoke('local:list-scan-dirs'),
   saveScanDir: (dirPath) => ipcRenderer.invoke('local:save-scan-dir', dirPath),
   removeScanDir: (dirPath) => ipcRenderer.invoke('local:remove-scan-dir', dirPath),
@@ -234,6 +235,9 @@ contextBridge.exposeInMainWorld('localApi', {
   deleteTracksByDirectory: (dirPath) => ipcRenderer.invoke('local:remove-tracks-by-dir', dirPath),
   removeTracks: (paths) => ipcRenderer.invoke('local:remove-tracks', paths),
   clearAllData: () => ipcRenderer.invoke('local:clear-all'),
+
+  // ── 流媒体服务端口（HTTP 直连，NAS 音频不经过主进程）──
+  getStreamingPort: () => ipcRenderer.invoke('local:get-streaming-port'),
 
   // ── 本地歌曲统计 ──
   getRecent: (limit) => ipcRenderer.invoke('local:get-recent', limit),
