@@ -4,6 +4,8 @@ import { existsSync } from "fs";
 import path from "path";
 import crypto from "crypto";
 
+import fs2 from 'fs';
+
 const SUPPORTED = new Set([
   ".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac",
   ".ape", ".dsf", ".opus", ".aiff", ".alac"
@@ -33,11 +35,18 @@ console.error("[ScannerWorker] process started, PID:", process.pid);
 process.send({ type: "worker-started", pid: process.pid });
 
 
+let coverCacheDir = null;
+
 process.on("message", async (msg) => {
   console.error("[ScannerWorker] received:", msg.type, "files:", msg.files?.length || 0);
   if (msg.type === "parse-batch") {
     await handleParseBatch(msg.files);
     process.send({ type: "batch-done" });
+    return;
+  }
+  if (msg.type === "covers-dir") {
+    coverCacheDir = msg.dir;
+    try { fs2.mkdirSync(coverCacheDir, { recursive: true }); } catch {}
     return;
   }
   if (msg.type === "shutdown") {
@@ -48,12 +57,25 @@ process.on("message", async (msg) => {
 async function handleParseBatch(files) {
   currentTotal = files.length;
   currentCompleted = 0;
+  const BATCH_SIZE = 20;
 
   const concurrency = Math.min(6, Math.max(2, files.length));
   let index = 0;
   const results = [];
   const covers = {};
   const errors = [];
+
+  function flushBatch() {
+    if (results.length > 0) {
+      const batchTracks = results.splice(0);
+      const batchCovers = {};
+      for (const fp of Object.keys(covers)) {
+        batchCovers[fp] = covers[fp];
+        delete covers[fp];
+      }
+      process.send({ type: "batch-result", tracks: batchTracks });
+    }
+  }
 
   const worker = async () => {
     while (index < files.length) {
@@ -68,6 +90,9 @@ async function handleParseBatch(files) {
         errors.push({ type: "worker-error", path: filePath, message: err.message });
       }
       currentCompleted++;
+      if (results.length >= BATCH_SIZE) {
+        flushBatch();
+      }
       if (currentCompleted % 5 === 0 || currentCompleted === currentTotal) {
         process.send({ type: "worker-progress", current: currentCompleted, total: currentTotal });
       }
@@ -77,14 +102,12 @@ async function handleParseBatch(files) {
   const workers = Array.from({ length: concurrency }, () => worker());
   await Promise.all(workers);
 
+  // Send any remaining results
+  flushBatch();
+
   // Send any errors
   for (const err of errors) {
     process.send(err);
-  }
-
-  // Send accumulated results
-  if (results.length > 0) {
-    process.send({ type: "batch-result", tracks: results, covers });
   }
 }
 
@@ -120,16 +143,18 @@ async function parseFile(filePath) {
   try {
     meta = await mm.parseFile(filePath, { duration: true, skipPostHeaders: true });
   } catch {
-    return { track: fallbackTrack, coverData: null };
+    return { track: fallbackTrack };
   }
 
   const { common, format } = meta;
-  let coverData = null;
-
   if (common.picture?.[0]) {
     try {
       const pic = common.picture[0];
-      coverData = { format: pic.format, data: pic.data };
+      if (coverCacheDir) {
+        const cacheKey = crypto.createHash("md5").update(filePath).digest("hex");
+        const ext = pic.format === "image/jpeg" ? "jpg" : pic.format === "image/png" ? "png" : pic.format === "image/webp" ? "webp" : "jpg";
+        fs2.writeFileSync(path.join(coverCacheDir, cacheKey + "." + ext), Buffer.from(pic.data));
+      }
     } catch {}
   }
 
@@ -154,5 +179,5 @@ async function parseFile(filePath) {
     createdAt: "", updatedAt: "",
   };
 
-  return { track, coverData };
+  return { track };
 }

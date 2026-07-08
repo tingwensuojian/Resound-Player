@@ -1,6 +1,6 @@
 # 最近改动汇总 (2026-07)
 
-## 一、本地音乐播放性能优化（未提交）
+## 一、本地音乐播放性能优化（已提交 v9.9.9，2026-07-08 拉取到本地）
 
 ### 1.1 流媒体服务 StreamingServer（新增）
 
@@ -12,7 +12,7 @@
 - 大文件 (>5MB) 通过 307 Redirect 从 local:// 协议重定向到流媒体服务
 - 音频数据不经过主进程事件循环，避免 NAS I/O 阻塞主进程 UI
 
-## 二、播放体验改进（未提交）
+## 二、播放体验改进（已提交）
 
 ### 2.1 播放按钮加载指示器（修改）
 
@@ -28,6 +28,28 @@
 **文件：** src/components/PlayerBar.vue
 - 迷你控制台新增 .progress-buffered 元素显示缓冲区加载进度
 - 透明度 8%，通过 playerStore.state.buffered 驱动宽度
+### 1.3 macOS 集成修复（本地验证，2026-07-08）
+
+**修复：electron/package.json**
+- 添加 `"type": "module"`，解决 ESM 模块类型警告
+- 修复 `IOWorker.js` 在 macOS 上因 `require()` 不存在而崩溃的问题
+
+**修复：electron/services/scanner/ScannerWorker.js**
+- 扫描结果分批发回主进程（每批 20 条），避免 IPC 消息 JSON 字符串超限
+- 封面图片由 ScannerWorker 直接写入本地缓存目录，不经过 IPC 传输
+
+**修复：electron/services/IOWorker.js**
+- CJS→ESM 迁移：`require` → `import` + `createRequire(import.meta.url)`
+
+**修复：electron/main.js**
+- `covercache://` 协议处理器 URL 解析增加尾部斜杠裁剪
+- Electron 标准协议自动在路径末尾追加 `/` 导致文件查找失败
+
+**新增 macOS N-API 原生模块构建**
+- 构建步骤：`pip3 install cmake` → `npm run build:native`
+- 产物：`electron/native/io-worker/build/Release/io-worker.node`
+
+
 ## 三、UI 规范统一（已提交）
 
 ### 3.1 Typography token 审计 (d5c0afc6)
@@ -51,7 +73,7 @@
 ### 3.5 搜索框 box-shadow 修复 (bb746536)
 - 移除搜索框展开时的彩色 box-shadow 光晕
 
-## 四、性能优化（未提交）
+## 四、性能优化（已提交）
 
 ### 4.1 歌词索引计算优化
 
@@ -84,7 +106,7 @@
 **文件：** src/player/contracts.ts
 - 新增 buffered: number 字段
 
-## 五、其他修复（未提交）
+## 五、其他修复（已提交）
 - useIridescence.ts：静态导入修复（OGL Color 类）
 - electron/preload.js：新增 openCoverCache、getStreamingPort API 暴露
 - electron/main.js：新增 before-quit 清理 StreamingServer 子进程

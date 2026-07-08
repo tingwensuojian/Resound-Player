@@ -66,3 +66,6 @@ scripts/write_napi_plan_bootstrap.py
 
 # Native module build artifacts
 electron/native/**/build/
+
+# Generated arts cache
+.arts/

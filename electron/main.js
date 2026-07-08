@@ -836,13 +836,17 @@ async function bootstrap() {
   // covercache:// protocol handler for cached cover images
   protocol.handle("covercache", async (request) => {
     try {
-      const cacheKey = request.url.replace(/^covercache:\/\//, "");
+      const cacheKey = request.url.replace(/^covercache:\/\//, "").replace(/\/+$/, "");
       if (!cacheKey) return new Response(null, { status: 400 });
       const cacheDir = path.join(app.getPath("userData"), "covers");
       const cacheFile = path.join(cacheDir, cacheKey);
       let stat;
-      try { stat = await fs.promises.stat(cacheFile); }
-      catch { return new Response(null, { status: 404 }); }
+      try { 
+        stat = await fs.promises.stat(cacheFile); 
+      }
+      catch { 
+        return new Response(null, { status: 404 }); 
+      }
       const ext = path.extname(cacheKey).toLowerCase();
       const mimeMap = {
         ".jpg": "image/jpeg", ".jpeg": "image/jpeg",

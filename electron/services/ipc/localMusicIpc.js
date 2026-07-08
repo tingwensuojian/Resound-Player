@@ -75,6 +75,7 @@ function registerLocalMusicIpc(db, coverCache) {
     }
     if (!scanFiles.length) { send({ type: "complete", total: skippedCount }); return { success: true }; }
     
+
     // Step 3: fork ScannerWorker child process
     const { fork } = await import("child_process");
     const workerPath = fileURLToPath(new URL("../scanner/ScannerWorker.js", import.meta.url));
@@ -89,6 +90,8 @@ function registerLocalMusicIpc(db, coverCache) {
     let completed = 0;
     const total = scanFiles.length;
     
+    const { app: electronApp2 } = await import("electron");
+    const coverCacheDir = path.join(electronApp2.getPath("userData"), "covers");
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         worker.kill();
@@ -137,7 +140,7 @@ function registerLocalMusicIpc(db, coverCache) {
         resolve();
       });
     
-      // Send files to worker
+      worker.send({ type: "covers-dir", dir: coverCacheDir });
       worker.send({ type: "parse-batch", files: scanFiles });
     });
     

@@ -5,12 +5,17 @@
  * 运行在独立子进程中，即使原生模块崩溃也不影响主进程。
  */
 
-const path = require('path')
+import path from 'node:path'
+import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
+const require = createRequire(import.meta.url)
 
 // 查找原生模块路径
 function findNativeModule() {
   // CMakeLists.txt 编译输出为 io-worker.node（所有平台统一命名）
-  const filename = 'io-worker.node'
+  const filename = 'io-worker.node';
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+// eslint-disable-next-line no-unused-vars
 
   // 开发模式路径
   const devPath = path.join(
@@ -27,10 +32,8 @@ function findNativeModule() {
   }
 
   try {
-    return require.resolve(devPath) ? devPath : null
   } catch {
     try {
-      return require.resolve(prodPath) ? prodPath : null
     } catch {
       return null
     }

@@ -231,6 +231,59 @@ IPC 协议：
 
 ---
 
+## 实际集成记录（macOS 验证）
+
+> 本优化方案已在 macOS（Apple Silicon, arm64）上完成完整集成验证。
+
+### 集成时发现并修复的问题
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| **IOWorker 启动崩溃** | `IOWorker.js` 使用 CommonJS `require()`，但 `electron/package.json` 添加 `"type": "module"` 后被当作 ESM 加载，`require` 不存在 | 将 `IOWorker.js` 改为 ESM 语法：`import` + `createRequire(import.meta.url)` |
+| **macOS CMake 构建环境** | macOS 未预装 cmake | 通过 `pip3 install cmake` 安装 cmake 4.3.4；若没有 Homebrew 也可通过 pip 安装 |
+| **Native 模块 ABI 兼容性** | cmake-js 默认使用系统 Node.js 头文件（v24.14.0），与 Electron 42（v24.15.0）存在版本差 | N-API 版本稳定，无需特殊处理，直接构建即可 |
+
+### macOS 构建步骤
+
+```bash
+# 安装构建依赖
+pip3 install cmake
+
+# 构建原生模块
+npm run build:native
+
+# 验证产物
+file electron/native/io-worker/build/Release/io-worker.node
+# 输出: Mach-O 64-bit dynamically linked shared library arm64
+```
+
+### 本地音乐导入（ScannerWorker）集成问题
+
+> `electron/services/scanner/ScannerWorker.js` 在此次提交中作为整体重构的一部分引入。
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| **ScannerWorker IPC 溢出** | 389 个文件的元数据+封面通过 IPC 一次性发送，JSON 序列化字符串超限（`RangeError: Invalid string length`） | 将 `handleParseBatch` 改为每 20 条发一批；封面数据单独写入本地缓存目录，不经过 IPC |
+| **ScannerWorker 封面保存** | ScannerWorker 在子进程中无法访问 CoverCache 实例 | 通过 `covers-dir` IPC 消息将封面缓存目录路径传给子进程，Worker 直接 `fs.writeFileSync` 写入 |
+| **IPC 消息大小限制** | 即使每批 20 条，封面图片数据（每张数 MB）仍导致 JSON 序列化超限 | ScannerWorker 保存封面到本地磁盘后，只发送纯元数据（不含封面），主进程 CoverCache 直接读取已缓存文件 |
+
+### covercache:// 协议问题
+
+| 问题 | 根因 | 修复 |
+|------|------|------|
+| **封面显示为破碎图片** | Electron 标准 URL 协议自动在路径末尾追加 `/`，导致 `covercache://abc.jpg/` 查找文件失败 | `protocol.handle` 中 `cacheKey` 正则追加 `.replace(/\/+$/, "")` 去掉尾部斜杠 |
+
+### 验证状态
+
+| 层次 | 方案 | 状态 | 验证结果 |
+|------|------|------|---------|
+| L1 | StreamingServer 子进程 + 异步 stat | ✅ macOS 验证通过 | 流式端口 :38764 启动正常 |
+| L2 | Vue reactivity throttle + 缓存 | ✅ 无需额外验证 | — |
+| L3 | Cover 缓存到本地 SSD | ✅ macOS 验证通过 | 389 个封面缓存到 `~/Library/Application Support/resound-player/covers/` |
+| **L4** | **原生 N-API I/O 子进程链路** | **✅ macOS 验证通过** | **IOWorker dispatch_io 就绪，大文件 Range 流式读取正常** |
+
+---
+
 ## 未来可优化方向
 
 | 方向 | 说明 | 优先级 |
