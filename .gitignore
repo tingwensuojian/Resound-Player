@@ -1,10 +1,9 @@
-﻿dev-output.log
+dev-output.log
 
 # Build artifacts
 node_modules/
 native/node_modules/
 native/taskbar-widget-helper/build/Release/
-
 
 # macOS
 .DS_Store
@@ -41,3 +40,29 @@ deploy/.env.production
 
 # NPM
 pnpm-lock.yaml
+
+# Temp / scratch files (auto-generated during development)
+vite_*.log
+__pycache__/
+*.pyc
+
+# Scratch / temp scripts generated during development
+_edit_step1.py
+_fix_migration.py
+_fix_spinner_cond.cjs
+_fix_uselyrics.py
+_phase3.py
+_plan_and_fix.py
+tmp_write_doc.py
+write_doc.mjs
+scripts/add_logging.cjs
+scripts/append_ci.py
+scripts/fix_napi.py
+scripts/gen_changelog.py
+scripts/gen_napi_doc.py
+scripts/gen_napi_v2.py
+scripts/gen_napi_v3.py
+scripts/write_napi_plan_bootstrap.py
+
+# Native module build artifacts
+electron/native/**/build/
