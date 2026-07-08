@@ -34,7 +34,9 @@
     "dev:unblock-match": "node server/unblock-match-server.mjs",
     "dist:win:portable": "node scripts/build-win.mjs portable",
     "dist:mac:x64": "node scripts/build-mac.mjs dmg,zip x64",
-    "dist:mac:arm64": "node scripts/build-mac.mjs dmg,zip arm64"
+    "dist:mac:arm64": "node scripts/build-mac.mjs dmg,zip arm64",
+    "build:native": "cmake-js build -d electron/native/io-worker -O electron/native/io-worker/build",
+    "rebuild:native": "cmake-js rebuild -d electron/native/io-worker -O electron/native/io-worker/build"
   },
   "dependencies": {
     "@applemusic-like-lyrics/core": "file:_amll_dist/core/applemusic-like-lyrics-core-0.4.2.tgz",
@@ -77,8 +79,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.3",
+    "cmake-js": "^8.0.0",
     "concurrently": "^9.1.2",
-    "electron": "42.1.0",
+    "electron": "^42.1.0",
     "electron-builder": "^25.1.8",
     "node-addon-api": "^8.8.0",
     "pngjs": "^5.0.0",
@@ -136,6 +139,10 @@
       {
         "from": "native/taskbar-widget-helper/build/Release/taskbar_widget_helper.node",
         "to": "native/taskbar-widget-helper/build/Release/taskbar_widget_helper.node"
+      },
+      {
+        "from": "electron/native/io-worker/build/Release/io-worker.node",
+        "to": "native/io-worker/io-worker.node"
       }
     ],
     "npmRebuild": true,

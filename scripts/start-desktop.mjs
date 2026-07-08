@@ -44,7 +44,7 @@ function killProcessOnPort(port) {
   } catch { /* port not in use */ }
 }
 
-const KILL_PORTS = [38761, 38762, 38763, 5173];
+const KILL_PORTS = [38761, 38762, 38763, 38764, 5173];
 for (const port of KILL_PORTS) killProcessOnPort(port);
 
 // --- P0: Kill stale Electron processes (targeted by project path) ---
