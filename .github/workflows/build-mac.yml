@@ -1,4 +1,4 @@
-name: Build macOS App
+﻿name: Build macOS App
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -31,7 +31,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-
+      - name: Build native N-API module
+        run: npm run build:native
       - name: Build macOS package (${{ matrix.arch }})
         run: npm run dist:mac:${{ matrix.arch }}
 
@@ -144,4 +145,5 @@ jobs:
           done
           echo "Uploading merged latest-mac.yml as latest-mac.yml..."
           gh release upload "${TAG}" latest-mac.yml --clobber
+
 

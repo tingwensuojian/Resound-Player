@@ -30,7 +30,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
+      - name: Build native N-API module
+        shell: pwsh
+        run: npm run build:native
       - name: Build Windows package
         env:
           GH_TOKEN: ${{ github.token }}
@@ -148,3 +150,4 @@ jobs:
 
           Write-Host "Uploading Windows EXE to release $Tag..."
           gh release upload $Tag dist-build/*.exe dist-build/*.blockmap dist-build/latest.yml --clobber
+
