@@ -83,7 +83,7 @@ jobs:
           $null = $NL.Add("# Resound-Player v$Version")
           $null = $NL.Add("")
           $null = $NL.Add("## " + [char]0x66F4 + "" + [char]0x65B0 + "" + [char]0x5185 + "" + [char]0x5BB9 + "")
-          $PrevTag = git tag --sort=-version:refname | Select-Object -First 2 | Select-Object -Last 1
+          $PrevTag = git tag --sort=-version:refname | Where-Object {$_ -ne $Tag} | Select-Object -First 1
           if ($PrevTag) {
             git log "$PrevTag..$Tag" --no-merges --oneline --reverse | ForEach-Object {
               $_ -replace '^[0-9a-f]+ ', '- '
