@@ -168,6 +168,7 @@ const items = [
   { key: 'home', label: '首页', icon: Home },
   { key: 'search', label: '搜索', icon: Search },
   { key: 'playlist', label: '歌单', icon: ListMusic },
+  { key: 'artist', label: '歌手', icon: Mic2 },
   { key: 'rank', label: '排行榜', icon: Trophy },
   { key: 'mv', label: 'MV', icon: Clapperboard },
   { key: 'podcast-list', label: '播客有声书', icon: BookAudio },

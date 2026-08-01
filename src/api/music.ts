@@ -306,6 +306,25 @@ export async function getTopArtists(params?: { limit?: number; offset?: number }
   });
 }
 
+export async function getArtistList(params?: {
+  type?: -1 | 1 | 2 | 3;
+  area?: -1 | 0 | 7 | 8 | 16 | 96;
+  initial?: -1 | 0 | string;
+  limit?: number;
+  offset?: number;
+}) {
+  return apiClient.get('/artist/list', {
+    params: {
+      type: params?.type ?? -1,
+      area: params?.area ?? -1,
+      initial: params?.initial ?? -1,
+      limit: params?.limit ?? 30,
+      offset: params?.offset ?? 0,
+      timestamp: Date.now(),
+    },
+  });
+}
+
 export async function getArtistDetail(id: number) {
   return apiClient.get('/artist/detail', {
     params: {

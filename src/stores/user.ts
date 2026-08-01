@@ -66,6 +66,7 @@ export const useUserStore = defineStore('user', () => {
     subscribedPlaylistIds: [] as number[],
     subscribedAlbumIds: [] as number[],
     subscribedArtistIds: [] as number[],
+    subscribedArtists: [] as any[],
     subscribedUserIds: [] as number[],
     isVip: false,
     vipInfo: null as VipInfo | null,
@@ -117,6 +118,7 @@ export const useUserStore = defineStore('user', () => {
     state.subscribedPlaylistIds = [];
     state.subscribedAlbumIds = [];
     state.subscribedArtistIds = [];
+    state.subscribedArtists = [];
     state.subscribedUserIds = [];
     state.isVip = false;
     state.vipInfo = null;
@@ -155,7 +157,7 @@ export const useUserStore = defineStore('user', () => {
           state.isLogin = true;
           apiCache.clearUserScoped();
           state.loginMode = 'cookie';
-          await Promise.allSettled([fetchPlaylists(profile.userId), fetchLikedSongs(profile.userId), fetchSubscribedDjs()]);
+          await Promise.allSettled([fetchPlaylists(profile.userId), fetchLikedSongs(profile.userId), fetchSubscribedDjs(), fetchSubscribedArtists()]);
           fetchVipInfo();
         }
       }
@@ -238,7 +240,7 @@ export const useUserStore = defineStore('user', () => {
       fetchVipInfo();
     } else {
       state.playlists = []; state.likedSongIds = []; state.subscribedDjIds = [];
-      state.subscribedPlaylistIds = []; state.subscribedAlbumIds = []; state.subscribedArtistIds = []; state.subscribedUserIds = [];
+      state.subscribedPlaylistIds = []; state.subscribedAlbumIds = []; state.subscribedArtistIds = []; state.subscribedArtists = []; state.subscribedUserIds = [];
     }
     state.loginVerified = true;
   }
@@ -277,11 +279,12 @@ export const useUserStore = defineStore('user', () => {
 
   async function fetchSubscribedArtists() {
     try {
-      const { data } = await getArtistSublist({ cookie: state.loginCookie || undefined });
+      const { data } = await getArtistSublist({ limit: 1000, cookie: state.loginCookie || undefined });
       const candidates = [data?.data, data?.artists, data?.list];
       const items = candidates.find((c) => Array.isArray(c)) || [];
+      state.subscribedArtists = items;
       state.subscribedArtistIds = items.map((item: any) => Number(item?.id || 0)).filter((id: number) => Number.isFinite(id) && id > 0);
-    } catch { state.subscribedArtistIds = []; }
+    } catch { state.subscribedArtistIds = []; state.subscribedArtists = []; }
   }
 
   async function fetchSubscribedPlaylists() {

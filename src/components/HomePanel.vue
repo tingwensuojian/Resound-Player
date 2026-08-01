@@ -638,7 +638,13 @@ const visibleWidgets = computed(() => widgets.value.filter((widget) => widget.id
 const tags = ['综艺', '流行', '影视原声', '华语', 'ACG', '摇滚', '民谣', '电子', '说唱', '轻音乐'];
 const hotList = ['周杰伦', '林俊杰', '邓紫棋', '告五人', '影视原声', '华语热歌', '王菲', '陈奕迅'];
 const searchHistory = ref<string[]>(JSON.parse(localStorage.getItem('tm_search_history') || '[]'));
-const topArtists = ref<any[]>([]);
+const defaultTopArtists = ref<any[]>([]);
+const topArtists = computed(() => {
+  const followed = userStore.state.isLogin ? userStore.state.subscribedArtists : [];
+  if (!followed.length) return defaultTopArtists.value;
+  const followedIds = new Set(followed.map((artist: any) => Number(artist?.id || 0)));
+  return [...followed, ...defaultTopArtists.value.filter((artist: any) => !followedIds.has(Number(artist?.id || 0)))];
+});
 const topArtistsLoading = ref(false);
 const topArtistsError = ref('');
 const topArtistsOffset = ref(0);
@@ -1434,7 +1440,9 @@ async function fetchTopArtists() {
   const cacheKey = 'home:topArtists';
   const cached = apiCache.get(cacheKey);
   if (cached?.data) {
-    topArtists.value = cached.data;
+    defaultTopArtists.value = cached.data;
+    topArtistsOffset.value = defaultTopArtists.value.length;
+    topArtistsHasMore.value = defaultTopArtists.value.length >= ARTISTS_PAGE_SIZE;
     topArtistsLoading.value = false;
     if (topArtistsHasMore.value) loadMoreTopArtists();
     return;
@@ -1445,17 +1453,17 @@ async function fetchTopArtists() {
   try {
     const { data } = await getTopArtists({ limit: ARTISTS_PAGE_SIZE, offset: 0 });
     const list = (data?.artists || data?.data?.artists || data?.list || []);
-    topArtists.value = list;
+    defaultTopArtists.value = list;
     topArtistsOffset.value = list.length;
     topArtistsHasMore.value = list.length >= ARTISTS_PAGE_SIZE;
-    if (topArtists.value.length) {
-      apiCache.set(cacheKey, topArtists.value, 600000);
+    if (defaultTopArtists.value.length) {
+      apiCache.set(cacheKey, defaultTopArtists.value, 600000);
     }
-    if (!topArtists.value.length) {
+    if (!defaultTopArtists.value.length) {
       topArtistsError.value = '暂未获取到热门歌手';
     }
   } catch (e: any) {
-    topArtists.value = [];
+    defaultTopArtists.value = [];
     topArtistsError.value = e?.message || '热门歌手获取失败，请稍后重试';
   } finally {
     topArtistsLoading.value = false;
@@ -1476,9 +1484,9 @@ async function loadMoreTopArtists() {
       topArtistsHasMore.value = false;
       return;
     }
-    const existingIds = new Set(topArtists.value.map((a) => a.id));
+    const existingIds = new Set(defaultTopArtists.value.map((a) => a.id));
     const unique = list.filter((a) => !existingIds.has(a.id));
-    topArtists.value = [...topArtists.value, ...unique];
+    defaultTopArtists.value = [...defaultTopArtists.value, ...unique];
     topArtistsOffset.value += list.length;
     topArtistsHasMore.value = list.length >= ARTISTS_PAGE_SIZE;
   } catch {

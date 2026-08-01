@@ -63,6 +63,10 @@
             :initial-cat="playlistInitialCategory"
             @open-detail="(id) => openPlaylistDetail(id, undefined, 'home')"
           />
+          <ArtistPanel
+            v-else-if="activePage === 'artist'"
+            @open-artist="(artist) => openArtistDetail(artist, 'artist')"
+          />
           <PlaylistDetailPage
             v-else-if="activePage === 'playlist-detail'"
             :playlist-id="activePlaylistId"
@@ -214,6 +218,7 @@ import AlbumDetailPage from './components/AlbumDetailPage.vue';
 import ArtistDetailPage from './components/ArtistDetailPage.vue';
 import UserDetailPage from './components/UserDetailPage.vue';
 import PlaylistPanel from './components/PlaylistPanel.vue';
+import ArtistPanel from './components/ArtistPanel.vue';
 import SearchPage from './components/SearchPage.vue';
 import RankPanel from './components/RankPanel.vue';
 import MvPanel from './components/MvPanel.vue';
@@ -333,6 +338,7 @@ const layoutVars = computed<Record<string, string>>(() => {
 
 const sidebarActiveKey = computed(() => {
   if (activePage.value === 'playlist-detail') return 'playlist';
+  if (activePage.value === 'artist-detail' && activeArtistReturnPage.value === 'artist') return 'artist';
   if (activePage.value === 'rank-detail') return 'rank';
   if (['podcast-category', 'podcast-detail', 'podcast-subscribed'].includes(activePage.value)) return 'podcast-list';
   return activePage.value;
@@ -347,7 +353,7 @@ const contentStyle = computed<Record<string, string>>(() => ({}));
 // ── 页面缓存策略（方案二：KeepAlive + include 显式控制）──
 // 核心页面缓存，切换时不销毁重建；详情页每次进入重新加载
 const keepAlivePages = new Set([
-  'home', 'search', 'playlist', 'rank', 'user',
+  'home', 'search', 'playlist', 'artist', 'rank', 'user',
   'history', 'settings', 'mv', 'podcast-list', 'stats',
 ]);
 // KeepAlive include 匹配组件名需与文件导出的 __name（PascalCase）一致
@@ -356,6 +362,7 @@ const PAGE_TO_COMPONENT: Record<string, string> = {
   'home': 'HomePanel',
   'search': 'SearchPage',
   'playlist': 'PlaylistPanel',
+  'artist': 'ArtistPanel',
   'rank': 'RankPanel',
   'user': 'UserPanel',
   'history': 'HistoryPanel',
@@ -484,6 +491,7 @@ const albumBackLabel = computed(() => {
 const artistBackLabel = computed(() => {
   // 歌手链式跳转中时，显示通用返回
   if (activeArtistIdStack.value.length > 0) return '返回上一页';
+  if (activeArtistReturnPage.value === 'artist') return '返回歌手分类';
   if (activeArtistReturnPage.value === 'playlist-detail') return '返回歌单详情';
   if (activeArtistReturnPage.value === 'album-detail') return '返回专辑详情';
   if (activeArtistReturnPage.value === 'home') return '返回首页';
